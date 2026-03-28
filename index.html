@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard Operaciones</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#f5f4f0;--surface:#fff;--surface2:#f0ede8;
+  --border:rgba(0,0,0,0.08);--border2:rgba(0,0,0,0.14);
+  --text:#1a1917;--text2:#6b6860;--text3:#9c9a94;
+  --teal:#0f7a5a;--coral:#c94e28;--radius:12px;--radius-sm:8px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:14px}
+.layout{display:grid;grid-template-columns:230px 1fr;min-height:100vh}
+.sidebar{background:var(--surface);border-right:1px solid var(--border);padding:28px 0;position:sticky;top:0;height:100vh;display:flex;flex-direction:column;overflow-y:auto}
+.sidebar-brand{padding:0 24px 22px;border-bottom:1px solid var(--border);margin-bottom:16px}
+.sidebar-brand h1{font-size:13px;font-weight:500;letter-spacing:0.06em;text-transform:uppercase}
+.sidebar-brand p{font-size:11px;color:var(--text3);margin-top:3px}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 24px;cursor:pointer;font-size:13px;color:var(--text2);border-left:2px solid transparent;transition:all .15s}
+.nav-item:hover{color:var(--text);background:var(--surface2)}
+.nav-item.on{color:var(--text);border-left-color:var(--text);font-weight:500;background:var(--surface2)}
+.nav-icon{width:16px;height:16px;opacity:.6;flex-shrink:0}
+.nav-item.on .nav-icon{opacity:1}
+.sidebar-bottom{margin-top:auto;padding:16px 20px 0;border-top:1px solid var(--border)}
+.week-selector{font-size:10px;color:var(--text3);margin-bottom:8px;text-transform:uppercase;letter-spacing:.05em}
+.week-pills-wrap{max-height:220px;overflow-y:auto;margin-bottom:8px}
+.week-pill{display:flex;align-items:center;justify-content:space-between;padding:7px 10px;background:var(--surface2);border-radius:var(--radius-sm);cursor:pointer;margin-bottom:5px;border:1px solid transparent}
+.week-pill:hover{border-color:var(--border2)}
+.week-pill.active{border-color:var(--text)}
+.week-pill-label{font-size:11px;font-weight:500;color:var(--text)}
+.week-pill-count{font-size:10px;color:var(--text3)}
+.week-pill-del{font-size:10px;color:var(--text3);padding:1px 5px;border-radius:3px;cursor:pointer}
+.week-pill-del:hover{background:#fde8e8;color:var(--coral)}
+.btn{display:inline-flex;align-items:center;gap:7px;padding:9px 16px;border-radius:var(--radius-sm);font-size:12px;font-weight:500;cursor:pointer;border:1px solid var(--border2);background:var(--surface);color:var(--text);font-family:'DM Sans',sans-serif;transition:all .15s}
+.btn:hover{background:var(--surface2);border-color:var(--text)}
+.btn.primary{background:var(--text);color:#fff;border-color:var(--text)}
+.btn.primary:hover{background:#333}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.main{padding:32px 36px}
+.page-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:28px;flex-wrap:wrap;gap:14px}
+.page-title{font-size:22px;font-weight:300}
+.page-subtitle{font-size:12px;color:var(--text3);margin-top:4px;font-family:'DM Mono',monospace}
+.tab-content{display:none}
+.tab-content.on{display:block}
+.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px}
+.mc{background:var(--surface);border-radius:var(--radius);padding:18px 20px;border:1px solid var(--border)}
+.mc-label{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px}
+.mc-val{font-size:28px;font-weight:300;font-family:'DM Mono',monospace}
+.mc-sub{font-size:10px;color:var(--text3);margin-top:4px}
+.mc-delta{font-size:11px;margin-top:6px;font-weight:500}
+.mc-delta.up{color:var(--teal)}
+.mc-delta.down{color:var(--coral)}
+.card{background:var(--surface);border-radius:var(--radius);border:1px solid var(--border);padding:20px 22px;margin-bottom:16px}
+.card-title{font-size:11px;font-weight:500;color:var(--text2);text-transform:uppercase;letter-spacing:.07em;margin-bottom:18px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+.three{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:16px}
+.ch{position:relative;width:100%}
+.agent-row{display:flex;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)}
+.agent-row:last-child{border-bottom:none}
+.agent-avatar{width:32px;height:32px;border-radius:50%;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500;color:var(--text2);flex-shrink:0;margin-right:12px}
+.agent-name{font-size:13px;font-weight:500}
+.agent-meta{font-size:11px;color:var(--text3);margin-top:2px}
+.bar-bg{height:3px;background:var(--surface2);border-radius:2px;margin-top:6px;overflow:hidden}
+.bar-fill{height:100%;border-radius:2px}
+.agent-count{font-size:20px;font-weight:300;font-family:'DM Mono',monospace;margin-left:auto}
+.cat-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)}
+.cat-row:last-child{border-bottom:none}
+.cat-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.cat-name{font-size:13px;flex:1}
+.cat-bar-bg{width:120px;height:4px;background:var(--surface2);border-radius:2px;overflow:hidden;flex-shrink:0}
+.cat-bar-fill{height:100%;border-radius:2px}
+.cat-count{font-size:12px;color:var(--text2);min-width:28px;text-align:right;font-family:'DM Mono',monospace}
+.cat-pct{font-size:11px;color:var(--text3);min-width:38px;text-align:right;font-family:'DM Mono',monospace}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:100;align-items:center;justify-content:center}
+.modal-overlay.show{display:flex}
+.modal{background:var(--surface);border-radius:var(--radius);padding:28px;width:100%;max-width:480px;margin:20px;border:1px solid var(--border2)}
+.modal h2{font-size:16px;font-weight:400;margin-bottom:6px}
+.modal p{font-size:12px;color:var(--text2);margin-bottom:20px;line-height:1.6}
+.day-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:22px}
+.day-btn{padding:10px 4px;text-align:center;border:1px solid var(--border2);border-radius:var(--radius-sm);cursor:pointer;font-size:12px;background:var(--surface);transition:all .12s}
+.day-btn:hover{border-color:var(--text)}
+.day-btn.selected{background:var(--text);color:#fff;border-color:var(--text)}
+.day-btn.weekend{opacity:.3;pointer-events:none}
+.day-btn-name{font-size:9px;opacity:.6;text-transform:uppercase;letter-spacing:.05em}
+.day-btn-date{font-size:14px;font-weight:500;margin-top:3px;font-family:'DM Mono',monospace}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:8px}
+.input{width:100%;padding:8px 12px;border:1px solid var(--border2);border-radius:var(--radius-sm);font-size:13px;font-family:'DM Sans',sans-serif;outline:none;background:var(--surface);color:var(--text);margin-bottom:14px}
+.input:focus{border-color:var(--text)}
+.trend-empty{text-align:center;padding:40px;color:var(--text3);font-size:12px}
+.toast{position:fixed;bottom:24px;right:24px;background:var(--text);color:#fff;padding:12px 18px;border-radius:var(--radius-sm);font-size:13px;z-index:999;opacity:0;transition:opacity .2s;pointer-events:none}
+.toast.show{opacity:1}
+.toast.error{background:var(--coral)}
+.spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-bar{text-align:center;padding:60px;color:var(--text3);font-size:13px}
+@media(max-width:900px){
+  .layout{grid-template-columns:1fr}
+  .sidebar{position:static;height:auto;flex-direction:row;flex-wrap:wrap;padding:16px;gap:8px}
+  .sidebar-brand{padding:0;border:none;margin:0}
+  .sidebar-bottom{display:none}
+  .nav-item{border-left:none;border-bottom:2px solid transparent;padding:8px 12px;border-radius:var(--radius-sm)}
+  .nav-item.on{border-bottom-color:var(--text)}
+  .main{padding:20px 16px}
+  .metrics{grid-template-columns:repeat(2,1fr)}
+  .two,.three{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<div class="layout">
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <h1>Operaciones</h1>
+      <p>Dashboard semanal</p>
+    </div>
+    <nav>
+      <div class="nav-item on" onclick="showTab('resumen',this)">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>
+        Resumen
+      </div>
+      <div class="nav-item" onclick="showTab('categorias',this)">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6"/><path d="M8 2v6l4 2"/></svg>
+        Categorías
+      </div>
+      <div class="nav-item" onclick="showTab('agentes',this)">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6" cy="5" r="3"/><path d="M1 14c0-3 2-5 5-5s5 2 5 5"/><circle cx="12" cy="5" r="2"/><path d="M15 14c0-2-1.5-3.5-3-4"/></svg>
+        Agentes
+      </div>
+      <div class="nav-item" onclick="showTab('dias',this)">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="12" height="12" rx="2"/><path d="M5 2v12M11 2v12M2 8h12"/></svg>
+        Por día
+      </div>
+      <div class="nav-item" onclick="showTab('tendencia',this)">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="1,12 5,6 9,9 15,3"/></svg>
+        Tendencia
+      </div>
+    </nav>
+    <div class="sidebar-bottom">
+      <div class="week-selector">Semanas guardadas</div>
+      <div class="week-pills-wrap"><div id="weekPills"><div class="trend-empty" style="padding:12px 0">Cargando...</div></div></div>
+      <label class="btn primary" style="width:100%;justify-content:center;cursor:pointer">
+        + Cargar semana
+        <input type="file" id="fileIn" accept=".xlsx" style="display:none">
+      </label>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="page-header">
+      <div>
+        <div class="page-title" id="pageTitle">Dashboard Operaciones</div>
+        <div class="page-subtitle" id="pageSubtitle">Cargando datos...</div>
+      </div>
+    </div>
+
+    <div id="tab-resumen" class="tab-content on">
+      <div class="metrics" id="metricsRow">
+        <div class="mc"><div class="mc-label">Consultas</div><div class="mc-val">—</div></div>
+        <div class="mc"><div class="mc-label">1ª respuesta</div><div class="mc-val">—</div></div>
+        <div class="mc"><div class="mc-label">Resolución</div><div class="mc-val">—</div></div>
+        <div class="mc"><div class="mc-label">Avg resolución</div><div class="mc-val">—</div></div>
+      </div>
+      <div class="card"><div class="card-title">Consultas por día</div><div class="ch" style="height:180px"><canvas id="cDays"></canvas></div></div>
+      <div class="two">
+        <div class="card"><div class="card-title">Top 5 categorías</div><div class="ch" style="height:200px"><canvas id="cTopCat"></canvas></div></div>
+        <div class="card"><div class="card-title">Por agente</div><div id="agentMiniList"><div class="trend-empty">Sin datos</div></div></div>
+      </div>
+    </div>
+
+    <div id="tab-categorias" class="tab-content">
+      <div class="card"><div class="card-title">Todas las categorías</div><div id="catList"><div class="trend-empty">Sin datos</div></div></div>
+    </div>
+
+    <div id="tab-agentes" class="tab-content">
+      <div id="agentCards"></div>
+      <div class="card"><div class="card-title">Comparativa de tiempos (minutos)</div><div class="ch" style="height:220px"><canvas id="cAgentTimes"></canvas></div></div>
+    </div>
+
+    <div id="tab-dias" class="tab-content">
+      <div class="card"><div class="card-title">Distribución por día de la semana</div><div class="ch" style="height:260px"><canvas id="cDaysFull"></canvas></div></div>
+    </div>
+
+    <div id="tab-tendencia" class="tab-content">
+      <div id="trendContent"><div class="trend-empty">Cargá al menos 2 semanas para ver la tendencia.</div></div>
+    </div>
+  </main>
+</div>
+
+<!-- Modal feriados -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <h2>¿Hubo feriados esta semana?</h2>
+    <p id="modalDesc">Seleccioná los días feriados. Las consultas de esos días no se contabilizan.</p>
+    <div class="day-grid" id="dayGrid"></div>
+    <div style="margin-bottom:4px;font-size:11px;color:var(--text3)">Subido por (opcional)</div>
+    <input type="text" id="uploadedBy" class="input" placeholder="Tu nombre...">
+    <div class="modal-actions">
+      <button class="btn" onclick="document.getElementById('modalOverlay').classList.remove('show')">Cancelar</button>
+      <button class="btn primary" id="confirmBtn" onclick="confirmHolidays()">Confirmar y guardar</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── Supabase ──
+const SUPABASE_URL = 'https://kcbjhhzvrchdntnrjkmg.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_I6Gek16X8uwcgWh0069Tqw_EhQ9LjZ9';
+const { createClient } = supabase;
+const db = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+const COLORS = ['#2a5fad','#0f7a5a','#c94e28','#a06010','#4a3faa','#b83d6a','#3a6b10','#6b6860','#7a2f0f','#1a6b7a'];
+
+// ── Lookup tables ──
+const EQUIPO_INTERNO = {
+  318356816:'JOAQUIN PAÑOS',315475410:'RICARDO ESPINOSA',295606873:'THOMAS SHAW',
+  340645465:'CAMILA DANIELA FERNANDEZ',318432393:'MARIA VICTORIA ROSINO',
+  318432542:'PABLO MORENO',318434168:'MATEO LOPEZ',331566697:'MATEO LOPEZ',
+  316942904:'IAN DALTON',318426014:'RENZO LUIS BATTAGLIANO',
+  343325858:'CAMILA DANIELA FERNANDEZ',409728092:'CARLOS BERGES',
+  409642859:'PABLO DE LUCCA',409643062:'SANTIAGO MORENO'
+};
+const CLOSED_BY = {906585:'Mateo Lopez',906580:'Pablo Moreno',906560:'María Rosino'};
+
+function normalizeCategory(raw) {
+  if(!raw) return 'Sin categoría';
+  const r=String(raw).trim();
+  if(['Impuestos','Impuestos provinciales','Deudas'].includes(r)) return 'Impuestos/Deuda';
+  if(['Otros - gestión de asesorías','Otros - notificaciones domicilio fiscal electrónico','Otros - otras notificaciones al mail','Otros - test','Otra'].includes(r)) return 'Otros';
+  return r||'Sin categoría';
+}
+function parseMin(val){
+  if(!val) return null;
+  const p=String(val).split(':');
+  if(p.length!==3) return null;
+  const [h,m,s]=p.map(Number);
+  return isNaN(h)||isNaN(m)||isNaN(s)?null:h*60+m+s/60;
+}
+function avg(arr){const a=arr.filter(v=>v!=null&&!isNaN(v));return a.length?a.reduce((s,v)=>s+v,0)/a.length:0;}
+function median(arr){const a=[...arr.filter(v=>v!=null&&!isNaN(v))].sort((a,b)=>a-b);if(!a.length)return 0;const m=Math.floor(a.length/2);return a.length%2?a[m]:(a[m-1]+a[m])/2;}
+function fmtMin(m){if(!m||isNaN(m))return '—';if(m<60)return Math.round(m)+'m';return Math.floor(m/60)+'h '+Math.round(m%60)+'m';}
+function initials(name){return name.split(' ').filter(Boolean).slice(0,2).map(w=>w[0]).join('').toUpperCase();}
+
+function showToast(msg,isError=false){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.className='toast'+(isError?' error':'');
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),3000);
+}
+
+let allWeeks=[],activeIdx=0,charts={},currentTab='resumen';
+let pendingRows=null,pendingHolidays=new Set();
+
+// ── Supabase CRUD ──
+async function fetchWeeks(){
+  const {data,error}=await db.from('weekly_reports').select('*').order('week_start',{ascending:false});
+  if(error){showToast('Error cargando datos: '+error.message,true);return;}
+  // Convert DB format to internal format
+  allWeeks=(data||[]).map(r=>({
+    id:r.id, dbId:r.id,
+    week:r.week_label,
+    week_start:r.week_start,
+    total:r.total,
+    frtAvg:r.frt_avg,frtMed:r.frt_med,
+    rtAvg:r.rt_avg,rtMed:r.rt_med,
+    days:r.days||{},cats:r.cats||{},agents:r.agents||{},
+    holidays:r.holidays||[],
+    uploadedBy:r.uploaded_by
+  }));
+  if(allWeeks.length) activeIdx=0;
+  renderAll();
+}
+
+async function saveWeek(payload){
+  const {error}=await db.from('weekly_reports').upsert(payload,{onConflict:'week_label'});
+  if(error) throw error;
+}
+
+async function deleteWeekFromDB(weekLabel){
+  const {error}=await db.from('weekly_reports').delete().eq('week_label',weekLabel);
+  if(error) throw error;
+}
+
+// ── Modal ──
+function showHolidayModal(weekDates){
+  pendingHolidays=new Set();
+  document.getElementById('uploadedBy').value='';
+  const dates=[...weekDates].sort();
+  document.getElementById('modalDesc').textContent=`Semana: ${dates[0]} al ${dates[dates.length-1]}. Tocá los días que fueron feriado (solo días hábiles).`;
+  const grid=document.getElementById('dayGrid');
+  grid.innerHTML='';
+  dates.forEach(d=>{
+    const dt=new Date(d+'T12:00:00');
+    const dow=dt.getDay();
+    const dayNames=['dom','lun','mar','mié','jue','vie','sáb'];
+    const isWeekend=(dow===0||dow===6);
+    const btn=document.createElement('div');
+    btn.className='day-btn'+(isWeekend?' weekend':'');
+    btn.innerHTML=`<div class="day-btn-name">${dayNames[dow]}</div><div class="day-btn-date">${d.substring(8)}</div>`;
+    if(!isWeekend){
+      btn.onclick=()=>{
+        if(pendingHolidays.has(d)){pendingHolidays.delete(d);btn.classList.remove('selected');}
+        else{pendingHolidays.add(d);btn.classList.add('selected');}
+      };
+    }
+    grid.appendChild(btn);
+  });
+  document.getElementById('modalOverlay').classList.add('show');
+}
+
+async function confirmHolidays(){
+  const btn=document.getElementById('confirmBtn');
+  btn.disabled=true;
+  btn.innerHTML='<span class="spinner"></span> Guardando...';
+  document.getElementById('modalOverlay').classList.remove('show');
+  if(!pendingRows){btn.disabled=false;btn.innerHTML='Confirmar y guardar';return;}
+
+  const result=computeWeek(pendingRows,pendingHolidays);
+  const uploadedBy=document.getElementById('uploadedBy').value.trim();
+  pendingRows=null;
+
+  if(!result){
+    showToast('No se encontraron datos válidos.',true);
+    btn.disabled=false;btn.innerHTML='Confirmar y guardar';
+    return;
+  }
+
+  const sorted=[...new Set(result.week.split(' al '))];
+  const payload={
+    week_label:result.week,
+    week_start:result.week.substring(0,10),
+    week_end:result.week.slice(-10),
+    total:result.total,
+    frt_avg:result.frtAvg,frt_med:result.frtMed,
+    rt_avg:result.rtAvg,rt_med:result.rtMed,
+    days:result.days,cats:result.cats,agents:result.agents,
+    holidays:[...pendingHolidays],
+    uploaded_by:uploadedBy||null
+  };
+
+  try{
+    await saveWeek(payload);
+    showToast('Semana guardada correctamente ✓');
+    await fetchWeeks();
+  }catch(e){
+    showToast('Error al guardar: '+e.message,true);
+  }
+  btn.disabled=false;btn.innerHTML='Confirmar y guardar';
+}
+
+// ── Core computation ──
+function computeWeek(rows,holidays){
+  const hdrs=rows[0].map(h=>String(h||'').trim());
+  const col=name=>hdrs.findIndex(h=>h.toLowerCase().includes(name.toLowerCase()));
+  const iStart=col('DateTime Conversation Started');
+  const iContactId=col('Contact ID');
+  const iClosedBy=col('Closed By');
+  const iFRT=col('First Response Time');
+  const iRT=col('Resolution Time');
+  const iCatRaw=col('Conversation Category');
+
+  const data=rows.slice(1).filter(r=>r&&r.length>4&&r[iStart]);
+  const weekDates=new Set();
+  data.forEach(r=>{const d=String(r[iStart]||'').substring(0,10);if(d.match(/^\d{4}-\d{2}-\d{2}$/))weekDates.add(d);});
+  if(!weekDates.size) return null;
+
+  const dayNames=['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+  const dayOrder=['lunes','martes','miércoles','jueves','viernes'];
+
+  const processed=data.map(r=>{
+    const dtStart=String(r[iStart]||'');
+    const fecha=dtStart.substring(0,10);
+    const horaNum=parseInt(dtStart.substring(11,13),10);
+    const dt=new Date(fecha+'T12:00:00');
+    const dow=dt.getDay();
+    const isWeekend=(dow===0||dow===6);
+    const esFeriado=holidays.has(fecha);
+    const horarioOk=!isNaN(horaNum)&&horaNum>=9&&horaNum<18;
+    const contar=!isWeekend&&!esFeriado&&horarioOk;
+    const contactId=parseInt(r[iContactId]);
+    const closedById=parseInt(r[iClosedBy]);
+    return{
+      fecha,horaNum,diaSemana:dayNames[dow],
+      equipoInterno:EQUIPO_INTERNO[contactId]||'Externo',
+      agentCustomer:CLOSED_BY[closedById]||'',
+      contar,catNorm:normalizeCategory(r[iCatRaw]),
+      frt:parseMin(r[iFRT]),rt:parseMin(r[iRT])
+    };
+  });
+
+  const countable=processed.filter(r=>r.contar);
+  if(!countable.length) return null;
+
+  const cats={},days={},agents={};
+  countable.forEach(r=>{
+    cats[r.catNorm]=(cats[r.catNorm]||0)+1;
+    if(dayOrder.includes(r.diaSemana)) days[r.diaSemana]=(days[r.diaSemana]||0)+1;
+    const agent=r.agentCustomer||'Sin agente';
+    if(!agents[agent]) agents[agent]={count:0,frts:[],rts:[],cats:{}};
+    agents[agent].count++;
+    agents[agent].frts.push(r.frt);
+    agents[agent].rts.push(r.rt);
+    agents[agent].cats[r.catNorm]=(agents[agent].cats[r.catNorm]||0)+1;
+  });
+
+  const ordDays={};
+  dayOrder.forEach(d=>{if(days[d])ordDays[d]=days[d];});
+
+  const agentSummary={};
+  Object.entries(agents).forEach(([name,info])=>{
+    agentSummary[name]={
+      count:info.count,
+      frtAvg:+avg(info.frts).toFixed(1),rtAvg:+avg(info.rts).toFixed(1),
+      frtMed:+median(info.frts).toFixed(1),rtMed:+median(info.rts).toFixed(1),
+      cats:info.cats
+    };
+  });
+
+  const sortedDates=[...weekDates].sort();
+  return{
+    week:sortedDates[0]+' al '+sortedDates[sortedDates.length-1],
+    total:countable.length,
+    frtAvg:+avg(countable.map(r=>r.frt)).toFixed(1),
+    frtMed:+median(countable.map(r=>r.frt)).toFixed(1),
+    rtAvg:+avg(countable.map(r=>r.rt)).toFixed(1),
+    rtMed:+median(countable.map(r=>r.rt)).toFixed(1),
+    days:ordDays,cats,agents:agentSummary,holidays:[...holidays]
+  };
+}
+
+// ── Charts ──
+function destroyChart(id){if(charts[id]){charts[id].destroy();delete charts[id];}}
+function makeChart(id,type,data,opts){
+  destroyChart(id);
+  const ctx=document.getElementById(id);
+  if(!ctx)return;
+  charts[id]=new Chart(ctx,{type,data,options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},...opts}});
+}
+
+// ── Render ──
+function renderAll(){
+  renderWeekPills();
+  if(!allWeeks.length){
+    document.getElementById('pageTitle').textContent='Dashboard Operaciones';
+    document.getElementById('pageSubtitle').textContent='Cargá el primer Excel para empezar';
+    document.getElementById('metricsRow').innerHTML='<div class="mc"><div class="mc-label">Consultas</div><div class="mc-val">—</div></div><div class="mc"><div class="mc-label">1ª respuesta</div><div class="mc-val">—</div></div><div class="mc"><div class="mc-label">Resolución</div><div class="mc-val">—</div></div><div class="mc"><div class="mc-label">Avg resolución</div><div class="mc-val">—</div></div>';
+    document.getElementById('agentMiniList').innerHTML='<div class="trend-empty">Sin datos</div>';
+    document.getElementById('catList').innerHTML='<div class="trend-empty">Sin datos</div>';
+    document.getElementById('agentCards').innerHTML='';
+    document.getElementById('trendContent').innerHTML='<div class="trend-empty">Cargá al menos 2 semanas para ver la tendencia.</div>';
+    return;
+  }
+  const w=allWeeks[activeIdx];
+  const prev=allWeeks[activeIdx+1]||null;
+  document.getElementById('pageTitle').textContent='Semana '+w.week;
+  document.getElementById('pageSubtitle').textContent=w.total+' consultas'+(w.uploadedBy?' · Subido por '+w.uploadedBy:'');
+  renderMetrics(w,prev);
+  renderResumen(w);
+  renderCategorias(w);
+  renderAgentes(w);
+  renderDias(w);
+  renderTendencia();
+}
+
+function renderWeekPills(){
+  if(!allWeeks.length){document.getElementById('weekPills').innerHTML='<div class="trend-empty" style="padding:12px 0;font-size:11px">Sin semanas guardadas</div>';return;}
+  document.getElementById('weekPills').innerHTML=allWeeks.map((w,i)=>`
+    <div class="week-pill ${i===activeIdx?'active':''}" onclick="selectWeek(${i})">
+      <div>
+        <div class="week-pill-label">${w.week.substring(0,10)}</div>
+        <div class="week-pill-count">${w.total} consultas${w.uploadedBy?' · '+w.uploadedBy:''}</div>
+      </div>
+      <span class="week-pill-del" onclick="event.stopPropagation();deleteWeek(${i},'${w.week}')">✕</span>
+    </div>`).join('');
+}
+
+function renderMetrics(w,prev){
+  function delta(curr,prevVal,lowerIsBetter=false){
+    if(!prev||prevVal==null) return '';
+    const d=curr-prevVal;
+    if(Math.abs(d)<0.1) return '';
+    const sign=d>0?'+':'';
+    const isGood=lowerIsBetter?(d<0):(d>0);
+    return `<div class="mc-delta ${isGood?'up':'down'}">${sign}${Math.round(d)} vs sem. ant.</div>`;
+  }
+  document.getElementById('metricsRow').innerHTML=`
+    <div class="mc"><div class="mc-label">Consultas</div><div class="mc-val">${w.total}</div><div class="mc-sub">contabilizadas</div>${delta(w.total,prev?.total)}</div>
+    <div class="mc"><div class="mc-label">1ª respuesta</div><div class="mc-val">${fmtMin(w.frtMed)}</div><div class="mc-sub">mediana</div></div>
+    <div class="mc"><div class="mc-label">Resolución</div><div class="mc-val">${fmtMin(w.rtMed)}</div><div class="mc-sub">mediana</div></div>
+    <div class="mc"><div class="mc-label">Avg resolución</div><div class="mc-val">${fmtMin(w.rtAvg)}</div><div class="mc-sub">promedio</div>${delta(w.rtAvg,prev?.rtAvg,true)}</div>
+  `;
+}
+
+function renderResumen(w){
+  makeChart('cDays','bar',
+    {labels:Object.keys(w.days),datasets:[{data:Object.values(w.days),backgroundColor:'#2a5fad',borderRadius:4,borderSkipped:false}]},
+    {scales:{y:{beginAtZero:true,grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#9c9a94',font:{size:11}}},x:{grid:{display:false},ticks:{color:'#6b6860'}}}}
+  );
+  const top5=Object.entries(w.cats).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  makeChart('cTopCat','doughnut',
+    {labels:top5.map(c=>c[0]),datasets:[{data:top5.map(c=>c[1]),backgroundColor:COLORS.slice(0,5),borderWidth:3,borderColor:'#fff'}]},
+    {cutout:'62%'}
+  );
+  const entries=Object.entries(w.agents).filter(([n])=>n&&n!=='Sin agente').sort((a,b)=>b[1].count-a[1].count);
+  const total=entries.reduce((s,[,a])=>s+a.count,0)||1;
+  document.getElementById('agentMiniList').innerHTML=entries.length?entries.map(([name,info],i)=>`
+    <div class="agent-row">
+      <div class="agent-avatar">${initials(name)}</div>
+      <div style="flex:1">
+        <div class="agent-name">${name}</div>
+        <div class="agent-meta">Med: ${fmtMin(info.frtMed)} resp · ${fmtMin(info.rtMed)} res</div>
+        <div class="bar-bg"><div class="bar-fill" style="width:${Math.round(info.count/total*100)}%;background:${COLORS[i]}"></div></div>
+      </div>
+      <div class="agent-count">${info.count}</div>
+    </div>`).join(''):'<div class="trend-empty">Sin datos de agentes</div>';
+}
+
+function renderCategorias(w){
+  const sorted=Object.entries(w.cats).sort((a,b)=>b[1]-a[1]);
+  const total=sorted.reduce((s,[,v])=>s+v,0)||1;
+  const max=sorted[0]?.[1]||1;
+  document.getElementById('catList').innerHTML=sorted.map(([name,count],i)=>`
+    <div class="cat-row">
+      <div class="cat-dot" style="background:${COLORS[i%COLORS.length]}"></div>
+      <div class="cat-name">${name}</div>
+      <div class="cat-bar-bg"><div class="cat-bar-fill" style="width:${Math.round(count/max*100)}%;background:${COLORS[i%COLORS.length]}"></div></div>
+      <div class="cat-count">${count}</div>
+      <div class="cat-pct">${(count/total*100).toFixed(1)}%</div>
+    </div>`).join('');
+}
+
+function renderAgentes(w){
+  const entries=Object.entries(w.agents).filter(([n])=>n&&n!=='Sin agente').sort((a,b)=>b[1].count-a[1].count);
+  document.getElementById('agentCards').innerHTML=entries.map(([name,info])=>{
+    const topCats=Object.entries(info.cats).sort((a,b)=>b[1]-a[1]).slice(0,6);
+    const maxC=topCats[0]?.[1]||1;
+    return `<div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div class="agent-avatar" style="width:40px;height:40px;font-size:13px">${initials(name)}</div>
+          <div><div style="font-size:15px;font-weight:500">${name}</div><div style="font-size:11px;color:var(--text3)">${info.count} consultas esta semana</div></div>
+        </div>
+      </div>
+      <div class="three" style="margin-bottom:12px">
+        <div class="mc" style="padding:12px 14px"><div class="mc-label">Avg 1ª resp</div><div class="mc-val" style="font-size:20px">${fmtMin(info.frtAvg)}</div></div>
+        <div class="mc" style="padding:12px 14px"><div class="mc-label">Med 1ª resp</div><div class="mc-val" style="font-size:20px">${fmtMin(info.frtMed)}</div></div>
+        <div class="mc" style="padding:12px 14px"><div class="mc-label">Avg resolución</div><div class="mc-val" style="font-size:20px">${fmtMin(info.rtAvg)}</div></div>
+      </div>
+      <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px">Categorías</div>
+      ${topCats.map(([cat,cnt],j)=>`
+        <div class="cat-row">
+          <div class="cat-dot" style="background:${COLORS[j%COLORS.length]}"></div>
+          <div class="cat-name">${cat}</div>
+          <div class="cat-bar-bg"><div class="cat-bar-fill" style="width:${Math.round(cnt/maxC*100)}%;background:${COLORS[j%COLORS.length]}"></div></div>
+          <div class="cat-count">${cnt}</div>
+        </div>`).join('')}
+    </div>`;
+  }).join('');
+  const agentNames=entries.map(([n])=>n);
+  makeChart('cAgentTimes','bar',
+    {labels:agentNames,datasets:[
+      {label:'Avg 1ª resp',data:entries.map(([,a])=>+a.frtAvg.toFixed(1)),backgroundColor:'#2a5fad',borderRadius:4},
+      {label:'Avg resolución',data:entries.map(([,a])=>+a.rtAvg.toFixed(1)),backgroundColor:'#0f7a5a',borderRadius:4}
+    ]},
+    {scales:{y:{beginAtZero:true,grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#9c9a94',font:{size:11}}},x:{grid:{display:false},ticks:{color:'#6b6860'}}}}
+  );
+}
+
+function renderDias(w){
+  const dayOrder=['lunes','martes','miércoles','jueves','viernes'];
+  const days=dayOrder.filter(d=>w.days[d]);
+  makeChart('cDaysFull','bar',
+    {labels:days,datasets:[{data:days.map(d=>w.days[d]||0),backgroundColor:'#2a5fad',borderRadius:6,borderSkipped:false}]},
+    {scales:{y:{beginAtZero:true,grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#9c9a94',font:{size:11}}},x:{grid:{display:false},ticks:{color:'#6b6860',autoSkip:false}}}}
+  );
+}
+
+function renderTendencia(){
+  const sorted=[...allWeeks].sort((a,b)=>new Date(a.week_start)-new Date(b.week_start));
+  if(sorted.length<2){
+    document.getElementById('trendContent').innerHTML='<div class="trend-empty">Cargá al menos 2 semanas para ver la tendencia.</div>';
+    return;
+  }
+  const labels=sorted.map(w=>w.week.substring(0,10));
+  const scaleOpts={y:{beginAtZero:false,grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#9c9a94',font:{size:11}}},x:{grid:{display:false},ticks:{color:'#6b6860',font:{size:11},maxRotation:30}}};
+  document.getElementById('trendContent').innerHTML=`
+    <div class="card"><div class="card-title">Consultas totales por semana</div><div class="ch" style="height:200px"><canvas id="cTrendTotal"></canvas></div></div>
+    <div class="card"><div class="card-title">Tiempo de resolución promedio (minutos)</div><div class="ch" style="height:200px"><canvas id="cTrendRT"></canvas></div></div>
+    <div class="card"><div class="card-title">Mediana 1ª respuesta (minutos)</div><div class="ch" style="height:200px"><canvas id="cTrendFRT"></canvas></div></div>
+  `;
+  makeChart('cTrendTotal','line',{labels,datasets:[{data:sorted.map(w=>w.total),borderColor:'#2a5fad',backgroundColor:'rgba(42,95,173,0.08)',tension:.3,fill:true,pointRadius:5,pointBackgroundColor:'#2a5fad',pointBorderColor:'#fff',pointBorderWidth:2}]},{scales:scaleOpts});
+  makeChart('cTrendRT','line',{labels,datasets:[{data:sorted.map(w=>+(w.rtAvg||0).toFixed(1)),borderColor:'#0f7a5a',backgroundColor:'rgba(15,122,90,0.08)',tension:.3,fill:true,pointRadius:5,pointBackgroundColor:'#0f7a5a',pointBorderColor:'#fff',pointBorderWidth:2}]},{scales:scaleOpts});
+  makeChart('cTrendFRT','line',{labels,datasets:[{data:sorted.map(w=>+(w.frtMed||0).toFixed(1)),borderColor:'#c94e28',backgroundColor:'rgba(201,78,40,0.08)',tension:.3,fill:true,pointRadius:5,pointBackgroundColor:'#c94e28',pointBorderColor:'#fff',pointBorderWidth:2}]},{scales:scaleOpts});
+}
+
+function selectWeek(idx){activeIdx=idx;renderAll();}
+
+async function deleteWeek(idx,weekLabel){
+  if(!confirm('¿Eliminar la semana "'+weekLabel+'"?')) return;
+  try{
+    await deleteWeekFromDB(weekLabel);
+    showToast('Semana eliminada');
+    await fetchWeeks();
+  }catch(e){showToast('Error al eliminar: '+e.message,true);}
+}
+
+function showTab(t,el){
+  currentTab=t;
+  document.querySelectorAll('.tab-content').forEach(d=>d.classList.remove('on'));
+  document.getElementById('tab-'+t).classList.add('on');
+  document.querySelectorAll('.nav-item').forEach(e=>e.classList.remove('on'));
+  if(el) el.classList.add('on');
+}
+
+document.getElementById('fileIn').addEventListener('change',function(e){
+  const file=e.target.files[0];
+  if(!file) return;
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    const wb=XLSX.read(new Uint8Array(ev.target.result),{type:'array',raw:false,dateNF:'yyyy-mm-dd hh:mm:ss'});
+    const ws=wb.Sheets[wb.SheetNames[0]];
+    const rows=XLSX.utils.sheet_to_json(ws,{header:1,raw:false,dateNF:'yyyy-mm-dd hh:mm:ss'});
+    if(!rows||rows.length<2){showToast('No se pudieron leer datos del archivo.',true);return;}
+    pendingRows=rows;
+    const hdrs=rows[0].map(h=>String(h||'').trim());
+    const iStart=hdrs.findIndex(h=>h.toLowerCase().includes('datetime conversation started'));
+    const weekDates=new Set();
+    rows.slice(1).forEach(r=>{
+      const d=String(r[iStart]||'').substring(0,10);
+      if(d.match(/^\d{4}-\d{2}-\d{2}$/)) weekDates.add(d);
+    });
+    if(!weekDates.size){showToast('No se detectaron fechas válidas en el archivo.',true);return;}
+    showHolidayModal(weekDates);
+  };
+  reader.readAsArrayBuffer(file);
+  e.target.value='';
+});
+
+// Init
+fetchWeeks();
+</script>
+</body>
+</html>
