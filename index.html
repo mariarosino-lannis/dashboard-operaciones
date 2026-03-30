@@ -107,6 +107,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .badge{display:inline-block;font-size:10px;padding:2px 8px;border-radius:20px;font-weight:500;margin-left:6px}
 .badge-monthly{background:#e8f4fd;color:#1a6b9a}
 .badge-weekly{background:#e8f5ee;color:#0f6b3a}
+.agent-toggle{padding:7px 10px;border:1px solid var(--border2);border-radius:var(--radius-sm);cursor:pointer;font-size:12px;background:var(--surface);transition:all .12s;display:flex;align-items:center;gap:6px}
+.agent-toggle:hover{border-color:var(--text)}
+.agent-toggle.selected{background:var(--text);color:#fff;border-color:var(--text)}
+.agent-toggle .check{width:14px;height:14px;border:1.5px solid currentColor;border-radius:3px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:10px}
 @media(max-width:900px){.layout{grid-template-columns:1fr}.sidebar{position:static;height:auto;flex-direction:row;flex-wrap:wrap;padding:16px;gap:8px}.sidebar-brand{padding:0;border:none;margin:0}.sidebar-bottom{display:none}.nav-item{border-left:none;border-bottom:2px solid transparent;padding:8px 12px;border-radius:var(--radius-sm)}.nav-item.on{border-bottom-color:var(--text)}.main{padding:20px 16px}.metrics{grid-template-columns:repeat(2,1fr)}.two,.three{grid-template-columns:1fr}}
 </style>
 </head>
@@ -146,7 +150,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
       <div class="week-pills-wrap"><div id="weeklyPills"><div class="trend-empty" style="padding:8px 0;font-size:11px">Cargando...</div></div></div>
       <label class="btn primary" style="width:100%;justify-content:center;cursor:pointer;margin-top:10px">
         + Cargar reporte
-        <input type="file" id="fileIn" accept=".xlsx" style="display:none">
+        <input type="file" id="fileIn" accept=".xlsx,.csv" style="display:none">
       </label>
     </div>
   </aside>
@@ -212,6 +216,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
     <h2>¿Hubo feriados en este período?</h2>
     <p id="modalDesc">Seleccioná los días feriados. Las consultas de esos días no se contabilizan en los tiempos.</p>
     <div class="day-grid" id="dayGrid"></div>
+    <div style="font-size:13px;font-weight:500;color:var(--text);margin-bottom:8px">¿Qué agentes incluir?</div>
+    <div id="agentSelector" style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:16px"></div>
     <div style="margin-bottom:4px;font-size:11px;color:var(--text3)">Subido por (opcional)</div>
     <input type="text" id="uploadedBy" class="input" placeholder="Tu nombre...">
     <div class="modal-actions">
@@ -260,7 +266,7 @@ function initials(name){return name.split(' ').filter(Boolean).slice(0,2).map(w=
 function showToast(msg,isError=false){const t=document.getElementById('toast');t.textContent=msg;t.className='toast'+(isError?' error':'');t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3000);}
 
 let allWeeks=[],activeIdx=0,charts={},currentTab='resumen';
-let pendingRows=null,pendingHolidays=new Set();
+let pendingRows=null,pendingHolidays=new Set(),pendingAgents=new Set();
 
 // ── Supabase ──
 async function fetchWeeks(){
@@ -288,8 +294,9 @@ async function deleteWeekFromDB(weekLabel){
 }
 
 // ── Modal ──
-function showHolidayModal(weekDates){
+function showHolidayModal(weekDates,detectedAgents){
   pendingHolidays=new Set();
+  pendingAgents=new Set(detectedAgents||[]);
   document.getElementById('uploadedBy').value='';
   const dates=[...weekDates].sort();
   document.getElementById('modalDesc').textContent=`Período: ${dates[0]} al ${dates[dates.length-1]}. Tocá los días feriados — se excluyen del cálculo de tiempos.`;
@@ -308,6 +315,23 @@ function showHolidayModal(weekDates){
     if(!isWeekend){btn.onclick=()=>{if(pendingHolidays.has(d)){pendingHolidays.delete(d);btn.classList.remove('selected');}else{pendingHolidays.add(d);btn.classList.add('selected');}}}
     grid.appendChild(btn);
   });
+  // Render agent selector
+  const agentSel=document.getElementById('agentSelector');
+  agentSel.innerHTML='';
+  if(detectedAgents&&detectedAgents.length){
+    detectedAgents.forEach(name=>{
+      const btn=document.createElement('div');
+      btn.className='agent-toggle selected';
+      btn.innerHTML=`<span class="check">✓</span>${name}`;
+      btn.onclick=()=>{
+        if(pendingAgents.has(name)){pendingAgents.delete(name);btn.classList.remove('selected');btn.querySelector('.check').textContent='';}
+        else{pendingAgents.add(name);btn.classList.add('selected');btn.querySelector('.check').textContent='✓';}
+      };
+      agentSel.appendChild(btn);
+    });
+  } else {
+    agentSel.innerHTML='<div style="font-size:11px;color:var(--text3);grid-column:span 2">No se detectaron agentes conocidos.</div>';
+  }
   document.getElementById('modalOverlay').classList.add('show');
 }
 
@@ -316,7 +340,7 @@ async function confirmHolidays(){
   btn.disabled=true;btn.innerHTML='<span class="spinner"></span> Guardando...';
   document.getElementById('modalOverlay').classList.remove('show');
   if(!pendingRows){btn.disabled=false;btn.innerHTML='Confirmar y guardar';return;}
-  const result=computeWeek(pendingRows,pendingHolidays);
+  const result=computeWeek(pendingRows,pendingHolidays,pendingAgents);
   const uploadedBy=document.getElementById('uploadedBy').value.trim();
   pendingRows=null;
   if(!result){showToast('No se encontraron datos válidos.',true);btn.disabled=false;btn.innerHTML='Confirmar y guardar';return;}
@@ -353,7 +377,7 @@ function extractDateHour(raw){
   return{fecha:'',hora:-1};
 }
 
-function computeWeek(rows,holidays){
+function computeWeek(rows,holidays,activeAgents){
   const hdrs=rows[0].map(h=>String(h||'').trim());
   const col=name=>hdrs.findIndex(h=>h.toLowerCase().includes(name.toLowerCase()));
   const iStart=col('DateTime Conversation Started');
@@ -421,6 +445,9 @@ function computeWeek(rows,holidays){
 
   const agentSummary={};
   Object.entries(agents).forEach(([name,info])=>{
+    // Skip agents not selected by user, but always skip 'Sin agente'
+    if(name==='Sin agente') return;
+    if(activeAgents&&activeAgents.size>0&&!activeAgents.has(name)) return;
     agentSummary[name]={
       count:info.count,
       frtMed:+median(info.frts).toFixed(1),frtAvg:+avg(info.frts).toFixed(1),
@@ -659,9 +686,18 @@ document.getElementById('fileIn').addEventListener('change',function(e){
   if(!file)return;
   const reader=new FileReader();
   reader.onload=ev=>{
-    const wb=XLSX.read(new Uint8Array(ev.target.result),{type:'array',raw:false,dateNF:'yyyy-mm-dd hh:mm:ss'});
-    const ws=wb.Sheets[wb.SheetNames[0]];
-    const rows=XLSX.utils.sheet_to_json(ws,{header:1,raw:false,dateNF:'yyyy-mm-dd hh:mm:ss'});
+    const isCSV=file.name.toLowerCase().endsWith('.csv');
+    let rows;
+    if(isCSV){
+      const text=new TextDecoder('utf-8').decode(ev.target.result);
+      const wb=XLSX.read(text,{type:'string',raw:false,dateNF:'yyyy-mm-dd hh:mm:ss'});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      rows=XLSX.utils.sheet_to_json(ws,{header:1,raw:false,dateNF:'yyyy-mm-dd hh:mm:ss'});
+    } else {
+      const wb=XLSX.read(new Uint8Array(ev.target.result),{type:'array',raw:false,dateNF:'yyyy-mm-dd hh:mm:ss'});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      rows=XLSX.utils.sheet_to_json(ws,{header:1,raw:false,dateNF:'yyyy-mm-dd hh:mm:ss'});
+    }
     if(!rows||rows.length<2){showToast('No se pudieron leer datos.',true);return;}
     pendingRows=rows;
     const hdrs=rows[0].map(h=>String(h||'').trim());
@@ -672,7 +708,15 @@ document.getElementById('fileIn').addEventListener('change',function(e){
       if(fecha.match(/^\d{4}-\d{2}-\d{2}$/))weekDates.add(fecha);
     });
     if(!weekDates.size){showToast('No se detectaron fechas válidas.',true);return;}
-    showHolidayModal(weekDates);
+    // Detect known agents in file
+    const iClosedByH=hdrs.findIndex(h=>h.toLowerCase().includes('closed by'));
+    const detectedAgentSet=new Set();
+    rows.slice(1).forEach(r=>{
+      const id=parseInt(r[iClosedByH]);
+      if(CLOSED_BY[id]) detectedAgentSet.add(CLOSED_BY[id]);
+    });
+    const detectedAgents=[...detectedAgentSet].sort();
+    showHolidayModal(weekDates,detectedAgents);
   };
   reader.readAsArrayBuffer(file);
   e.target.value='';
