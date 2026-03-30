@@ -107,6 +107,30 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .badge{display:inline-block;font-size:10px;padding:2px 8px;border-radius:20px;font-weight:500;margin-left:6px}
 .badge-monthly{background:#e8f4fd;color:#1a6b9a}
 .badge-weekly{background:#e8f5ee;color:#0f6b3a}
+.comp-table{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:0}
+.comp-table th{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);padding:9px 14px;text-align:right;border-bottom:1px solid var(--border);font-weight:500;white-space:nowrap}
+.comp-table th:first-child{text-align:left}
+.comp-table th.current{color:var(--text);font-weight:500}
+.comp-table td{padding:10px 14px;border-bottom:1px solid var(--border);text-align:right;font-family:"DM Mono",monospace;font-size:13px}
+.comp-table td:first-child{text-align:left;font-family:"DM Sans",sans-serif;color:var(--text2);font-size:12px}
+.comp-table tr:last-child td{border-bottom:none}
+.comp-table .val-ok{color:var(--teal);font-weight:500}
+.comp-table .val-fail{color:var(--coral);font-weight:500}
+.comp-table .val-neutral{color:var(--text);font-weight:500}
+.comp-table .section-header td{background:var(--surface2);font-family:"DM Sans",sans-serif!important;font-size:11px!important;font-weight:500!important;color:var(--text)!important;text-align:left!important;padding:8px 14px!important;letter-spacing:.04em;text-transform:uppercase}
+.comp-table .highlight-col{background:rgba(42,95,173,0.04)}
+.comp-table{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:0}
+.comp-table th{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);padding:10px 14px;text-align:right;border-bottom:2px solid var(--border);font-weight:500;white-space:nowrap}
+.comp-table th:first-child{text-align:left;min-width:200px}
+.comp-table th.current{color:var(--text);font-weight:600;background:rgba(42,95,173,0.04)}
+.comp-table td{padding:10px 14px;border-bottom:1px solid var(--border);text-align:right;font-family:"DM Mono",monospace;font-size:13px}
+.comp-table td:first-child{text-align:left;font-family:"DM Sans",sans-serif;color:var(--text2);font-size:12px}
+.comp-table tr:last-child td{border-bottom:none}
+.comp-table td.current{background:rgba(42,95,173,0.04);font-weight:500}
+.comp-table .section-header td{background:var(--surface2);font-family:"DM Sans",sans-serif!important;font-size:11px!important;font-weight:600!important;text-align:left!important;color:var(--text)!important;padding:8px 14px;letter-spacing:.04em;text-transform:uppercase}
+.comp-ok{color:var(--teal);font-weight:500}
+.comp-fail{color:var(--coral);font-weight:500}
+.comp-obj{color:var(--text3)}
 .agent-toggle{padding:7px 10px;border:1px solid var(--border2);border-radius:var(--radius-sm);cursor:pointer;font-size:12px;background:var(--surface);transition:all .12s;display:flex;align-items:center;gap:6px}
 .agent-toggle:hover{border-color:var(--text)}
 .agent-toggle.selected{background:var(--text);color:#fff;border-color:var(--text)}
@@ -141,6 +165,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
       <div class="nav-item" onclick="showTab('tendencia',this)">
         <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="1,12 5,6 9,9 15,3"/></svg>
         Tendencia
+      </div>
+      <div class="nav-item" id="nav-comparativa" style="display:none" onclick="showTab('comparativa',this)">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="4" width="3" height="10" rx="1"/><rect x="6" y="1" width="3" height="13" rx="1"/><rect x="11" y="6" width="3" height="8" rx="1"/></svg>
+        Comparativa
       </div>
     </nav>
     <div class="sidebar-bottom">
@@ -203,9 +231,19 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
       <div class="card"><div class="card-title" id="diasCardTitle">Distribución por día</div><div class="ch" style="height:260px"><canvas id="cDaysFull"></canvas></div></div>
     </div>
 
+    <!-- Comparativa (monthly only) -->
+    <div id="tab-comparativa" class="tab-content">
+      <div id="comparativaContent"><div class="trend-empty">Cargá al menos 2 reportes mensuales para ver la comparativa.</div></div>
+    </div>
+
     <!-- Tendencia -->
     <div id="tab-tendencia" class="tab-content">
       <div id="trendContent"><div class="trend-empty">Cargá al menos 2 reportes del mismo tipo para ver la tendencia.</div></div>
+    </div>
+
+    <!-- Comparativa (mensual only) -->
+    <div id="tab-comparativa" class="tab-content">
+      <div id="comparativaContent"><div class="trend-empty">Sin datos comparativos.</div></div>
     </div>
   </main>
 </div>
@@ -501,6 +539,9 @@ function renderAll(){
   const w=allWeeks[activeIdx];
   // Update nav label for dias tab
   document.getElementById('nav-dias-label').textContent=w.isMonthly?'Por semana':'Por día';
+  // Show comparativa only for monthly
+  document.getElementById('nav-comparativa').style.display=w.isMonthly?'':'none';
+  if(!w.isMonthly&&currentTab==='comparativa'){showTab('resumen',document.querySelector('.nav-item'));}
   document.getElementById('diasCardTitle').textContent=w.isMonthly?'Consultas por semana del mes':'Distribución por día de la semana';
   document.getElementById('daysChartTitle').textContent=w.isMonthly?'Consultas por semana':'Consultas por día';
 
@@ -517,6 +558,7 @@ function renderAll(){
   renderTiempos(w);
   renderDias(w);
   renderTendencia(w.isMonthly);
+  if(w.isMonthly) renderComparativa();
 }
 
 function renderWeekPills(){
@@ -665,6 +707,204 @@ function renderTendencia(isMonthly){
   makeChart('cTrendTotal','line',{labels,datasets:[{data:sorted.map(w=>w.total),borderColor:'#2a5fad',backgroundColor:'rgba(42,95,173,0.08)',tension:.3,fill:true,pointRadius:5,pointBackgroundColor:'#2a5fad',pointBorderColor:'#fff',pointBorderWidth:2}]},{scales:scaleOpts});
   makeChart('cTrendFRT','line',{labels,datasets:[{data:sorted.map(w=>+(w.frtMed||0).toFixed(1)),borderColor:'#c94e28',backgroundColor:'rgba(201,78,40,0.08)',tension:.3,fill:true,pointRadius:5,pointBackgroundColor:'#c94e28',pointBorderColor:'#fff',pointBorderWidth:2}]},{scales:scaleOpts});
   makeChart('cTrendTTR','line',{labels,datasets:[{data:sorted.map(w=>+(w.ttrMed||0).toFixed(1)),borderColor:'#0f7a5a',backgroundColor:'rgba(15,122,90,0.08)',tension:.3,fill:true,pointRadius:5,pointBackgroundColor:'#0f7a5a',pointBorderColor:'#fff',pointBorderWidth:2}]},{scales:scaleOpts});
+}
+
+function renderComparativa(){
+  const w=allWeeks[activeIdx];
+  if(!w.isMonthly){document.getElementById('comparativaContent').innerHTML='<div class="trend-empty">Solo disponible para reportes mensuales.</div>';return;}
+
+  // Get last 4 monthly reports sorted desc
+  const monthlySorted=[...allWeeks].filter(x=>x.isMonthly).sort((a,b)=>new Date(b.week_start)-new Date(a.week_start));
+  const current=monthlySorted[0];
+  const prev=monthlySorted.slice(1,4); // up to 3 previous months
+
+  const cols=[current,...prev];
+  const isCurrent=(i)=>i===0;
+
+  function thCols(){
+    return cols.map((c,i)=>`<th class="${isCurrent(i)?'current':''}">${c.friendlyLabel||c.week.substring(0,7)}</th>`).join('')+
+           '<th class="comp-obj">Objetivo</th>';
+  }
+  function td(val,i,obj=null,lowerBetter=true){
+    let cls=isCurrent(i)?'current':'';
+    if(obj&&val&&val!=='—'){
+      const num=parseFloat(val);
+      if(!isNaN(num)){const ok=lowerBetter?(num<=obj):(num>=obj);cls+=' '+(ok?'comp-ok':'comp-fail');}
+    }
+    return `<td class="${cls.trim()}">${val}</td>`;
+  }
+  function tdNum(val,i){return `<td class="${isCurrent(i)?'current':''}">${val!=null?val:'—'}</td>`;}
+
+  // Count agents per month
+  function agentCount(w){return Object.keys(w.agents||{}).filter(n=>n&&n!=='Sin agente').length;}
+
+  let html=`<div class="card"><div class="card-title">Resumen general</div>
+  <table class="comp-table">
+    <thead><tr><th>Métrica</th>${thCols()}</tr></thead>
+    <tbody>
+      <tr><td>Agentes en equipo</td>${cols.map((c,i)=>tdNum(agentCount(c),i)).join('')}<td class="comp-obj">—</td></tr>
+      <tr><td>Q consultas totales</td>${cols.map((c,i)=>tdNum(c.total,i)).join('')}<td class="comp-obj">—</td></tr>
+      <tr><td>Q consultas hábiles</td>${cols.map((c,i)=>tdNum(c.totalHabil,i)).join('')}<td class="comp-obj">—</td></tr>
+    </tbody>
+  </table></div>`;
+
+  html+=`<div class="card"><div class="card-title">SLA — Tiempos equipo completo <span style="font-size:10px;color:var(--text3);font-weight:400;text-transform:none">(promedio, lun-vie 9-18hs)</span></div>
+  <table class="comp-table">
+    <thead><tr><th>Métrica</th>${thCols()}</tr></thead>
+    <tbody>
+      <tr><td>KR1.1 FRT — 1ª respuesta</td>${cols.map((c,i)=>td(fmtMinFull(c.frtAvg),i,SLA.frt)).join('')}<td class="comp-obj">${fmtMinFull(SLA.frt)}</td></tr>
+      <tr><td>KR1.2 ART — Tiempo medio resp.</td>${cols.map((c,i)=>td(fmtMinFull(c.artAvg),i,SLA.art)).join('')}<td class="comp-obj">${fmtMinFull(SLA.art)}</td></tr>
+      <tr><td>KR1.3 TTR — Resolución total</td>${cols.map((c,i)=>td(fmtMinFull(c.ttrAvg),i,SLA.ttr)).join('')}<td class="comp-obj">${fmtMinFull(SLA.ttr)}</td></tr>
+    </tbody>
+  </table></div>`;
+
+  // Per agent comparison
+  const allAgents=[...new Set(cols.flatMap(c=>Object.keys(c.agents||{}).filter(n=>n&&n!=='Sin agente')))].sort();
+  if(allAgents.length){
+    const agentRows=['frtAvg','artAvg','ttrAvg'].map((metric,mi)=>{
+      const labels={frtAvg:'FRT — 1ª respuesta',artAvg:'ART — Tiempo medio',ttrAvg:'TTR — Resolución'};
+      const objs={frtAvg:SLA.frt,artAvg:SLA.art,ttrAvg:SLA.ttr};
+      return allAgents.map(agent=>`
+        <tr>
+          <td>${agent} — ${labels[metric]}</td>
+          ${cols.map((c,i)=>{
+            const val=c.agents?.[agent]?.[metric];
+            return td(val?fmtMinFull(val):'—',i,objs[metric]);
+          }).join('')}
+          <td class="comp-obj">${fmtMinFull(objs[metric])}</td>
+        </tr>`).join('');
+    }).join('');
+
+    html+=`<div class="card"><div class="card-title">SLA — Por agente <span style="font-size:10px;color:var(--text3);font-weight:400;text-transform:none">(promedio, lun-vie 9-18hs)</span></div>
+    <table class="comp-table">
+      <thead><tr><th>Agente — Métrica</th>${thCols()}</tr></thead>
+      <tbody>${agentRows}</tbody>
+    </table></div>`;
+
+    // Q consultas hábiles per agent
+    const countRows=allAgents.map(agent=>`
+      <tr>
+        <td>${agent}</td>
+        ${cols.map((c,i)=>tdNum(c.agents?.[agent]?.count||'—',i)).join('')}
+        <td class="comp-obj">—</td>
+      </tr>`).join('');
+    html+=`<div class="card"><div class="card-title">Consultas hábiles por agente</div>
+    <table class="comp-table">
+      <thead><tr><th>Agente</th>${thCols()}</tr></thead>
+      <tbody>${countRows}</tbody>
+    </table></div>`;
+  }
+
+  document.getElementById('comparativaContent').innerHTML=html;
+}
+
+function renderComparativa(){
+  const w=allWeeks[activeIdx];
+  if(!w||!w.isMonthly){
+    document.getElementById('comparativaContent').innerHTML='<div class="trend-empty">Solo disponible para reportes mensuales.</div>';
+    return;
+  }
+  // Get up to 3 previous monthly reports
+  const allMonthly=allWeeks.filter(x=>x.isMonthly).sort((a,b)=>new Date(b.week_start)-new Date(a.week_start));
+  const currentIdx=allMonthly.findIndex(x=>x.id===w.id);
+  const prev=allMonthly.slice(currentIdx+1,currentIdx+4);
+
+  const cols=[w,...prev];
+  const colLabels=cols.map(c=>c.friendlyLabel||c.week.substring(0,10));
+
+  function tdVal(val,isFirst=false){
+    return`<td class="${isFirst?'highlight-col val-neutral':''}">${val||'—'}</td>`;
+  }
+  function tdTime(min,obj,isFirst=false){
+    if(!min||isNaN(min)) return`<td class="${isFirst?'highlight-col':''}" style="color:var(--text3)">—</td>`;
+    const ok=min<=obj;
+    return`<td class="${isFirst?'highlight-col ':''}${ok?'val-ok':'val-fail'}">${fmtMinFull(min)}</td>`;
+  }
+
+  // Count agents for each period
+  function agentCount(period){return Object.keys(period.agents||{}).filter(n=>n&&n!=='Sin agente').length;}
+
+  let html=`<div class="card">
+    <div class="card-title">Comparativa mensual</div>
+    <table class="comp-table">
+      <thead><tr>
+        <th></th>
+        ${cols.map((c,i)=>`<th class="${i===0?'current':''}">${colLabels[i]}</th>`).join('')}
+        <th style="color:var(--text)">Objetivo</th>
+      </tr></thead>
+      <tbody>
+        <tr class="section-header"><td colspan="${cols.length+2}">Volumen</td></tr>
+        <tr>
+          <td>Equipo (agentes)</td>
+          ${cols.map((c,i)=>tdVal(agentCount(c),i===0)).join('')}
+          <td style="color:var(--text3)">—</td>
+        </tr>
+        <tr>
+          <td>Q de consultas (total)</td>
+          ${cols.map((c,i)=>tdVal(c.total?.toLocaleString('es'),i===0)).join('')}
+          <td style="color:var(--text3)">—</td>
+        </tr>
+        <tr>
+          <td>Q consultas hábiles</td>
+          ${cols.map((c,i)=>tdVal(c.totalHabil?.toLocaleString('es'),i===0)).join('')}
+          <td style="color:var(--text3)">—</td>
+        </tr>
+        <tr class="section-header"><td colspan="${cols.length+2}">SLA — Promedio equipo (lun-vie, 9-18hs)</td></tr>
+        <tr>
+          <td>KR1.1 FRT — 1ª respuesta</td>
+          ${cols.map((c,i)=>tdTime(c.frtAvg,SLA.frt,i===0)).join('')}
+          <td style="color:var(--text3)">${fmtMinFull(SLA.frt)}</td>
+        </tr>
+        <tr>
+          <td>KR1.2 ART — Tiempo medio resp.</td>
+          ${cols.map((c,i)=>tdTime(c.artAvg,SLA.art,i===0)).join('')}
+          <td style="color:var(--text3)">${fmtMinFull(SLA.art)}</td>
+        </tr>
+        <tr>
+          <td>KR1.3 TTR — Resolución total</td>
+          ${cols.map((c,i)=>tdTime(c.ttrAvg,SLA.ttr,i===0)).join('')}
+          <td style="color:var(--text3)">${fmtMinFull(SLA.ttr)}</td>
+        </tr>`;
+
+  // Per agent section
+  const allAgentNames=[...new Set(cols.flatMap(c=>Object.keys(c.agents||{}).filter(n=>n&&n!=='Sin agente')))].sort();
+  if(allAgentNames.length){
+    html+=`<tr class="section-header"><td colspan="${cols.length+2}">Por agente — Consultas hábiles</td></tr>`;
+    allAgentNames.forEach(name=>{
+      html+=`<tr>
+        <td>${name}</td>
+        ${cols.map((c,i)=>{const a=c.agents?.[name];return tdVal(a?a.count:'—',i===0);}).join('')}
+        <td style="color:var(--text3)">—</td>
+      </tr>`;
+    });
+    html+=`<tr class="section-header"><td colspan="${cols.length+2}">Por agente — FRT promedio</td></tr>`;
+    allAgentNames.forEach(name=>{
+      html+=`<tr>
+        <td>${name}</td>
+        ${cols.map((c,i)=>{const a=c.agents?.[name];return a?tdTime(a.frtAvg,SLA.frt,i===0):tdVal('—',i===0);}).join('')}
+        <td style="color:var(--text3)">${fmtMinFull(SLA.frt)}</td>
+      </tr>`;
+    });
+    html+=`<tr class="section-header"><td colspan="${cols.length+2}">Por agente — ART promedio</td></tr>`;
+    allAgentNames.forEach(name=>{
+      html+=`<tr>
+        <td>${name}</td>
+        ${cols.map((c,i)=>{const a=c.agents?.[name];return a?tdTime(a.artAvg,SLA.art,i===0):tdVal('—',i===0);}).join('')}
+        <td style="color:var(--text3)">${fmtMinFull(SLA.art)}</td>
+      </tr>`;
+    });
+    html+=`<tr class="section-header"><td colspan="${cols.length+2}">Por agente — TTR promedio</td></tr>`;
+    allAgentNames.forEach(name=>{
+      html+=`<tr>
+        <td>${name}</td>
+        ${cols.map((c,i)=>{const a=c.agents?.[name];return a?tdTime(a.ttrAvg,SLA.ttr,i===0):tdVal('—',i===0);}).join('')}
+        <td style="color:var(--text3)">${fmtMinFull(SLA.ttr)}</td>
+      </tr>`;
+    });
+  }
+
+  html+=`</tbody></table></div>`;
+  document.getElementById('comparativaContent').innerHTML=html;
 }
 
 function selectWeek(idx){activeIdx=idx;renderAll();}
