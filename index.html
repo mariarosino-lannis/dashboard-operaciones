@@ -227,7 +227,7 @@ const EQUIPO_INTERNO = {
   343325858:'CAMILA DANIELA FERNANDEZ',409728092:'CARLOS BERGES',
   409642859:'PABLO DE LUCCA',409643062:'SANTIAGO MORENO'
 };
-const CLOSED_BY = {906585:'Mateo Lopez',906580:'Pablo Moreno',906560:'María Rosino'};
+const CLOSED_BY = {906585:'Mateo Lopez',906580:'Pablo Moreno',906560:'María Rosino',949998:'Camila Fernandez'};
 
 function normalizeCategory(raw) {
   if(!raw) return 'Sin categoría';
@@ -375,14 +375,24 @@ function computeWeek(rows,holidays){
   const dayOrder=['lunes','martes','miércoles','jueves','viernes'];
 
   const processed=data.map(r=>{
-    const dtStart=String(r[iStart]||'');
-    const fecha=dtStart.substring(0,10);
-    const horaNum=parseInt(dtStart.substring(11,13),10);
+    let fecha='',horaNum=-1;
+    const raw=r[iStart];
+    if(raw!==null&&raw!==undefined&&raw!==''){
+      if(typeof raw==='number'){
+        const d=XLSX.SSF.parse_date_code(raw);
+        if(d){fecha=d.y+'-'+String(d.m).padStart(2,'0')+'-'+String(d.d).padStart(2,'0');horaNum=d.H||0;}
+      } else {
+        const dtStart=String(raw);
+        const m=dtStart.match(/(\d{4}-\d{2}-\d{2})[\sT](\d{2}):/);
+        if(m){fecha=m[1];horaNum=parseInt(m[2],10);}
+        else{const parsed=new Date(dtStart);if(!isNaN(parsed)){fecha=parsed.toISOString().substring(0,10);horaNum=parsed.getHours();}}
+      }
+    }
     const dt=new Date(fecha+'T12:00:00');
     const dow=dt.getDay();
     const isWeekend=(dow===0||dow===6);
     const esFeriado=holidays.has(fecha);
-    const horarioOk=!isNaN(horaNum)&&horaNum>=9&&horaNum<18;
+    const horarioOk=horaNum>=9&&horaNum<18;
     const contar=!isWeekend&&!esFeriado&&horarioOk;
     const contactId=parseInt(r[iContactId]);
     const closedById=parseInt(r[iClosedBy]);
