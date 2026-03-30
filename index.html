@@ -9,12 +9,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
-:root {
-  --bg:#f5f4f0;--surface:#fff;--surface2:#f0ede8;
-  --border:rgba(0,0,0,0.08);--border2:rgba(0,0,0,0.14);
-  --text:#1a1917;--text2:#6b6860;--text3:#9c9a94;
-  --teal:#0f7a5a;--coral:#c94e28;--radius:12px;--radius-sm:8px;
-}
+:root{--bg:#f5f4f0;--surface:#fff;--surface2:#f0ede8;--border:rgba(0,0,0,0.08);--border2:rgba(0,0,0,0.14);--text:#1a1917;--text2:#6b6860;--text3:#9c9a94;--teal:#0f7a5a;--coral:#c94e28;--radius:12px;--radius-sm:8px}
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:14px}
 .layout{display:grid;grid-template-columns:230px 1fr;min-height:100vh}
@@ -28,8 +23,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .nav-icon{width:16px;height:16px;opacity:.6;flex-shrink:0}
 .nav-item.on .nav-icon{opacity:1}
 .sidebar-bottom{margin-top:auto;padding:16px 20px 0;border-top:1px solid var(--border)}
-.week-selector{font-size:10px;color:var(--text3);margin-bottom:8px;text-transform:uppercase;letter-spacing:.05em}
-.week-pills-wrap{max-height:220px;overflow-y:auto;margin-bottom:8px}
+.week-section-label{font-size:10px;color:var(--text3);margin:10px 0 6px;text-transform:uppercase;letter-spacing:.05em}
+.week-pills-wrap{max-height:200px;overflow-y:auto;margin-bottom:4px}
 .week-pill{display:flex;align-items:center;justify-content:space-between;padding:7px 10px;background:var(--surface2);border-radius:var(--radius-sm);cursor:pointer;margin-bottom:5px;border:1px solid transparent}
 .week-pill:hover{border-color:var(--border2)}
 .week-pill.active{border-color:var(--text)}
@@ -77,6 +72,17 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .cat-bar-fill{height:100%;border-radius:2px}
 .cat-count{font-size:12px;color:var(--text2);min-width:28px;text-align:right;font-family:'DM Mono',monospace}
 .cat-pct{font-size:11px;color:var(--text3);min-width:38px;text-align:right;font-family:'DM Mono',monospace}
+/* SLA table */
+.sla-table{width:100%;border-collapse:collapse;font-size:13px}
+.sla-table th{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);padding:8px 12px;text-align:right;border-bottom:1px solid var(--border);font-weight:500}
+.sla-table th:first-child{text-align:left}
+.sla-table td{padding:10px 12px;border-bottom:1px solid var(--border);text-align:right;font-family:'DM Mono',monospace;font-size:13px}
+.sla-table td:first-child{text-align:left;font-family:'DM Sans',sans-serif;color:var(--text2);font-size:12px}
+.sla-table tr:last-child td{border-bottom:none}
+.sla-ok{color:var(--teal);font-weight:500}
+.sla-fail{color:var(--coral);font-weight:500}
+.sla-section{font-size:11px;font-weight:500;color:var(--text);text-transform:uppercase;letter-spacing:.05em;padding:10px 12px 4px;background:var(--surface2)}
+/* Modal */
 .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:100;align-items:center;justify-content:center}
 .modal-overlay.show{display:flex}
 .modal{background:var(--surface);border-radius:var(--radius);padding:28px;width:100%;max-width:480px;margin:20px;border:1px solid var(--border2)}
@@ -98,18 +104,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .toast.error{background:var(--coral)}
 .spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
-.loading-bar{text-align:center;padding:60px;color:var(--text3);font-size:13px}
-@media(max-width:900px){
-  .layout{grid-template-columns:1fr}
-  .sidebar{position:static;height:auto;flex-direction:row;flex-wrap:wrap;padding:16px;gap:8px}
-  .sidebar-brand{padding:0;border:none;margin:0}
-  .sidebar-bottom{display:none}
-  .nav-item{border-left:none;border-bottom:2px solid transparent;padding:8px 12px;border-radius:var(--radius-sm)}
-  .nav-item.on{border-bottom-color:var(--text)}
-  .main{padding:20px 16px}
-  .metrics{grid-template-columns:repeat(2,1fr)}
-  .two,.three{grid-template-columns:1fr}
-}
+.badge{display:inline-block;font-size:10px;padding:2px 8px;border-radius:20px;font-weight:500;margin-left:6px}
+.badge-monthly{background:#e8f4fd;color:#1a6b9a}
+.badge-weekly{background:#e8f5ee;color:#0f6b3a}
+@media(max-width:900px){.layout{grid-template-columns:1fr}.sidebar{position:static;height:auto;flex-direction:row;flex-wrap:wrap;padding:16px;gap:8px}.sidebar-brand{padding:0;border:none;margin:0}.sidebar-bottom{display:none}.nav-item{border-left:none;border-bottom:2px solid transparent;padding:8px 12px;border-radius:var(--radius-sm)}.nav-item.on{border-bottom-color:var(--text)}.main{padding:20px 16px}.metrics{grid-template-columns:repeat(2,1fr)}.two,.three{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -117,9 +115,9 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
   <aside class="sidebar">
     <div class="sidebar-brand">
       <h1>Operaciones</h1>
-      <p>Dashboard semanal</p>
+      <p>Dashboard semanal y mensual</p>
     </div>
-    <nav>
+    <nav id="mainNav">
       <div class="nav-item on" onclick="showTab('resumen',this)">
         <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>
         Resumen
@@ -128,13 +126,13 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
         <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6"/><path d="M8 2v6l4 2"/></svg>
         Categorías
       </div>
-      <div class="nav-item" onclick="showTab('agentes',this)">
-        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6" cy="5" r="3"/><path d="M1 14c0-3 2-5 5-5s5 2 5 5"/><circle cx="12" cy="5" r="2"/><path d="M15 14c0-2-1.5-3.5-3-4"/></svg>
-        Agentes
+      <div class="nav-item" onclick="showTab('tiempos',this)">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6"/><path d="M8 4v4l3 2"/></svg>
+        Tiempos
       </div>
-      <div class="nav-item" onclick="showTab('dias',this)">
+      <div class="nav-item" id="nav-dias" onclick="showTab('dias',this)">
         <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="12" height="12" rx="2"/><path d="M5 2v12M11 2v12M2 8h12"/></svg>
-        Por día
+        <span id="nav-dias-label">Por día</span>
       </div>
       <div class="nav-item" onclick="showTab('tendencia',this)">
         <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="1,12 5,6 9,9 15,3"/></svg>
@@ -142,10 +140,12 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
       </div>
     </nav>
     <div class="sidebar-bottom">
-      <div class="week-selector">Semanas guardadas</div>
-      <div class="week-pills-wrap"><div id="weekPills"><div class="trend-empty" style="padding:12px 0">Cargando...</div></div></div>
-      <label class="btn primary" style="width:100%;justify-content:center;cursor:pointer">
-        + Cargar semana
+      <div class="week-section-label">Mensuales</div>
+      <div class="week-pills-wrap"><div id="monthlyPills"><div class="trend-empty" style="padding:8px 0;font-size:11px">—</div></div></div>
+      <div class="week-section-label">Semanales</div>
+      <div class="week-pills-wrap"><div id="weeklyPills"><div class="trend-empty" style="padding:8px 0;font-size:11px">Cargando...</div></div></div>
+      <label class="btn primary" style="width:100%;justify-content:center;cursor:pointer;margin-top:10px">
+        + Cargar reporte
         <input type="file" id="fileIn" accept=".xlsx" style="display:none">
       </label>
     </div>
@@ -155,48 +155,62 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
     <div class="page-header">
       <div>
         <div class="page-title" id="pageTitle">Dashboard Operaciones</div>
-        <div class="page-subtitle" id="pageSubtitle">Cargando datos...</div>
+        <div class="page-subtitle" id="pageSubtitle">Seleccioná un reporte del panel izquierdo</div>
       </div>
     </div>
 
+    <!-- Resumen -->
     <div id="tab-resumen" class="tab-content on">
       <div class="metrics" id="metricsRow">
         <div class="mc"><div class="mc-label">Consultas</div><div class="mc-val">—</div></div>
-        <div class="mc"><div class="mc-label">1ª respuesta</div><div class="mc-val">—</div></div>
-        <div class="mc"><div class="mc-label">Resolución</div><div class="mc-val">—</div></div>
-        <div class="mc"><div class="mc-label">Avg resolución</div><div class="mc-val">—</div></div>
+        <div class="mc"><div class="mc-label">FRT mediana</div><div class="mc-val">—</div></div>
+        <div class="mc"><div class="mc-label">ART mediana</div><div class="mc-val">—</div></div>
+        <div class="mc"><div class="mc-label">TTR mediana</div><div class="mc-val">—</div></div>
       </div>
-      <div class="card"><div class="card-title">Consultas por día</div><div class="ch" style="height:180px"><canvas id="cDays"></canvas></div></div>
+      <div class="card"><div class="card-title" id="daysChartTitle">Consultas por día</div><div class="ch" style="height:200px"><canvas id="cDays"></canvas></div></div>
       <div class="two">
         <div class="card"><div class="card-title">Top 5 categorías</div><div class="ch" style="height:200px"><canvas id="cTopCat"></canvas></div></div>
         <div class="card"><div class="card-title">Por agente</div><div id="agentMiniList"><div class="trend-empty">Sin datos</div></div></div>
       </div>
     </div>
 
+    <!-- Categorías -->
     <div id="tab-categorias" class="tab-content">
-      <div class="card"><div class="card-title">Todas las categorías</div><div id="catList"><div class="trend-empty">Sin datos</div></div></div>
+      <div class="card">
+        <div class="card-title">Todas las categorías <span style="font-size:10px;color:var(--text3);font-weight:400;text-transform:none">(todas las consultas, sin filtro de horario)</span></div>
+        <div id="catList"><div class="trend-empty">Sin datos</div></div>
+      </div>
     </div>
 
-    <div id="tab-agentes" class="tab-content">
-      <div id="agentCards"></div>
-      <div class="card"><div class="card-title">Comparativa de tiempos (minutos)</div><div class="ch" style="height:220px"><canvas id="cAgentTimes"></canvas></div></div>
+    <!-- Tiempos -->
+    <div id="tab-tiempos" class="tab-content">
+      <div class="card">
+        <div class="card-title">SLA — Equipo completo <span style="font-size:10px;color:var(--text3);font-weight:400;text-transform:none">(lun-vie, 9-18hs, sin feriados)</span></div>
+        <table class="sla-table" id="slaTeamTable">
+          <thead><tr><th>Métrica</th><th>Mediana</th><th>Promedio</th><th>Objetivo</th></tr></thead>
+          <tbody id="slaTeamBody"></tbody>
+        </table>
+      </div>
+      <div id="agentTimeCards"></div>
     </div>
 
+    <!-- Por día / Por semana -->
     <div id="tab-dias" class="tab-content">
-      <div class="card"><div class="card-title">Distribución por día de la semana</div><div class="ch" style="height:260px"><canvas id="cDaysFull"></canvas></div></div>
+      <div class="card"><div class="card-title" id="diasCardTitle">Distribución por día</div><div class="ch" style="height:260px"><canvas id="cDaysFull"></canvas></div></div>
     </div>
 
+    <!-- Tendencia -->
     <div id="tab-tendencia" class="tab-content">
-      <div id="trendContent"><div class="trend-empty">Cargá al menos 2 semanas para ver la tendencia.</div></div>
+      <div id="trendContent"><div class="trend-empty">Cargá al menos 2 reportes del mismo tipo para ver la tendencia.</div></div>
     </div>
   </main>
 </div>
 
-<!-- Modal feriados -->
+<!-- Modal -->
 <div class="modal-overlay" id="modalOverlay">
   <div class="modal">
-    <h2>¿Hubo feriados esta semana?</h2>
-    <p id="modalDesc">Seleccioná los días feriados. Las consultas de esos días no se contabilizan.</p>
+    <h2>¿Hubo feriados en este período?</h2>
+    <p id="modalDesc">Seleccioná los días feriados. Las consultas de esos días no se contabilizan en los tiempos.</p>
     <div class="day-grid" id="dayGrid"></div>
     <div style="margin-bottom:4px;font-size:11px;color:var(--text3)">Subido por (opcional)</div>
     <input type="text" id="uploadedBy" class="input" placeholder="Tu nombre...">
@@ -210,26 +224,21 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 <div class="toast" id="toast"></div>
 
 <script>
-// ── Supabase ──
-const SUPABASE_URL = 'https://kcbjhhzvrchdntnrjkmg.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_I6Gek16X8uwcgWh0069Tqw_EhQ9LjZ9';
-const { createClient } = supabase;
-const db = createClient(SUPABASE_URL, SUPABASE_KEY);
+const SUPABASE_URL='https://kcbjhhzvrchdntnrjkmg.supabase.co';
+const SUPABASE_KEY='sb_publishable_I6Gek16X8uwcgWh0069Tqw_EhQ9LjZ9';
+const {createClient}=supabase;
+const db=createClient(SUPABASE_URL,SUPABASE_KEY);
 
-const COLORS = ['#2a5fad','#0f7a5a','#c94e28','#a06010','#4a3faa','#b83d6a','#3a6b10','#6b6860','#7a2f0f','#1a6b7a'];
+const COLORS=['#2a5fad','#0f7a5a','#c94e28','#a06010','#4a3faa','#b83d6a','#3a6b10','#6b6860','#7a2f0f','#1a6b7a'];
+const MONTH_NAMES=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 
-// ── Lookup tables ──
-const EQUIPO_INTERNO = {
-  318356816:'JOAQUIN PAÑOS',315475410:'RICARDO ESPINOSA',295606873:'THOMAS SHAW',
-  340645465:'CAMILA DANIELA FERNANDEZ',318432393:'MARIA VICTORIA ROSINO',
-  318432542:'PABLO MORENO',318434168:'MATEO LOPEZ',331566697:'MATEO LOPEZ',
-  316942904:'IAN DALTON',318426014:'RENZO LUIS BATTAGLIANO',
-  343325858:'CAMILA DANIELA FERNANDEZ',409728092:'CARLOS BERGES',
-  409642859:'PABLO DE LUCCA',409643062:'SANTIAGO MORENO'
-};
-const CLOSED_BY = {906585:'Mateo Lopez',906580:'Pablo Moreno',906560:'María Rosino',949998:'Camila Fernandez'};
+const EQUIPO_INTERNO={318356816:'JOAQUIN PAÑOS',315475410:'RICARDO ESPINOSA',295606873:'THOMAS SHAW',340645465:'CAMILA DANIELA FERNANDEZ',318432393:'MARIA VICTORIA ROSINO',318432542:'PABLO MORENO',318434168:'MATEO LOPEZ',331566697:'MATEO LOPEZ',316942904:'IAN DALTON',318426014:'RENZO LUIS BATTAGLIANO',343325858:'CAMILA DANIELA FERNANDEZ',409728092:'CARLOS BERGES',409642859:'PABLO DE LUCCA',409643062:'SANTIAGO MORENO'};
+const CLOSED_BY={906585:'Mateo Lopez',906580:'Pablo Moreno',906560:'María Rosino',949998:'Camila Fernandez'};
 
-function normalizeCategory(raw) {
+// SLA objectives in minutes
+const SLA={frt:10, art:20, ttr:120};
+
+function normalizeCategory(raw){
   if(!raw) return 'Sin categoría';
   const r=String(raw).trim();
   if(['Impuestos','Impuestos provinciales','Deudas'].includes(r)) return 'Impuestos/Deuda';
@@ -245,46 +254,36 @@ function parseMin(val){
 }
 function avg(arr){const a=arr.filter(v=>v!=null&&!isNaN(v));return a.length?a.reduce((s,v)=>s+v,0)/a.length:0;}
 function median(arr){const a=[...arr.filter(v=>v!=null&&!isNaN(v))].sort((a,b)=>a-b);if(!a.length)return 0;const m=Math.floor(a.length/2);return a.length%2?a[m]:(a[m-1]+a[m])/2;}
-function fmtMin(m){if(!m||isNaN(m))return '—';if(m<60)return Math.round(m)+'m';return Math.floor(m/60)+'h '+Math.round(m%60)+'m';}
+function fmtMin(m){if(m==null||isNaN(m)||m===0)return '—';if(m<60)return Math.round(m)+'m';return Math.floor(m/60)+'h '+Math.round(m%60)+'m';}
+function fmtMinFull(m){if(m==null||isNaN(m)||m===0)return '—';const h=Math.floor(m/60);const mn=Math.round(m%60);return h>0?`${h}:${String(mn).padStart(2,'0')}:00`:`0:${String(mn).padStart(2,'0')}:00`;}
 function initials(name){return name.split(' ').filter(Boolean).slice(0,2).map(w=>w[0]).join('').toUpperCase();}
-
-function showToast(msg,isError=false){
-  const t=document.getElementById('toast');
-  t.textContent=msg;t.className='toast'+(isError?' error':'');
-  t.classList.add('show');
-  setTimeout(()=>t.classList.remove('show'),3000);
-}
+function showToast(msg,isError=false){const t=document.getElementById('toast');t.textContent=msg;t.className='toast'+(isError?' error':'');t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3000);}
 
 let allWeeks=[],activeIdx=0,charts={},currentTab='resumen';
 let pendingRows=null,pendingHolidays=new Set();
 
-// ── Supabase CRUD ──
+// ── Supabase ──
 async function fetchWeeks(){
-  const {data,error}=await db.from('weekly_reports').select('*').order('week_start',{ascending:false});
+  const{data,error}=await db.from('weekly_reports').select('*').order('week_start',{ascending:false});
   if(error){showToast('Error cargando datos: '+error.message,true);return;}
-  // Convert DB format to internal format
-  allWeeks=(data||[]).map(r=>({
-    id:r.id, dbId:r.id,
-    week:r.week_label,
-    week_start:r.week_start,
-    total:r.total,
-    frtAvg:r.frt_avg,frtMed:r.frt_med,
-    rtAvg:r.rt_avg,rtMed:r.rt_med,
-    days:r.days||{},cats:r.cats||{},agents:r.agents||{},
-    holidays:r.holidays||[],
-    uploadedBy:r.uploaded_by
-  }));
+  allWeeks=(data||[]).map(r=>{
+    const from=new Date(r.week_start+'T12:00:00');
+    const to=new Date((r.week_end||r.week_start)+'T12:00:00');
+    const diff=Math.round((to-from)/(1000*60*60*24))+1;
+    const isMonthly=diff>10;
+    const friendlyLabel=isMonthly?MONTH_NAMES[from.getMonth()]+' '+from.getFullYear():'Sem. '+r.week_start.substring(5).replace('-','/')+' al '+(r.week_end||r.week_start).substring(5).replace('-','/');
+    return{id:r.id,week:r.week_label,friendlyLabel,isMonthly,week_start:r.week_start,week_end:r.week_end,total:r.total,totalHabil:r.total_habil,frtMed:r.frt_med,artMed:r.art_med,ttrMed:r.ttr_med,frtAvg:r.frt_avg,artAvg:r.art_avg,ttrAvg:r.ttr_avg,days:r.days||{},cats:r.cats||{},agents:r.agents||{},holidays:r.holidays||[],uploadedBy:r.uploaded_by};
+  });
   if(allWeeks.length) activeIdx=0;
   renderAll();
 }
 
 async function saveWeek(payload){
-  const {error}=await db.from('weekly_reports').upsert(payload,{onConflict:'week_label'});
+  const{error}=await db.from('weekly_reports').upsert(payload,{onConflict:'week_label'});
   if(error) throw error;
 }
-
 async function deleteWeekFromDB(weekLabel){
-  const {error}=await db.from('weekly_reports').delete().eq('week_label',weekLabel);
+  const{error}=await db.from('weekly_reports').delete().eq('week_label',weekLabel);
   if(error) throw error;
 }
 
@@ -293,9 +292,11 @@ function showHolidayModal(weekDates){
   pendingHolidays=new Set();
   document.getElementById('uploadedBy').value='';
   const dates=[...weekDates].sort();
-  document.getElementById('modalDesc').textContent=`Semana: ${dates[0]} al ${dates[dates.length-1]}. Tocá los días que fueron feriado (solo días hábiles).`;
+  document.getElementById('modalDesc').textContent=`Período: ${dates[0]} al ${dates[dates.length-1]}. Tocá los días feriados — se excluyen del cálculo de tiempos.`;
   const grid=document.getElementById('dayGrid');
   grid.innerHTML='';
+  // Show max 35 days to avoid huge grids for monthly
+  const showDates=dates.length>35?dates.filter((_,i)=>i%Math.ceil(dates.length/35)===0):dates;
   dates.forEach(d=>{
     const dt=new Date(d+'T12:00:00');
     const dow=dt.getDay();
@@ -304,12 +305,7 @@ function showHolidayModal(weekDates){
     const btn=document.createElement('div');
     btn.className='day-btn'+(isWeekend?' weekend':'');
     btn.innerHTML=`<div class="day-btn-name">${dayNames[dow]}</div><div class="day-btn-date">${d.substring(8)}</div>`;
-    if(!isWeekend){
-      btn.onclick=()=>{
-        if(pendingHolidays.has(d)){pendingHolidays.delete(d);btn.classList.remove('selected');}
-        else{pendingHolidays.add(d);btn.classList.add('selected');}
-      };
-    }
+    if(!isWeekend){btn.onclick=()=>{if(pendingHolidays.has(d)){pendingHolidays.delete(d);btn.classList.remove('selected');}else{pendingHolidays.add(d);btn.classList.add('selected');}}}
     grid.appendChild(btn);
   });
   document.getElementById('modalOverlay').classList.add('show');
@@ -317,45 +313,46 @@ function showHolidayModal(weekDates){
 
 async function confirmHolidays(){
   const btn=document.getElementById('confirmBtn');
-  btn.disabled=true;
-  btn.innerHTML='<span class="spinner"></span> Guardando...';
+  btn.disabled=true;btn.innerHTML='<span class="spinner"></span> Guardando...';
   document.getElementById('modalOverlay').classList.remove('show');
   if(!pendingRows){btn.disabled=false;btn.innerHTML='Confirmar y guardar';return;}
-
   const result=computeWeek(pendingRows,pendingHolidays);
   const uploadedBy=document.getElementById('uploadedBy').value.trim();
   pendingRows=null;
-
-  if(!result){
-    showToast('No se encontraron datos válidos.',true);
-    btn.disabled=false;btn.innerHTML='Confirmar y guardar';
-    return;
-  }
-
-  const sorted=[...new Set(result.week.split(' al '))];
+  if(!result){showToast('No se encontraron datos válidos.',true);btn.disabled=false;btn.innerHTML='Confirmar y guardar';return;}
   const payload={
-    week_label:result.week,
-    week_start:result.week.substring(0,10),
-    week_end:result.week.slice(-10),
-    total:result.total,
-    frt_avg:result.frtAvg,frt_med:result.frtMed,
-    rt_avg:result.rtAvg,rt_med:result.rtMed,
+    week_label:result.week,week_start:result.weekStart,week_end:result.weekEnd,
+    total:result.total,total_habil:result.totalHabil,
+    frt_med:result.frtMed,frt_avg:result.frtAvg,
+    art_med:result.artMed,art_avg:result.artAvg,
+    ttr_med:result.ttrMed,ttr_avg:result.ttrAvg,
     days:result.days,cats:result.cats,agents:result.agents,
-    holidays:[...pendingHolidays],
-    uploaded_by:uploadedBy||null
+    holidays:[...pendingHolidays],uploaded_by:uploadedBy||null
   };
-
   try{
     await saveWeek(payload);
-    showToast('Semana guardada correctamente ✓');
+    showToast('Reporte guardado correctamente ✓');
     await fetchWeeks();
-  }catch(e){
-    showToast('Error al guardar: '+e.message,true);
-  }
+  }catch(e){showToast('Error al guardar: '+e.message,true);}
   btn.disabled=false;btn.innerHTML='Confirmar y guardar';
 }
 
 // ── Core computation ──
+function extractDateHour(raw){
+  if(!raw||raw==='') return{fecha:'',hora:-1};
+  if(typeof raw==='number'){
+    const d=XLSX.SSF.parse_date_code(raw);
+    if(d) return{fecha:`${d.y}-${String(d.m).padStart(2,'0')}-${String(d.d).padStart(2,'0')}`,hora:d.H||0};
+    return{fecha:'',hora:-1};
+  }
+  const s=String(raw);
+  const m=s.match(/(\d{4}-\d{2}-\d{2})[\sT](\d{1,2}):/);
+  if(m) return{fecha:m[1],hora:parseInt(m[2],10)};
+  const parsed=new Date(s);
+  if(!isNaN(parsed)) return{fecha:parsed.toISOString().substring(0,10),hora:parsed.getHours()};
+  return{fecha:'',hora:-1};
+}
+
 function computeWeek(rows,holidays){
   const hdrs=rows[0].map(h=>String(h||'').trim());
   const col=name=>hdrs.findIndex(h=>h.toLowerCase().includes(name.toLowerCase()));
@@ -363,84 +360,95 @@ function computeWeek(rows,holidays){
   const iContactId=col('Contact ID');
   const iClosedBy=col('Closed By');
   const iFRT=col('First Response Time');
-  const iRT=col('Resolution Time');
+  const iART=col('Average Response Time');
+  const iTTR=col('Resolution Time');
   const iCatRaw=col('Conversation Category');
 
   const data=rows.slice(1).filter(r=>r&&r.length>4&&r[iStart]);
   const weekDates=new Set();
-  data.forEach(r=>{const d=String(r[iStart]||'').substring(0,10);if(d.match(/^\d{4}-\d{2}-\d{2}$/))weekDates.add(d);});
+  data.forEach(r=>{const{fecha}=extractDateHour(r[iStart]);if(fecha.match(/^\d{4}-\d{2}-\d{2}$/))weekDates.add(fecha);});
   if(!weekDates.size) return null;
 
   const dayNames=['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
   const dayOrder=['lunes','martes','miércoles','jueves','viernes'];
 
   const processed=data.map(r=>{
-    let fecha='',horaNum=-1;
-    const raw=r[iStart];
-    if(raw!==null&&raw!==undefined&&raw!==''){
-      if(typeof raw==='number'){
-        const d=XLSX.SSF.parse_date_code(raw);
-        if(d){fecha=d.y+'-'+String(d.m).padStart(2,'0')+'-'+String(d.d).padStart(2,'0');horaNum=d.H||0;}
-      } else {
-        const dtStart=String(raw);
-        const m=dtStart.match(/(\d{4}-\d{2}-\d{2})[\sT](\d{1,2}):/);
-        if(m){fecha=m[1];horaNum=parseInt(m[2],10);}
-        else{const parsed=new Date(dtStart);if(!isNaN(parsed)){fecha=parsed.toISOString().substring(0,10);horaNum=parsed.getHours();}}
-      }
-    }
+    const{fecha,hora:horaNum}=extractDateHour(r[iStart]);
     const dt=new Date(fecha+'T12:00:00');
     const dow=dt.getDay();
     const isWeekend=(dow===0||dow===6);
     const esFeriado=holidays.has(fecha);
-    const horarioOk=horaNum>=9&&horaNum<18;
-    const contar=!isWeekend&&!esFeriado&&horarioOk;
+    const inHours=horaNum>=9&&horaNum<18;
+    // habil = used for TIME calculations only
+    const habil=!isWeekend&&!esFeriado&&inHours;
     const contactId=parseInt(r[iContactId]);
     const closedById=parseInt(r[iClosedBy]);
     return{
-      fecha,horaNum,diaSemana:dayNames[dow],
+      fecha,horaNum,diaSemana:dayNames[dow],dow,
       equipoInterno:EQUIPO_INTERNO[contactId]||'Externo',
       agentCustomer:CLOSED_BY[closedById]||'',
-      contar,catNorm:normalizeCategory(r[iCatRaw]),
-      frt:parseMin(r[iFRT]),rt:parseMin(r[iRT])
+      habil,catNorm:normalizeCategory(r[iCatRaw]),
+      frt:parseMin(r[iFRT]),art:parseMin(r[iART]),ttr:parseMin(r[iTTR])
     };
   });
 
-  const countable=processed.filter(r=>r.contar);
-  if(!countable.length) return null;
+  // ALL rows for counts & categories (no filter)
+  const allRows=processed.filter(r=>r.fecha);
+  // Only habil rows for times
+  const habilRows=processed.filter(r=>r.habil);
 
-  const cats={},days={},agents={};
-  countable.forEach(r=>{
-    cats[r.catNorm]=(cats[r.catNorm]||0)+1;
-    if(dayOrder.includes(r.diaSemana)) days[r.diaSemana]=(days[r.diaSemana]||0)+1;
-    const agent=r.agentCustomer||'Sin agente';
-    if(!agents[agent]) agents[agent]={count:0,frts:[],rts:[],cats:{}};
-    agents[agent].count++;
-    agents[agent].frts.push(r.frt);
-    agents[agent].rts.push(r.rt);
-    agents[agent].cats[r.catNorm]=(agents[agent].cats[r.catNorm]||0)+1;
-  });
+  // Categories from ALL rows
+  const cats={};
+  allRows.forEach(r=>{cats[r.catNorm]=(cats[r.catNorm]||0)+1;});
 
+  // Days from ALL rows (aggregate by day name)
+  const days={};
+  allRows.forEach(r=>{if(dayOrder.includes(r.diaSemana))days[r.diaSemana]=(days[r.diaSemana]||0)+1;});
   const ordDays={};
   dayOrder.forEach(d=>{if(days[d])ordDays[d]=days[d];});
+
+  // Times from HABIL rows, per agent
+  const agents={};
+  habilRows.forEach(r=>{
+    const agent=r.agentCustomer||'Sin agente';
+    if(!agents[agent])agents[agent]={count:0,frts:[],arts:[],ttrs:[],cats:{}};
+    agents[agent].count++;
+    agents[agent].frts.push(r.frt);
+    agents[agent].arts.push(r.art);
+    agents[agent].ttrs.push(r.ttr);
+    agents[agent].cats[r.catNorm]=(agents[agent].cats[r.catNorm]||0)+1;
+  });
 
   const agentSummary={};
   Object.entries(agents).forEach(([name,info])=>{
     agentSummary[name]={
       count:info.count,
-      frtAvg:+avg(info.frts).toFixed(1),rtAvg:+avg(info.rts).toFixed(1),
-      frtMed:+median(info.frts).toFixed(1),rtMed:+median(info.rts).toFixed(1),
+      frtMed:+median(info.frts).toFixed(1),frtAvg:+avg(info.frts).toFixed(1),
+      artMed:+median(info.arts).toFixed(1),artAvg:+avg(info.arts).toFixed(1),
+      ttrMed:+median(info.ttrs).toFixed(1),ttrAvg:+avg(info.ttrs).toFixed(1),
       cats:info.cats
     };
   });
 
   const sortedDates=[...weekDates].sort();
+  const dateFrom=new Date(sortedDates[0]+'T12:00:00');
+  const dateTo=new Date(sortedDates[sortedDates.length-1]+'T12:00:00');
+  const diffDays=Math.round((dateTo-dateFrom)/(1000*60*60*24))+1;
+  const isMonthly=diffDays>10;
+  const friendlyLabel=isMonthly?MONTH_NAMES[dateFrom.getMonth()]+' '+dateFrom.getFullYear():'Sem. '+sortedDates[0].substring(5).replace('-','/')+' al '+sortedDates[sortedDates.length-1].substring(5).replace('-','/');
+
+  const allFrts=habilRows.map(r=>r.frt);
+  const allArts=habilRows.map(r=>r.art);
+  const allTtrs=habilRows.map(r=>r.ttr);
+
   return{
     week:sortedDates[0]+' al '+sortedDates[sortedDates.length-1],
-    total:countable.length,
-    frtAvg:+avg(countable.map(r=>r.frt)).toFixed(1),
-    frtMed:+median(countable.map(r=>r.frt)).toFixed(1),
-    rtAvg:+avg(countable.map(r=>r.rt)).toFixed(1),
-    rtMed:+median(countable.map(r=>r.rt)).toFixed(1),
+    weekStart:sortedDates[0],weekEnd:sortedDates[sortedDates.length-1],
+    friendlyLabel,isMonthly,
+    total:allRows.length,totalHabil:habilRows.length,
+    frtMed:+median(allFrts).toFixed(1),frtAvg:+avg(allFrts).toFixed(1),
+    artMed:+median(allArts).toFixed(1),artAvg:+avg(allArts).toFixed(1),
+    ttrMed:+median(allTtrs).toFixed(1),ttrAvg:+avg(allTtrs).toFixed(1),
     days:ordDays,cats,agents:agentSummary,holidays:[...holidays]
   };
 }
@@ -459,36 +467,45 @@ function renderAll(){
   renderWeekPills();
   if(!allWeeks.length){
     document.getElementById('pageTitle').textContent='Dashboard Operaciones';
-    document.getElementById('pageSubtitle').textContent='Cargá el primer Excel para empezar';
-    document.getElementById('metricsRow').innerHTML='<div class="mc"><div class="mc-label">Consultas</div><div class="mc-val">—</div></div><div class="mc"><div class="mc-label">1ª respuesta</div><div class="mc-val">—</div></div><div class="mc"><div class="mc-label">Resolución</div><div class="mc-val">—</div></div><div class="mc"><div class="mc-label">Avg resolución</div><div class="mc-val">—</div></div>';
-    document.getElementById('agentMiniList').innerHTML='<div class="trend-empty">Sin datos</div>';
-    document.getElementById('catList').innerHTML='<div class="trend-empty">Sin datos</div>';
-    document.getElementById('agentCards').innerHTML='';
-    document.getElementById('trendContent').innerHTML='<div class="trend-empty">Cargá al menos 2 semanas para ver la tendencia.</div>';
+    document.getElementById('pageSubtitle').textContent='Cargá el primer reporte para empezar';
+    document.getElementById('metricsRow').innerHTML='<div class="mc"><div class="mc-label">Consultas</div><div class="mc-val">—</div></div><div class="mc"><div class="mc-label">FRT mediana</div><div class="mc-val">—</div></div><div class="mc"><div class="mc-label">ART mediana</div><div class="mc-val">—</div></div><div class="mc"><div class="mc-label">TTR mediana</div><div class="mc-val">—</div></div>';
     return;
   }
   const w=allWeeks[activeIdx];
-  const prev=allWeeks[activeIdx+1]||null;
-  document.getElementById('pageTitle').textContent='Semana '+w.week;
-  document.getElementById('pageSubtitle').textContent=w.total+' consultas'+(w.uploadedBy?' · Subido por '+w.uploadedBy:'');
+  // Update nav label for dias tab
+  document.getElementById('nav-dias-label').textContent=w.isMonthly?'Por semana':'Por día';
+  document.getElementById('diasCardTitle').textContent=w.isMonthly?'Consultas por semana del mes':'Distribución por día de la semana';
+  document.getElementById('daysChartTitle').textContent=w.isMonthly?'Consultas por semana':'Consultas por día';
+
+  const badge=w.isMonthly?'<span class="badge badge-monthly">Mensual</span>':'<span class="badge badge-weekly">Semanal</span>';
+  document.getElementById('pageTitle').innerHTML=(w.isMonthly?'':'')+(w.friendlyLabel||w.week)+badge;
+  document.getElementById('pageSubtitle').textContent=w.total+' consultas totales · '+w.totalHabil+' en horario hábil'+(w.uploadedBy?' · '+w.uploadedBy:'');
+
+  // Find previous same-type report
+  const prev=allWeeks.find((x,i)=>i>activeIdx&&x.isMonthly===w.isMonthly)||null;
+
   renderMetrics(w,prev);
-  renderResumen(w);
+  renderResumen(w,prev);
   renderCategorias(w);
-  renderAgentes(w);
+  renderTiempos(w);
   renderDias(w);
-  renderTendencia();
+  renderTendencia(w.isMonthly);
 }
 
 function renderWeekPills(){
-  if(!allWeeks.length){document.getElementById('weekPills').innerHTML='<div class="trend-empty" style="padding:12px 0;font-size:11px">Sin semanas guardadas</div>';return;}
-  document.getElementById('weekPills').innerHTML=allWeeks.map((w,i)=>`
-    <div class="week-pill ${i===activeIdx?'active':''}" onclick="selectWeek(${i})">
-      <div>
-        <div class="week-pill-label">${w.week.substring(0,10)}</div>
-        <div class="week-pill-count">${w.total} consultas${w.uploadedBy?' · '+w.uploadedBy:''}</div>
-      </div>
-      <span class="week-pill-del" onclick="event.stopPropagation();deleteWeek(${i},'${w.week}')">✕</span>
-    </div>`).join('');
+  const monthly=allWeeks.filter(w=>w.isMonthly);
+  const weekly=allWeeks.filter(w=>!w.isMonthly);
+
+  const pillHTML=(w,i)=>{
+    const realIdx=allWeeks.findIndex(x=>x.id===w.id);
+    return`<div class="week-pill ${realIdx===activeIdx?'active':''}" onclick="selectWeek(${realIdx})">
+      <div><div class="week-pill-label">${w.friendlyLabel||w.week.substring(0,10)}</div><div class="week-pill-count">${w.total} consultas${w.uploadedBy?' · '+w.uploadedBy:''}</div></div>
+      <span class="week-pill-del" onclick="event.stopPropagation();deleteWeek(${realIdx},'${w.week}')">✕</span>
+    </div>`;
+  };
+
+  document.getElementById('monthlyPills').innerHTML=monthly.length?monthly.map(pillHTML).join(''):'<div class="trend-empty" style="padding:8px 0;font-size:11px">—</div>';
+  document.getElementById('weeklyPills').innerHTML=weekly.length?weekly.map(pillHTML).join(''):'<div class="trend-empty" style="padding:8px 0;font-size:11px">Sin datos</div>';
 }
 
 function renderMetrics(w,prev){
@@ -498,26 +515,40 @@ function renderMetrics(w,prev){
     if(Math.abs(d)<0.1) return '';
     const sign=d>0?'+':'';
     const isGood=lowerIsBetter?(d<0):(d>0);
-    return `<div class="mc-delta ${isGood?'up':'down'}">${sign}${Math.round(d)} vs sem. ant.</div>`;
+    return`<div class="mc-delta ${isGood?'up':'down'}">${sign}${Math.round(d)} vs ant.</div>`;
   }
   document.getElementById('metricsRow').innerHTML=`
-    <div class="mc"><div class="mc-label">Consultas</div><div class="mc-val">${w.total}</div><div class="mc-sub">contabilizadas</div>${delta(w.total,prev?.total)}</div>
-    <div class="mc"><div class="mc-label">1ª respuesta</div><div class="mc-val">${fmtMin(w.frtMed)}</div><div class="mc-sub">mediana</div></div>
-    <div class="mc"><div class="mc-label">Resolución</div><div class="mc-val">${fmtMin(w.rtMed)}</div><div class="mc-sub">mediana</div></div>
-    <div class="mc"><div class="mc-label">Avg resolución</div><div class="mc-val">${fmtMin(w.rtAvg)}</div><div class="mc-sub">promedio</div>${delta(w.rtAvg,prev?.rtAvg,true)}</div>
+    <div class="mc"><div class="mc-label">Consultas totales</div><div class="mc-val">${w.total}</div><div class="mc-sub">${w.totalHabil} en horario hábil</div>${delta(w.total,prev?.total)}</div>
+    <div class="mc"><div class="mc-label">FRT mediana</div><div class="mc-val">${fmtMin(w.frtMed)}</div><div class="mc-sub">objetivo &lt; 10m</div>${delta(w.frtMed,prev?.frtMed,true)}</div>
+    <div class="mc"><div class="mc-label">ART mediana</div><div class="mc-val">${fmtMin(w.artMed)}</div><div class="mc-sub">objetivo &lt; 20m</div>${delta(w.artMed,prev?.artMed,true)}</div>
+    <div class="mc"><div class="mc-label">TTR mediana</div><div class="mc-val">${fmtMin(w.ttrMed)}</div><div class="mc-sub">objetivo &lt; 2h</div>${delta(w.ttrMed,prev?.ttrMed,true)}</div>
   `;
 }
 
-function renderResumen(w){
+function renderResumen(w,prev){
+  // Days chart — for monthly show by week number
+  let dayLabels,dayVals;
+  if(w.isMonthly){
+    // Group days into weeks
+    const weekGroups={};
+    Object.entries(w.days).forEach(([day,cnt])=>{weekGroups['L-V']=(weekGroups['L-V']||0)+cnt;});
+    // Use days as-is but labeled differently - show total per weekday aggregated
+    dayLabels=Object.keys(w.days);dayVals=Object.values(w.days);
+  } else {
+    dayLabels=Object.keys(w.days);dayVals=Object.values(w.days);
+  }
+
   makeChart('cDays','bar',
-    {labels:Object.keys(w.days),datasets:[{data:Object.values(w.days),backgroundColor:'#2a5fad',borderRadius:4,borderSkipped:false}]},
+    {labels:dayLabels,datasets:[{data:dayVals,backgroundColor:'#2a5fad',borderRadius:4,borderSkipped:false}]},
     {scales:{y:{beginAtZero:true,grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#9c9a94',font:{size:11}}},x:{grid:{display:false},ticks:{color:'#6b6860'}}}}
   );
+
   const top5=Object.entries(w.cats).sort((a,b)=>b[1]-a[1]).slice(0,5);
   makeChart('cTopCat','doughnut',
     {labels:top5.map(c=>c[0]),datasets:[{data:top5.map(c=>c[1]),backgroundColor:COLORS.slice(0,5),borderWidth:3,borderColor:'#fff'}]},
     {cutout:'62%'}
   );
+
   const entries=Object.entries(w.agents).filter(([n])=>n&&n!=='Sin agente').sort((a,b)=>b[1].count-a[1].count);
   const total=entries.reduce((s,[,a])=>s+a.count,0)||1;
   document.getElementById('agentMiniList').innerHTML=entries.length?entries.map(([name,info],i)=>`
@@ -525,7 +556,7 @@ function renderResumen(w){
       <div class="agent-avatar">${initials(name)}</div>
       <div style="flex:1">
         <div class="agent-name">${name}</div>
-        <div class="agent-meta">Med: ${fmtMin(info.frtMed)} resp · ${fmtMin(info.rtMed)} res</div>
+        <div class="agent-meta">FRT: ${fmtMin(info.frtMed)} · TTR: ${fmtMin(info.ttrMed)} (med)</div>
         <div class="bar-bg"><div class="bar-fill" style="width:${Math.round(info.count/total*100)}%;background:${COLORS[i]}"></div></div>
       </div>
       <div class="agent-count">${info.count}</div>
@@ -546,41 +577,40 @@ function renderCategorias(w){
     </div>`).join('');
 }
 
-function renderAgentes(w){
+function slaRow(label,med,avgg,obj){
+  const medOk=med<=obj;const avgOk=avgg<=obj;
+  return`<tr>
+    <td>${label}</td>
+    <td class="${medOk?'sla-ok':'sla-fail'}">${fmtMinFull(med)}</td>
+    <td class="${avgOk?'sla-ok':'sla-fail'}">${fmtMinFull(avgg)}</td>
+    <td style="color:var(--text3)">${fmtMinFull(obj)}</td>
+  </tr>`;
+}
+
+function renderTiempos(w){
+  // Team SLA table
+  document.getElementById('slaTeamBody').innerHTML=
+    slaRow('KR1.1 FRT — 1ª respuesta',w.frtMed,w.frtAvg,SLA.frt)+
+    slaRow('KR1.2 ART — Tiempo medio resp.',w.artMed,w.artAvg,SLA.art)+
+    slaRow('KR1.3 TTR — Resolución total',w.ttrMed,w.ttrAvg,SLA.ttr);
+
+  // Per agent cards
   const entries=Object.entries(w.agents).filter(([n])=>n&&n!=='Sin agente').sort((a,b)=>b[1].count-a[1].count);
-  document.getElementById('agentCards').innerHTML=entries.map(([name,info])=>{
-    const topCats=Object.entries(info.cats).sort((a,b)=>b[1]-a[1]).slice(0,6);
-    const maxC=topCats[0]?.[1]||1;
-    return `<div class="card">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-        <div style="display:flex;align-items:center;gap:12px">
-          <div class="agent-avatar" style="width:40px;height:40px;font-size:13px">${initials(name)}</div>
-          <div><div style="font-size:15px;font-weight:500">${name}</div><div style="font-size:11px;color:var(--text3)">${info.count} consultas esta semana</div></div>
-        </div>
+  document.getElementById('agentTimeCards').innerHTML=entries.map(([name,info])=>`
+    <div class="card">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+        <div class="agent-avatar" style="width:38px;height:38px;font-size:13px">${initials(name)}</div>
+        <div><div style="font-size:15px;font-weight:500">${name}</div><div style="font-size:11px;color:var(--text3)">${info.count} consultas en horario hábil</div></div>
       </div>
-      <div class="three" style="margin-bottom:12px">
-        <div class="mc" style="padding:12px 14px"><div class="mc-label">Avg 1ª resp</div><div class="mc-val" style="font-size:20px">${fmtMin(info.frtAvg)}</div></div>
-        <div class="mc" style="padding:12px 14px"><div class="mc-label">Med 1ª resp</div><div class="mc-val" style="font-size:20px">${fmtMin(info.frtMed)}</div></div>
-        <div class="mc" style="padding:12px 14px"><div class="mc-label">Avg resolución</div><div class="mc-val" style="font-size:20px">${fmtMin(info.rtAvg)}</div></div>
-      </div>
-      <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px">Categorías</div>
-      ${topCats.map(([cat,cnt],j)=>`
-        <div class="cat-row">
-          <div class="cat-dot" style="background:${COLORS[j%COLORS.length]}"></div>
-          <div class="cat-name">${cat}</div>
-          <div class="cat-bar-bg"><div class="cat-bar-fill" style="width:${Math.round(cnt/maxC*100)}%;background:${COLORS[j%COLORS.length]}"></div></div>
-          <div class="cat-count">${cnt}</div>
-        </div>`).join('')}
-    </div>`;
-  }).join('');
-  const agentNames=entries.map(([n])=>n);
-  makeChart('cAgentTimes','bar',
-    {labels:agentNames,datasets:[
-      {label:'Avg 1ª resp',data:entries.map(([,a])=>+a.frtAvg.toFixed(1)),backgroundColor:'#2a5fad',borderRadius:4},
-      {label:'Avg resolución',data:entries.map(([,a])=>+a.rtAvg.toFixed(1)),backgroundColor:'#0f7a5a',borderRadius:4}
-    ]},
-    {scales:{y:{beginAtZero:true,grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#9c9a94',font:{size:11}}},x:{grid:{display:false},ticks:{color:'#6b6860'}}}}
-  );
+      <table class="sla-table">
+        <thead><tr><th>Métrica</th><th>Mediana</th><th>Promedio</th><th>Objetivo</th></tr></thead>
+        <tbody>
+          ${slaRow('KR1.1 FRT',info.frtMed,info.frtAvg,SLA.frt)}
+          ${slaRow('KR1.2 ART',info.artMed,info.artAvg,SLA.art)}
+          ${slaRow('KR1.3 TTR',info.ttrMed,info.ttrAvg,SLA.ttr)}
+        </tbody>
+      </table>
+    </div>`).join('');
 }
 
 function renderDias(w){
@@ -592,35 +622,30 @@ function renderDias(w){
   );
 }
 
-function renderTendencia(){
-  const sorted=[...allWeeks].sort((a,b)=>new Date(a.week_start)-new Date(b.week_start));
+function renderTendencia(isMonthly){
+  const sorted=allWeeks.filter(w=>w.isMonthly===isMonthly).sort((a,b)=>new Date(a.week_start)-new Date(b.week_start));
   if(sorted.length<2){
-    document.getElementById('trendContent').innerHTML='<div class="trend-empty">Cargá al menos 2 semanas para ver la tendencia.</div>';
+    document.getElementById('trendContent').innerHTML=`<div class="trend-empty">Cargá al menos 2 reportes ${isMonthly?'mensuales':'semanales'} para ver la tendencia.</div>`;
     return;
   }
-  const labels=sorted.map(w=>w.week.substring(0,10));
+  const labels=sorted.map(w=>w.friendlyLabel||w.week.substring(0,10));
   const scaleOpts={y:{beginAtZero:false,grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#9c9a94',font:{size:11}}},x:{grid:{display:false},ticks:{color:'#6b6860',font:{size:11},maxRotation:30}}};
   document.getElementById('trendContent').innerHTML=`
-    <div class="card"><div class="card-title">Consultas totales por semana</div><div class="ch" style="height:200px"><canvas id="cTrendTotal"></canvas></div></div>
-    <div class="card"><div class="card-title">Tiempo de resolución promedio (minutos)</div><div class="ch" style="height:200px"><canvas id="cTrendRT"></canvas></div></div>
-    <div class="card"><div class="card-title">Mediana 1ª respuesta (minutos)</div><div class="ch" style="height:200px"><canvas id="cTrendFRT"></canvas></div></div>
+    <div class="card"><div class="card-title">Consultas totales</div><div class="ch" style="height:200px"><canvas id="cTrendTotal"></canvas></div></div>
+    <div class="card"><div class="card-title">FRT mediana (minutos)</div><div class="ch" style="height:200px"><canvas id="cTrendFRT"></canvas></div></div>
+    <div class="card"><div class="card-title">TTR mediana (minutos)</div><div class="ch" style="height:200px"><canvas id="cTrendTTR"></canvas></div></div>
   `;
   makeChart('cTrendTotal','line',{labels,datasets:[{data:sorted.map(w=>w.total),borderColor:'#2a5fad',backgroundColor:'rgba(42,95,173,0.08)',tension:.3,fill:true,pointRadius:5,pointBackgroundColor:'#2a5fad',pointBorderColor:'#fff',pointBorderWidth:2}]},{scales:scaleOpts});
-  makeChart('cTrendRT','line',{labels,datasets:[{data:sorted.map(w=>+(w.rtAvg||0).toFixed(1)),borderColor:'#0f7a5a',backgroundColor:'rgba(15,122,90,0.08)',tension:.3,fill:true,pointRadius:5,pointBackgroundColor:'#0f7a5a',pointBorderColor:'#fff',pointBorderWidth:2}]},{scales:scaleOpts});
   makeChart('cTrendFRT','line',{labels,datasets:[{data:sorted.map(w=>+(w.frtMed||0).toFixed(1)),borderColor:'#c94e28',backgroundColor:'rgba(201,78,40,0.08)',tension:.3,fill:true,pointRadius:5,pointBackgroundColor:'#c94e28',pointBorderColor:'#fff',pointBorderWidth:2}]},{scales:scaleOpts});
+  makeChart('cTrendTTR','line',{labels,datasets:[{data:sorted.map(w=>+(w.ttrMed||0).toFixed(1)),borderColor:'#0f7a5a',backgroundColor:'rgba(15,122,90,0.08)',tension:.3,fill:true,pointRadius:5,pointBackgroundColor:'#0f7a5a',pointBorderColor:'#fff',pointBorderWidth:2}]},{scales:scaleOpts});
 }
 
 function selectWeek(idx){activeIdx=idx;renderAll();}
-
 async function deleteWeek(idx,weekLabel){
-  if(!confirm('¿Eliminar la semana "'+weekLabel+'"?')) return;
-  try{
-    await deleteWeekFromDB(weekLabel);
-    showToast('Semana eliminada');
-    await fetchWeeks();
-  }catch(e){showToast('Error al eliminar: '+e.message,true);}
+  if(!confirm('¿Eliminar "'+weekLabel+'"?'))return;
+  try{await deleteWeekFromDB(weekLabel);showToast('Reporte eliminado');await fetchWeeks();}
+  catch(e){showToast('Error: '+e.message,true);}
 }
-
 function showTab(t,el){
   currentTab=t;
   document.querySelectorAll('.tab-content').forEach(d=>d.classList.remove('on'));
@@ -631,29 +656,28 @@ function showTab(t,el){
 
 document.getElementById('fileIn').addEventListener('change',function(e){
   const file=e.target.files[0];
-  if(!file) return;
+  if(!file)return;
   const reader=new FileReader();
   reader.onload=ev=>{
     const wb=XLSX.read(new Uint8Array(ev.target.result),{type:'array',raw:false,dateNF:'yyyy-mm-dd hh:mm:ss'});
     const ws=wb.Sheets[wb.SheetNames[0]];
     const rows=XLSX.utils.sheet_to_json(ws,{header:1,raw:false,dateNF:'yyyy-mm-dd hh:mm:ss'});
-    if(!rows||rows.length<2){showToast('No se pudieron leer datos del archivo.',true);return;}
+    if(!rows||rows.length<2){showToast('No se pudieron leer datos.',true);return;}
     pendingRows=rows;
     const hdrs=rows[0].map(h=>String(h||'').trim());
     const iStart=hdrs.findIndex(h=>h.toLowerCase().includes('datetime conversation started'));
     const weekDates=new Set();
     rows.slice(1).forEach(r=>{
-      const d=String(r[iStart]||'').substring(0,10);
-      if(d.match(/^\d{4}-\d{2}-\d{2}$/)) weekDates.add(d);
+      const{fecha}=extractDateHour(r[iStart]);
+      if(fecha.match(/^\d{4}-\d{2}-\d{2}$/))weekDates.add(fecha);
     });
-    if(!weekDates.size){showToast('No se detectaron fechas válidas en el archivo.',true);return;}
+    if(!weekDates.size){showToast('No se detectaron fechas válidas.',true);return;}
     showHolidayModal(weekDates);
   };
   reader.readAsArrayBuffer(file);
   e.target.value='';
 });
 
-// Init
 fetchWeeks();
 </script>
 </body>
