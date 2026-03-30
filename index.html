@@ -383,7 +383,7 @@ function computeWeek(rows,holidays){
         if(d){fecha=d.y+'-'+String(d.m).padStart(2,'0')+'-'+String(d.d).padStart(2,'0');horaNum=d.H||0;}
       } else {
         const dtStart=String(raw);
-        const m=dtStart.match(/(\d{4}-\d{2}-\d{2})[\sT](\d{2}):/);
+        const m=dtStart.match(/(\d{4}-\d{2}-\d{2})[\sT](\d{1,2}):/);
         if(m){fecha=m[1];horaNum=parseInt(m[2],10);}
         else{const parsed=new Date(dtStart);if(!isNaN(parsed)){fecha=parsed.toISOString().substring(0,10);horaNum=parsed.getHours();}}
       }
