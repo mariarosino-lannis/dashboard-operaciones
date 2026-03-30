@@ -158,7 +158,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
         <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6"/><path d="M8 4v4l3 2"/></svg>
         Tiempos
       </div>
-      <div class="nav-item" id="nav-dias" onclick="showTab('dias',this)">
+      <div class="nav-item" id="nav-dias" onclick="showTab('dias',this)" style="display:none">
         <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="12" height="12" rx="2"/><path d="M5 2v12M11 2v12M2 8h12"/></svg>
         <span id="nav-dias-label">Por día</span>
       </div>
@@ -388,7 +388,7 @@ async function confirmHolidays(){
     frt_med:result.frtMed,frt_avg:result.frtAvg,
     art_med:result.artMed,art_avg:result.artAvg,
     ttr_med:result.ttrMed,ttr_avg:result.ttrAvg,
-    days:result.days,cats:result.cats,agents:result.agents,
+    days:result.days,hours:result.hours,cats:result.cats,agents:result.agents,
     holidays:[...pendingHolidays],uploaded_by:uploadedBy||null
   };
   try{
@@ -469,6 +469,15 @@ function computeWeek(rows,holidays,activeAgents){
   const ordDays={};
   dayOrder.forEach(d=>{if(days[d])ordDays[d]=days[d];});
 
+  // Hourly distribution from ALL rows
+  const hours={};
+  allRows.forEach(r=>{
+    if(r.horaNum>=0&&r.horaNum<=23){
+      const slot=r.horaNum+':00';
+      hours[slot]=(hours[slot]||0)+1;
+    }
+  });
+
   // Times from HABIL rows, per agent
   const agents={};
   habilRows.forEach(r=>{
@@ -514,7 +523,7 @@ function computeWeek(rows,holidays,activeAgents){
     frtMed:+median(allFrts).toFixed(1),frtAvg:+avg(allFrts).toFixed(1),
     artMed:+median(allArts).toFixed(1),artAvg:+avg(allArts).toFixed(1),
     ttrMed:+median(allTtrs).toFixed(1),ttrAvg:+avg(allTtrs).toFixed(1),
-    days:ordDays,cats,agents:agentSummary,holidays:[...holidays]
+    days:ordDays,hours,cats,agents:agentSummary,holidays:[...holidays]
   };
 }
 
@@ -630,6 +639,43 @@ function renderResumen(w,prev){
       </div>
       <div class="agent-count">${info.count}</div>
     </div>`).join(''):'<div class="trend-empty">Sin datos de agentes</div>';
+
+  // Hourly distribution chart
+  renderHourlyChart(w);
+}
+
+function renderHourlyChart(w){
+  const hours=w.hours||{};
+  if(!Object.keys(hours).length) return;
+  // Sort by hour numerically
+  const sorted=Object.entries(hours).sort((a,b)=>parseInt(a[0])-parseInt(b[0]));
+  const labels=sorted.map(([h])=>h);
+  const vals=sorted.map(([,v])=>v);
+  const max=Math.max(...vals);
+  // Color bars: peak hours in coral, normal in blue
+  const bgColors=vals.map(v=>v>=max*0.8?'#c94e28':v>=max*0.5?'#a06010':'#2a5fad');
+
+  // Add chart card to resumen if not exists
+  let chartCard=document.getElementById('hourlyChartCard');
+  if(!chartCard){
+    chartCard=document.createElement('div');
+    chartCard.id='hourlyChartCard';
+    chartCard.className='card';
+    chartCard.innerHTML=`<div class="card-title" id="hourlyTitle">Distribución por hora del día</div><div class="ch" style="height:200px"><canvas id="cHours"></canvas></div>`;
+    document.getElementById('tab-resumen').appendChild(chartCard);
+  }
+  document.getElementById('hourlyTitle').textContent=w.isMonthly?'Distribución horaria (todas las consultas)':'Distribución por hora del día';
+  makeChart('cHours','bar',
+    {labels,datasets:[{data:vals,backgroundColor:bgColors,borderRadius:3,borderSkipped:false}]},
+    {scales:{
+      y:{beginAtZero:true,grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#9c9a94',font:{size:11}}},
+      x:{grid:{display:false},ticks:{color:'#6b6860',font:{size:11},autoSkip:false,maxRotation:45}}
+    },
+    plugins:{
+      legend:{display:false},
+      tooltip:{callbacks:{label:ctx=>`${ctx.raw} consultas (${(ctx.raw/vals.reduce((a,b)=>a+b,0)*100).toFixed(1)}%)`}}
+    }}
+  );
 }
 
 function renderCategorias(w){
@@ -869,7 +915,65 @@ function renderComparativa(){
   // Per agent — one table per agent
   const allAgentNames=[...new Set(cols.flatMap(c=>Object.keys(c.agents||{}).filter(n=>n&&n!=='Sin agente')))].sort();
   if(allAgentNames.length){
-    html+=`</tbody></table></div>`;
+    // Category variation table (monthly only)
+  if(prev.length>0){
+    const prevW=prev[0];
+    const allCats=[...new Set([...Object.keys(w.cats),...Object.keys(prevW.cats)])].sort();
+    const totalCurr=Object.values(w.cats).reduce((a,b)=>a+b,0)||1;
+    const totalPrev=Object.values(prevW.cats).reduce((a,b)=>a+b,0)||1;
+    // Calculate variation and sort by absolute delta
+    const catRows=allCats.map(cat=>{
+      const curr=w.cats[cat]||0;
+      const prev2=prevW.cats[cat]||0;
+      const pctCurr=curr/totalCurr*100;
+      const pctPrev=prev2/totalPrev*100;
+      const delta=curr-prev2;
+      const deltaPct=pctCurr-pctPrev;
+      return{cat,curr,prev2,pctCurr,pctPrev,delta,deltaPct};
+    }).sort((a,b)=>Math.abs(b.delta)-Math.abs(a.delta));
+
+    html+=`<div class="card" style="margin-top:0">
+      <div class="card-title">Variación de categorías vs ${colLabels[1]||'mes anterior'}</div>
+      <table class="comp-table">
+        <thead><tr>
+          <th>Categoría</th>
+          <th class="current">${colLabels[0]} cant</th>
+          <th class="current">${colLabels[0]} %</th>
+          <th>${colLabels[1]||'Anterior'} cant</th>
+          <th>${colLabels[1]||'Anterior'} %</th>
+          <th>Δ cant</th>
+          <th>Δ %</th>
+        </tr></thead>
+        <tbody>
+          ${catRows.map(r=>{
+            const deltaClass=r.delta>0?'val-fail':'val-ok'; // more = worse (more work)
+            const sign=r.delta>0?'+':'';
+            const signPct=r.deltaPct>0?'+':'';
+            return`<tr>
+              <td>${r.cat}</td>
+              <td class="highlight-col val-neutral">${r.curr}</td>
+              <td class="highlight-col" style="color:var(--text2)">${r.pctCurr.toFixed(1)}%</td>
+              <td>${r.prev2}</td>
+              <td style="color:var(--text2)">${r.pctPrev.toFixed(1)}%</td>
+              <td class="${Math.abs(r.delta)>5?deltaClass:''}">${sign}${r.delta}</td>
+              <td class="${Math.abs(r.deltaPct)>2?deltaClass:''}">${signPct}${r.deltaPct.toFixed(1)}%</td>
+            </tr>`;
+          }).join('')}
+          <tr style="border-top:2px solid var(--border2)">
+            <td style="font-weight:500">Total</td>
+            <td class="highlight-col val-neutral" style="font-weight:500">${totalCurr}</td>
+            <td class="highlight-col"></td>
+            <td style="font-weight:500">${totalPrev}</td>
+            <td></td>
+            <td class="${totalCurr>totalPrev?'val-fail':'val-ok'}" style="font-weight:500">${totalCurr>totalPrev?'+':''}${totalCurr-totalPrev}</td>
+            <td></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>`;
+  }
+
+  html+=`</tbody></table></div>`;
     allAgentNames.forEach(name=>{
       html+=`<div class="card">
         <div class="card-title">${name}</div>
