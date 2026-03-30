@@ -416,8 +416,8 @@ function computeWeek(rows,holidays,activeAgents){
     };
   });
 
-  // ALL rows for counts & categories (no filter)
-  const allRows=processed.filter(r=>r.fecha);
+  // ALL rows for counts & categories — exclude internal contacts
+  const allRows=processed.filter(r=>r.fecha&&r.equipoInterno==='Externo');
   // Only habil rows for times
   const habilRows=processed.filter(r=>r.habil);
 
