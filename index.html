@@ -191,7 +191,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
       <div class="card">
         <div class="card-title">SLA — Equipo completo <span style="font-size:10px;color:var(--text3);font-weight:400;text-transform:none">(lun-vie, 9-18hs, sin feriados)</span></div>
         <table class="sla-table" id="slaTeamTable">
-          <thead><tr><th>Métrica</th><th>Mediana</th><th>Promedio</th><th>Objetivo</th></tr></thead>
+          <thead><tr><th>Métrica</th><th>Mediana (HH:MM:SS)</th><th>Promedio (HH:MM:SS)</th><th>Objetivo</th></tr></thead>
           <tbody id="slaTeamBody"></tbody>
         </table>
       </div>
@@ -261,7 +261,7 @@ function parseMin(val){
 function avg(arr){const a=arr.filter(v=>v!=null&&!isNaN(v));return a.length?a.reduce((s,v)=>s+v,0)/a.length:0;}
 function median(arr){const a=[...arr.filter(v=>v!=null&&!isNaN(v))].sort((a,b)=>a-b);if(!a.length)return 0;const m=Math.floor(a.length/2);return a.length%2?a[m]:(a[m-1]+a[m])/2;}
 function fmtMin(m){if(m==null||isNaN(m)||m===0)return '—';if(m<60)return Math.round(m)+'m';return Math.floor(m/60)+'h '+Math.round(m%60)+'m';}
-function fmtMinFull(m){if(m==null||isNaN(m)||m===0)return '—';const h=Math.floor(m/60);const mn=Math.round(m%60);return h>0?`${h}:${String(mn).padStart(2,'0')}:00`:`0:${String(mn).padStart(2,'0')}:00`;}
+function fmtMinFull(m){if(m==null||isNaN(m)||m===0)return '—';const h=Math.floor(m/60);const mn=Math.floor(m%60);const ss=Math.round((m*60)%60);return `${h}:${String(mn).padStart(2,'0')}:${String(ss).padStart(2,'0')}`;}
 function initials(name){return name.split(' ').filter(Boolean).slice(0,2).map(w=>w[0]).join('').toUpperCase();}
 function showToast(msg,isError=false){const t=document.getElementById('toast');t.textContent=msg;t.className='toast'+(isError?' error':'');t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3000);}
 
@@ -630,7 +630,7 @@ function renderTiempos(w){
         <div><div style="font-size:15px;font-weight:500">${name}</div><div style="font-size:11px;color:var(--text3)">${info.count} consultas en horario hábil</div></div>
       </div>
       <table class="sla-table">
-        <thead><tr><th>Métrica</th><th>Mediana</th><th>Promedio</th><th>Objetivo</th></tr></thead>
+        <thead><tr><th>Métrica</th><th>Mediana (HH:MM:SS)</th><th>Promedio (HH:MM:SS)</th><th>Objetivo</th></tr></thead>
         <tbody>
           ${slaRow('KR1.1 FRT',info.frtMed,info.frtAvg,SLA.frt)}
           ${slaRow('KR1.2 ART',info.artMed,info.artAvg,SLA.art)}
