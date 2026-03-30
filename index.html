@@ -866,44 +866,48 @@ function renderComparativa(){
           <td style="color:var(--text3)">${fmtMinFull(SLA.ttr)}</td>
         </tr>`;
 
-  // Per agent section
+  // Per agent — one table per agent
   const allAgentNames=[...new Set(cols.flatMap(c=>Object.keys(c.agents||{}).filter(n=>n&&n!=='Sin agente')))].sort();
   if(allAgentNames.length){
-    html+=`<tr class="section-header"><td colspan="${cols.length+2}">Por agente — Consultas hábiles</td></tr>`;
+    html+=`</tbody></table></div>`;
     allAgentNames.forEach(name=>{
-      html+=`<tr>
-        <td>${name}</td>
-        ${cols.map((c,i)=>{const a=c.agents?.[name];return tdVal(a?a.count:'—',i===0);}).join('')}
-        <td style="color:var(--text3)">—</td>
-      </tr>`;
+      html+=`<div class="card">
+        <div class="card-title">${name}</div>
+        <table class="comp-table">
+          <thead><tr>
+            <th></th>
+            ${cols.map((c,i)=>`<th class="${i===0?'current':''}">${colLabels[i]}</th>`).join('')}
+            <th style="color:var(--text)">Objetivo</th>
+          </tr></thead>
+          <tbody>
+            <tr>
+              <td>Consultas hábiles</td>
+              ${cols.map((c,i)=>{const a=c.agents?.[name];return tdVal(a?a.count:'—',i===0);}).join('')}
+              <td style="color:var(--text3)">—</td>
+            </tr>
+            <tr>
+              <td>KR1.1 FRT</td>
+              ${cols.map((c,i)=>{const a=c.agents?.[name];return a&&a.frtAvg?tdTime(a.frtAvg,SLA.frt,i===0):tdVal('—',i===0);}).join('')}
+              <td style="color:var(--text3)">${fmtMinFull(SLA.frt)}</td>
+            </tr>
+            <tr>
+              <td>KR1.2 ART</td>
+              ${cols.map((c,i)=>{const a=c.agents?.[name];return a&&a.artAvg?tdTime(a.artAvg,SLA.art,i===0):tdVal('—',i===0);}).join('')}
+              <td style="color:var(--text3)">${fmtMinFull(SLA.art)}</td>
+            </tr>
+            <tr>
+              <td>KR1.3 TTR</td>
+              ${cols.map((c,i)=>{const a=c.agents?.[name];return a&&a.ttrAvg?tdTime(a.ttrAvg,SLA.ttr,i===0):tdVal('—',i===0);}).join('')}
+              <td style="color:var(--text3)">${fmtMinFull(SLA.ttr)}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>`;
     });
-    html+=`<tr class="section-header"><td colspan="${cols.length+2}">Por agente — FRT promedio</td></tr>`;
-    allAgentNames.forEach(name=>{
-      html+=`<tr>
-        <td>${name}</td>
-        ${cols.map((c,i)=>{const a=c.agents?.[name];return a?tdTime(a.frtAvg,SLA.frt,i===0):tdVal('—',i===0);}).join('')}
-        <td style="color:var(--text3)">${fmtMinFull(SLA.frt)}</td>
-      </tr>`;
-    });
-    html+=`<tr class="section-header"><td colspan="${cols.length+2}">Por agente — ART promedio</td></tr>`;
-    allAgentNames.forEach(name=>{
-      html+=`<tr>
-        <td>${name}</td>
-        ${cols.map((c,i)=>{const a=c.agents?.[name];return a?tdTime(a.artAvg,SLA.art,i===0):tdVal('—',i===0);}).join('')}
-        <td style="color:var(--text3)">${fmtMinFull(SLA.art)}</td>
-      </tr>`;
-    });
-    html+=`<tr class="section-header"><td colspan="${cols.length+2}">Por agente — TTR promedio</td></tr>`;
-    allAgentNames.forEach(name=>{
-      html+=`<tr>
-        <td>${name}</td>
-        ${cols.map((c,i)=>{const a=c.agents?.[name];return a?tdTime(a.ttrAvg,SLA.ttr,i===0):tdVal('—',i===0);}).join('')}
-        <td style="color:var(--text3)">${fmtMinFull(SLA.ttr)}</td>
-      </tr>`;
-    });
+    html+=`<div style="display:none">`;// close dummy to avoid double close
   }
 
-  html+=`</tbody></table></div>`;
+  if(!allAgentNames.length) html+=`</tbody></table></div>`;
   document.getElementById('comparativaContent').innerHTML=html;
 }
 
