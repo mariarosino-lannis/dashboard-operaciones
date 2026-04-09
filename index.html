@@ -3,246 +3,513 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Dashboard Operaciones</title>
+<title>Ops Dashboard</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#f5f4f0;--surface:#fff;--s2:#f0ede8;--border:rgba(0,0,0,0.08);--border2:rgba(0,0,0,0.14);--text:#1a1917;--t2:#6b6860;--t3:#9c9a94;--teal:#0f7a5a;--coral:#c94e28;--amber:#a06010;--r:12px;--rs:8px}
-*{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:14px}
-.layout{display:grid;grid-template-columns:230px 1fr;min-height:100vh}
-.sidebar{background:var(--surface);border-right:1px solid var(--border);padding:28px 0;position:sticky;top:0;height:100vh;display:flex;flex-direction:column;overflow-y:auto}
-.sb-brand{padding:0 24px 22px;border-bottom:1px solid var(--border);margin-bottom:16px}
-.sb-brand h1{font-size:13px;font-weight:500;letter-spacing:.06em;text-transform:uppercase}
-.sb-brand p{font-size:11px;color:var(--t3);margin-top:3px}
-.nav-item{display:flex;align-items:center;gap:10px;padding:9px 24px;cursor:pointer;font-size:13px;color:var(--t2);border-left:2px solid transparent;transition:all .15s}
-.nav-item:hover{color:var(--text);background:var(--s2)}
-.nav-item.on{color:var(--text);border-left-color:var(--text);font-weight:500;background:var(--s2)}
-.ni{width:16px;height:16px;opacity:.6;flex-shrink:0}
-.nav-item.on .ni{opacity:1}
-.sb-bot{margin-top:auto;padding:16px 20px 0;border-top:1px solid var(--border)}
-.sec-lbl{font-size:10px;color:var(--t3);margin:10px 0 6px;text-transform:uppercase;letter-spacing:.05em}
-.pills{max-height:190px;overflow-y:auto;margin-bottom:4px}
-.pill{display:flex;align-items:center;justify-content:space-between;padding:7px 10px;background:var(--s2);border-radius:var(--rs);cursor:pointer;margin-bottom:5px;border:1px solid transparent}
-.pill:hover{border-color:var(--border2)}
-.pill.on{border-color:var(--text)}
-.pill-lbl{font-size:11px;font-weight:500;color:var(--text)}
-.pill-sub{font-size:10px;color:var(--t3)}
-.pill-del{font-size:10px;color:var(--t3);padding:1px 5px;border-radius:3px;cursor:pointer}
-.pill-del:hover{background:#fde8e8;color:var(--coral)}
-.btn{display:inline-flex;align-items:center;gap:7px;padding:9px 16px;border-radius:var(--rs);font-size:12px;font-weight:500;cursor:pointer;border:1px solid var(--border2);background:var(--surface);color:var(--text);font-family:'DM Sans',sans-serif;transition:all .15s}
-.btn:hover{background:var(--s2);border-color:var(--text)}
-.btn.pri{background:var(--text);color:#fff;border-color:var(--text)}
-.btn.pri:hover{background:#333}
-.btn:disabled{opacity:.5;cursor:not-allowed}
-.main{padding:32px 36px;min-width:0}
-.ph{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:28px;flex-wrap:wrap;gap:14px}
-.pt{font-size:22px;font-weight:300}
-.ps{font-size:12px;color:var(--t3);margin-top:4px;font-family:'DM Mono',monospace}
-.tab-c{display:none}
-.tab-c.on{display:block}
-.mcs{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px}
-.mc{background:var(--surface);border-radius:var(--r);padding:18px 20px;border:1px solid var(--border)}
-.mc-l{font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px}
-.mc-v{font-size:28px;font-weight:300;font-family:'DM Mono',monospace}
-.mc-s{font-size:10px;color:var(--t3);margin-top:4px}
-.mc-d{font-size:11px;margin-top:6px;font-weight:500}
-.mc-d.up{color:var(--teal)}
-.mc-d.dn{color:var(--coral)}
-.card{background:var(--surface);border-radius:var(--r);border:1px solid var(--border);padding:20px 22px;margin-bottom:16px}
-.ct{font-size:11px;font-weight:500;color:var(--t2);text-transform:uppercase;letter-spacing:.07em;margin-bottom:18px}
-.two{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
-.three{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:16px}
-.ch{position:relative;width:100%}
-.ar{display:flex;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)}
-.ar:last-child{border-bottom:none}
-.av{width:32px;height:32px;border-radius:50%;background:var(--s2);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500;color:var(--t2);flex-shrink:0;margin-right:12px}
-.an{font-size:13px;font-weight:500}
-.am{font-size:11px;color:var(--t3);margin-top:2px}
-.bb{height:3px;background:var(--s2);border-radius:2px;margin-top:6px;overflow:hidden}
-.bf{height:100%;border-radius:2px}
-.ac{font-size:20px;font-weight:300;font-family:'DM Mono',monospace;margin-left:auto}
-.cr{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)}
-.cr:last-child{border-bottom:none}
-.cd{width:8px;height:8px;border-radius:50%;flex-shrink:0}
-.cn{font-size:13px;flex:1}
-.cbg{width:120px;height:4px;background:var(--s2);border-radius:2px;overflow:hidden;flex-shrink:0}
-.cbf{height:100%;border-radius:2px}
-.cc{font-size:12px;color:var(--t2);min-width:28px;text-align:right;font-family:'DM Mono',monospace}
-.cp{font-size:11px;color:var(--t3);min-width:38px;text-align:right;font-family:'DM Mono',monospace}
-.tbl{width:100%;border-collapse:collapse;font-size:13px}
-.tbl th{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--t3);padding:9px 14px;text-align:right;border-bottom:1px solid var(--border);font-weight:500;white-space:nowrap}
-.tbl th:first-child{text-align:left}
-.tbl th.cur{color:var(--text);font-weight:500}
-.tbl td{padding:10px 14px;border-bottom:1px solid var(--border);text-align:right;font-family:'DM Mono',monospace;font-size:13px}
-.tbl td:first-child{text-align:left;font-family:'DM Sans',sans-serif;color:var(--t2);font-size:12px}
-.tbl tr:last-child td{border-bottom:none}
-.ok{color:var(--teal);font-weight:500}
-.fail{color:var(--coral);font-weight:500}
-.neu{color:var(--text);font-weight:500}
-.sh td{background:var(--s2);font-family:'DM Sans',sans-serif!important;font-size:11px!important;font-weight:500!important;color:var(--text)!important;text-align:left!important;padding:8px 14px!important;letter-spacing:.04em;text-transform:uppercase}
-.hl{background:rgba(42,95,173,0.04)}
-.badge{display:inline-block;font-size:10px;padding:2px 8px;border-radius:20px;font-weight:500;margin-left:6px}
-.bm{background:#e8f4fd;color:#1a6b9a}
-.bw{background:#e8f5ee;color:#0f6b3a}
-.modal-ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:100;align-items:center;justify-content:center}
-.modal-ov.show{display:flex}
-.modal{background:var(--surface);border-radius:var(--r);padding:28px;width:100%;max-width:520px;margin:20px;border:1px solid var(--border2);max-height:90vh;overflow-y:auto}
-.modal h2{font-size:16px;font-weight:400;margin-bottom:6px}
-.modal p{font-size:12px;color:var(--t2);margin-bottom:16px;line-height:1.6}
-.modal-sec{font-size:11px;font-weight:500;color:var(--text);margin:16px 0 8px;text-transform:uppercase;letter-spacing:.04em}
-.day-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-bottom:4px}
-.db{padding:8px 4px;text-align:center;border:1px solid var(--border2);border-radius:var(--rs);cursor:pointer;font-size:12px;background:var(--surface);transition:all .12s}
-.db:hover{border-color:var(--text)}
-.db.sel{background:var(--text);color:#fff;border-color:var(--text)}
-.db.we{opacity:.3;pointer-events:none}
-.db-n{font-size:9px;opacity:.6;text-transform:uppercase;letter-spacing:.05em}
-.db-d{font-size:13px;font-weight:500;margin-top:2px;font-family:'DM Mono',monospace}
-.at{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:4px}
-.at-btn{padding:7px 10px;border:1px solid var(--border2);border-radius:var(--rs);cursor:pointer;font-size:12px;background:var(--surface);transition:all .12s;display:flex;align-items:center;gap:6px}
-.at-btn.sel{background:var(--text);color:#fff;border-color:var(--text)}
-.inp{width:100%;padding:8px 12px;border:1px solid var(--border2);border-radius:var(--rs);font-size:13px;font-family:'DM Sans',sans-serif;outline:none;background:var(--surface);color:var(--text);margin-bottom:14px}
-.inp:focus{border-color:var(--text)}
-.ma{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
-.empty{text-align:center;padding:40px;color:var(--t3);font-size:12px}
-.toast{position:fixed;bottom:24px;right:24px;background:var(--text);color:#fff;padding:12px 18px;border-radius:var(--rs);font-size:13px;z-index:999;opacity:0;transition:opacity .2s;pointer-events:none}
-.toast.show{opacity:1}
-.toast.err{background:var(--coral)}
-.sp{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite}
-@keyframes spin{to{transform:rotate(360deg)}}
-.comp-pill{padding:6px 12px;border:1px solid var(--border2);border-radius:var(--rs);cursor:pointer;font-size:12px;background:var(--surface);color:var(--t2);transition:all .12s}
-.comp-pill.on{background:var(--text);color:#fff;border-color:var(--text)}
-@media(max-width:900px){.layout{grid-template-columns:1fr}.sidebar{position:static;height:auto;flex-direction:row;flex-wrap:wrap;padding:16px;gap:8px}.sb-brand{padding:0;border:none;margin:0}.sb-bot{display:none}.nav-item{border-left:none;border-bottom:2px solid transparent;padding:8px 12px;border-radius:var(--rs)}.nav-item.on{border-bottom-color:var(--text)}.main{padding:20px 16px}.mcs{grid-template-columns:repeat(2,1fr)}.two,.three{grid-template-columns:1fr}}
+:root {
+  --ink: #0d0d0f;
+  --ink2: #3a3a42;
+  --ink3: #8a8a96;
+  --ink4: #c4c4cc;
+  --paper: #fafaf8;
+  --surface: #ffffff;
+  --surface2: #f3f3f0;
+  --surface3: #eaeae6;
+  --accent: #6366f1;
+  --accent2: #818cf8;
+  --accentbg: #eef2ff;
+  --green: #10b981;
+  --greenbg: #ecfdf5;
+  --red: #ef4444;
+  --redbg: #fef2f2;
+  --amber: #f59e0b;
+  --amberbg: #fffbeb;
+  --border: rgba(0,0,0,0.07);
+  --border2: rgba(0,0,0,0.12);
+  --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-md: 0 4px 6px rgba(0,0,0,0.05), 0 2px 4px rgba(0,0,0,0.04);
+  --r: 14px; --rs: 8px; --rxs: 6px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Inter', sans-serif; background: var(--paper); color: var(--ink); min-height: 100vh; font-size: 13px; line-height: 1.5; }
+
+/* Layout */
+.app { display: grid; grid-template-columns: 260px 1fr; min-height: 100vh; }
+
+/* Sidebar */
+.sidebar {
+  background: var(--ink);
+  color: #fff;
+  display: flex; flex-direction: column;
+  position: sticky; top: 0; height: 100vh;
+  overflow-y: auto;
+}
+.sb-top { padding: 28px 24px 20px; border-bottom: 1px solid rgba(255,255,255,0.08); }
+.sb-logo { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
+.sb-logo-icon { width: 32px; height: 32px; background: var(--accent); border-radius: 8px; display: flex; align-items: center; justify-content: center; }
+.sb-logo-icon svg { width: 18px; height: 18px; color: #fff; }
+.sb-title { font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 700; letter-spacing: -0.02em; color: #fff; }
+.sb-sub { font-size: 11px; color: rgba(255,255,255,0.4); margin-top: 2px; }
+
+/* Period selector */
+.sb-period { padding: 16px 20px; border-bottom: 1px solid rgba(255,255,255,0.08); }
+.sb-period-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: rgba(255,255,255,0.35); margin-bottom: 8px; }
+.period-select { width: 100%; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12); border-radius: var(--rs); padding: 8px 12px; color: #fff; font-family: 'Inter', sans-serif; font-size: 12px; cursor: pointer; outline: none; }
+.period-select option { background: #1a1a2e; color: #fff; }
+
+/* Agent filter */
+.sb-agents { padding: 14px 20px; border-bottom: 1px solid rgba(255,255,255,0.08); }
+.sb-agents-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: rgba(255,255,255,0.35); margin-bottom: 8px; }
+.agent-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.agent-chip { padding: 4px 10px; border-radius: 20px; font-size: 11px; cursor: pointer; border: 1px solid rgba(255,255,255,0.15); color: rgba(255,255,255,0.5); transition: all .15s; }
+.agent-chip.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+/* Nav */
+.sb-nav { padding: 12px 12px; flex: 1; }
+.nav-section { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: rgba(255,255,255,0.3); padding: 8px 12px 4px; }
+.nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: var(--rs); cursor: pointer; font-size: 13px; color: rgba(255,255,255,0.5); transition: all .15s; margin-bottom: 1px; }
+.nav-item:hover { color: rgba(255,255,255,0.85); background: rgba(255,255,255,0.06); }
+.nav-item.on { color: #fff; background: rgba(99,102,241,0.25); }
+.nav-item.on .ni { color: var(--accent2); }
+.ni { width: 15px; height: 15px; flex-shrink: 0; opacity: 0.7; transition: all .15s; }
+.nav-item.on .ni { opacity: 1; }
+.nav-badge { margin-left: auto; font-size: 10px; padding: 2px 6px; border-radius: 10px; background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.5); }
+
+/* Upload button */
+.sb-upload { padding: 16px 20px; border-top: 1px solid rgba(255,255,255,0.08); }
+.upload-btn { width: 100%; padding: 10px; background: var(--accent); border: none; border-radius: var(--rs); color: #fff; font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 500; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; transition: all .15s; }
+.upload-btn:hover { background: #4f46e5; }
+
+/* Main */
+.main { min-width: 0; overflow: auto; }
+.main-header {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 20px 32px;
+  display: flex; align-items: center; justify-content: space-between;
+  position: sticky; top: 0; z-index: 10;
+}
+.page-title { font-family: 'Syne', sans-serif; font-size: 20px; font-weight: 600; letter-spacing: -0.02em; color: var(--ink); }
+.page-meta { font-size: 12px; color: var(--ink3); margin-top: 2px; font-family: 'JetBrains Mono', monospace; }
+.header-badges { display: flex; gap: 8px; align-items: center; }
+.hbadge { padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 500; }
+.hbadge-m { background: var(--accentbg); color: var(--accent); }
+.hbadge-w { background: var(--greenbg); color: var(--green); }
+
+/* Tabs */
+.tabs-bar {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 0 32px;
+  display: flex; gap: 0;
+  overflow-x: auto;
+}
+.tab-btn {
+  padding: 12px 18px; font-size: 12px; font-weight: 500; cursor: pointer;
+  color: var(--ink3); border-bottom: 2px solid transparent;
+  white-space: nowrap; transition: all .15s; margin-bottom: -1px;
+}
+.tab-btn:hover { color: var(--ink); }
+.tab-btn.on { color: var(--accent); border-bottom-color: var(--accent); }
+
+.content { padding: 28px 32px; }
+.tab-c { display: none; }
+.tab-c.on { display: block; }
+
+/* Metric cards */
+.mc-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 14px; margin-bottom: 24px; }
+.mc {
+  background: var(--surface); border-radius: var(--r);
+  border: 1px solid var(--border); padding: 20px 22px;
+  box-shadow: var(--shadow); position: relative; overflow: hidden;
+}
+.mc::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; }
+.mc.accent::before { background: linear-gradient(90deg, var(--accent), var(--accent2)); }
+.mc.green::before { background: var(--green); }
+.mc.amber::before { background: var(--amber); }
+.mc.red::before { background: var(--red); }
+.mc-icon { width: 36px; height: 36px; border-radius: var(--rs); display: flex; align-items: center; justify-content: center; margin-bottom: 14px; }
+.mc-icon.accent { background: var(--accentbg); color: var(--accent); }
+.mc-icon.green { background: var(--greenbg); color: var(--green); }
+.mc-icon.amber { background: var(--amberbg); color: var(--amber); }
+.mc-icon.red { background: var(--redbg); color: var(--red); }
+.mc-label { font-size: 11px; color: var(--ink3); font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; }
+.mc-val { font-family: 'Syne', sans-serif; font-size: 30px; font-weight: 700; letter-spacing: -0.03em; color: var(--ink); line-height: 1; }
+.mc-sub { font-size: 11px; color: var(--ink3); margin-top: 6px; }
+.mc-delta { font-size: 11px; font-weight: 500; margin-top: 6px; display: inline-flex; align-items: center; gap: 3px; padding: 2px 6px; border-radius: 4px; }
+.mc-delta.up { background: var(--greenbg); color: var(--green); }
+.mc-delta.dn { background: var(--redbg); color: var(--red); }
+
+/* Cards */
+.card {
+  background: var(--surface); border-radius: var(--r);
+  border: 1px solid var(--border); padding: 22px 24px;
+  margin-bottom: 18px; box-shadow: var(--shadow);
+}
+.card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
+.card-title { font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 600; color: var(--ink); letter-spacing: -0.01em; }
+.card-sub { font-size: 11px; color: var(--ink3); margin-top: 2px; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 18px; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 18px; margin-bottom: 18px; }
+.ch { position: relative; width: 100%; }
+
+/* Agent cards in summary */
+.agent-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+.agent-card { background: var(--surface2); border-radius: var(--rs); padding: 14px 16px; border: 1px solid var(--border); }
+.agent-card-top { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.av { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: 'Syne', sans-serif; font-size: 12px; font-weight: 700; flex-shrink: 0; }
+.av-1 { background: var(--accentbg); color: var(--accent); }
+.av-2 { background: var(--greenbg); color: var(--green); }
+.av-3 { background: var(--amberbg); color: var(--amber); }
+.av-4 { background: var(--redbg); color: var(--red); }
+.agent-card-name { font-size: 13px; font-weight: 500; color: var(--ink); }
+.agent-card-count { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--ink3); }
+.agent-stat { display: flex; justify-content: space-between; margin-bottom: 6px; }
+.agent-stat-l { font-size: 11px; color: var(--ink3); }
+.agent-stat-v { font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 500; color: var(--ink); }
+.bar-track { height: 4px; background: var(--surface3); border-radius: 2px; overflow: hidden; margin-top: 10px; }
+.bar-fill { height: 100%; border-radius: 2px; }
+
+/* Tables */
+.tbl { width: 100%; border-collapse: collapse; }
+.tbl th { font-size: 10px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--ink3); padding: 0 14px 10px; text-align: left; font-weight: 600; border-bottom: 1px solid var(--border); }
+.tbl th.r { text-align: right; }
+.tbl td { padding: 11px 14px; border-bottom: 1px solid var(--border); font-size: 12px; color: var(--ink2); vertical-align: middle; }
+.tbl td.r { text-align: right; font-family: 'JetBrains Mono', monospace; font-size: 11px; }
+.tbl tr:last-child td { border-bottom: none; }
+.tbl tr:hover td { background: var(--surface2); }
+.cat-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 8px; }
+.pill-ok { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 10px; font-weight: 600; background: var(--greenbg); color: var(--green); }
+.pill-fail { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 10px; font-weight: 600; background: var(--redbg); color: var(--red); }
+.pill-mid { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 10px; font-weight: 600; background: var(--amberbg); color: var(--amber); }
+.bar-inline-track { width: 80px; height: 5px; background: var(--surface3); border-radius: 3px; overflow: hidden; display: inline-block; vertical-align: middle; margin-right: 8px; }
+.bar-inline-fill { height: 100%; border-radius: 3px; }
+
+/* SLA table */
+.sla-row { display: flex; align-items: center; padding: 14px 0; border-bottom: 1px solid var(--border); gap: 16px; }
+.sla-row:last-child { border-bottom: none; }
+.sla-label { flex: 1; font-size: 12px; color: var(--ink2); }
+.sla-val { font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 500; min-width: 80px; text-align: right; }
+.sla-val.ok { color: var(--green); }
+.sla-val.fail { color: var(--red); }
+.sla-obj { font-size: 11px; color: var(--ink4); min-width: 60px; text-align: right; font-family: 'JetBrains Mono', monospace; }
+.sla-bar { width: 120px; height: 6px; background: var(--surface3); border-radius: 3px; overflow: hidden; }
+.sla-bar-fill { height: 100%; border-radius: 3px; transition: width .4s; }
+
+/* Comp selector */
+.comp-selector { display: flex; flex-wrap: wrap; gap: 8px; }
+.comp-chip { padding: 6px 14px; border-radius: 20px; font-size: 11px; font-weight: 500; cursor: pointer; border: 1.5px solid var(--border2); color: var(--ink3); background: var(--surface); transition: all .15s; }
+.comp-chip:hover { border-color: var(--accent); color: var(--accent); }
+.comp-chip.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+/* Heatmap */
+.heatmap { display: grid; grid-template-columns: 40px repeat(9,1fr); gap: 3px; }
+.hm-cell { height: 32px; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 500; transition: all .2s; cursor: default; }
+.hm-cell:hover { transform: scale(1.05); z-index: 1; }
+.hm-label { font-size: 10px; color: var(--ink3); display: flex; align-items: center; justify-content: flex-end; padding-right: 6px; }
+.hm-header { font-size: 10px; color: var(--ink3); display: flex; align-items: center; justify-content: center; }
+
+/* Modal */
+.modal-ov { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 100; align-items: center; justify-content: center; backdrop-filter: blur(4px); }
+.modal-ov.show { display: flex; }
+.modal { background: var(--surface); border-radius: var(--r); padding: 32px; width: 100%; max-width: 540px; margin: 20px; box-shadow: 0 20px 60px rgba(0,0,0,.15); max-height: 90vh; overflow-y: auto; }
+.modal-title { font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 700; color: var(--ink); margin-bottom: 4px; }
+.modal-desc { font-size: 12px; color: var(--ink3); margin-bottom: 24px; }
+.modal-section { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em; color: var(--ink3); margin: 20px 0 10px; }
+.day-grid { display: grid; grid-template-columns: repeat(5,1fr); gap: 6px; }
+.db { padding: 10px 4px; text-align: center; border: 1.5px solid var(--border2); border-radius: var(--rs); cursor: pointer; transition: all .12s; background: var(--surface); }
+.db:hover { border-color: var(--accent); }
+.db.sel { background: var(--accent); border-color: var(--accent); color: #fff; }
+.db.we { opacity: .3; pointer-events: none; }
+.db-n { font-size: 9px; text-transform: uppercase; letter-spacing: .05em; color: inherit; opacity: .6; }
+.db-d { font-size: 14px; font-weight: 600; margin-top: 2px; font-family: 'JetBrains Mono', monospace; }
+.agent-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.ag-btn { padding: 10px 14px; border: 1.5px solid var(--border2); border-radius: var(--rs); cursor: pointer; font-size: 12px; display: flex; align-items: center; gap: 8px; transition: all .12s; }
+.ag-btn.sel { background: var(--accentbg); border-color: var(--accent); color: var(--accent); }
+.inp { width: 100%; padding: 10px 14px; border: 1.5px solid var(--border2); border-radius: var(--rs); font-size: 13px; font-family: 'Inter', sans-serif; outline: none; color: var(--ink); transition: border .15s; }
+.inp:focus { border-color: var(--accent); }
+.modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 24px; }
+.btn { padding: 10px 20px; border-radius: var(--rs); font-size: 13px; font-weight: 500; cursor: pointer; border: 1.5px solid var(--border2); background: var(--surface); color: var(--ink); font-family: 'Inter', sans-serif; transition: all .15s; }
+.btn:hover { background: var(--surface2); }
+.btn.pri { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn.pri:hover { background: #4f46e5; }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+
+/* Toast */
+.toast { position: fixed; bottom: 24px; right: 24px; background: var(--ink); color: #fff; padding: 12px 20px; border-radius: var(--rs); font-size: 13px; z-index: 999; opacity: 0; transition: opacity .2s; pointer-events: none; box-shadow: var(--shadow-md); }
+.toast.show { opacity: 1; }
+.toast.err { background: var(--red); }
+.sp { display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(255,255,255,.3); border-top-color: #fff; border-radius: 50%; animation: spin .7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Empty */
+.empty { text-align: center; padding: 48px; color: var(--ink3); font-size: 13px; }
+.empty-icon { font-size: 32px; margin-bottom: 12px; opacity: .4; }
+
+/* Responsive */
+@media (max-width: 900px) {
+  .app { grid-template-columns: 1fr; }
+  .sidebar { position: static; height: auto; }
+  .mc-grid { grid-template-columns: repeat(2,1fr); }
+  .grid-2, .grid-3 { grid-template-columns: 1fr; }
+  .content { padding: 20px 16px; }
+}
 </style>
 </head>
 <body>
-<div class="layout">
+<div class="app">
+
+  <!-- SIDEBAR -->
   <aside class="sidebar">
-    <div class="sb-brand"><h1>Operaciones</h1><p>Dashboard semanal y mensual</p></div>
-    <nav>
-      <div class="nav-item on" data-tab="resumen" onclick="showTab('resumen',this)">
+    <div class="sb-top">
+      <div class="sb-logo">
+        <div class="sb-logo-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        </div>
+        <div>
+          <div class="sb-title">OPS DASHBOARD</div>
+          <div class="sb-sub">Operaciones · Lannis</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Period selector -->
+    <div class="sb-period">
+      <div class="sb-period-label">Período activo</div>
+      <select class="period-select" id="periodSelect" onchange="onPeriodChange()">
+        <option value="">Cargando...</option>
+      </select>
+    </div>
+
+    <!-- Agent filter -->
+    <div class="sb-agents">
+      <div class="sb-agents-label">Filtrar por agente</div>
+      <div class="agent-chips" id="agentChips">
+        <div class="agent-chip on" data-agent="all" onclick="toggleAgent('all',this)">Todos</div>
+      </div>
+    </div>
+
+    <!-- Nav -->
+    <div class="sb-nav">
+      <div class="nav-section">Análisis</div>
+      <div class="nav-item on" onclick="showTab('resumen',this)">
         <svg class="ni" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>
         Resumen
       </div>
-      <div class="nav-item" data-tab="categorias" onclick="showTab('categorias',this)">
+      <div class="nav-item" onclick="showTab('categorias',this)">
         <svg class="ni" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6"/><path d="M8 2v6l4 2"/></svg>
         Categorías
       </div>
-      <div class="nav-item" data-tab="tiempos" onclick="showTab('tiempos',this)">
+      <div class="nav-item" onclick="showTab('tiempos',this)">
         <svg class="ni" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6"/><path d="M8 4v4l3 2"/></svg>
-        Tiempos
+        Tiempos & SLA
       </div>
-      <div class="nav-item" data-tab="capacidad" onclick="showTab('capacidad',this)">
+      <div class="nav-item" onclick="showTab('capacidad',this)">
         <svg class="ni" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 12h3V6H2zM6 12h3V3H6zM10 12h3V8h-3z"/></svg>
         Capacidad
       </div>
-      <div class="nav-item" data-tab="comparativa" onclick="showTab('comparativa',this)">
-        <svg class="ni" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 8h12M8 2v12"/><circle cx="8" cy="8" r="6"/></svg>
+      <div class="nav-section">Profundidad</div>
+      <div class="nav-item" onclick="showTab('conversaciones',this)">
+        <svg class="ni" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 3h12v8H9l-3 2v-2H2z"/></svg>
+        Conversaciones
+      </div>
+      <div class="nav-item" onclick="showTab('clientes',this)">
+        <svg class="ni" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6" cy="5" r="3"/><path d="M1 14c0-3 2-5 5-5s5 2 5 5"/><circle cx="12" cy="5" r="2"/><path d="M15 14c0-2-1.5-3.5-3-4"/></svg>
+        Clientes
+      </div>
+      <div class="nav-section">Histórico</div>
+      <div class="nav-item" onclick="showTab('comparativa',this)">
+        <svg class="ni" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 2v12M14 2v12M2 7h12"/><circle cx="2" cy="7" r="1.5" fill="currentColor"/><circle cx="14" cy="7" r="1.5" fill="currentColor"/></svg>
         Comparativa
       </div>
-    </nav>
-    <div class="sb-bot">
-      <div class="sec-lbl">Mensuales</div>
-      <div class="pills" id="monthlyPills"><div class="empty" style="padding:8px 0;font-size:11px">—</div></div>
-      <div class="sec-lbl">Semanales</div>
-      <div class="pills" id="weeklyPills"><div class="empty" style="padding:8px 0;font-size:11px">Cargando...</div></div>
-      <label class="btn pri" style="width:100%;justify-content:center;cursor:pointer;margin-top:10px">
-        + Cargar reporte
+    </div>
+
+    <div class="sb-upload">
+      <label class="upload-btn" style="cursor:pointer">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 2v8M5 5l3-3 3 3"/><path d="M2 11v2a1 1 0 001 1h10a1 1 0 001-1v-2"/></svg>
+        Cargar reporte
         <input type="file" id="fileIn" accept=".xlsx,.csv" style="display:none">
       </label>
     </div>
   </aside>
 
-  <main class="main">
-    <div class="ph">
+  <!-- MAIN -->
+  <div class="main">
+    <div class="main-header">
       <div>
-        <div class="pt" id="pageTitle">Dashboard Operaciones</div>
-        <div class="ps" id="pageSub">Seleccioná un reporte</div>
+        <div class="page-title" id="pageTitle">Dashboard Operaciones</div>
+        <div class="page-meta" id="pageMeta">Seleccioná un período para comenzar</div>
       </div>
+      <div class="header-badges" id="headerBadges"></div>
     </div>
 
-    <!-- RESUMEN -->
-    <div id="tab-resumen" class="tab-c on">
-      <div class="mcs" id="mcsRow"></div>
-      <div class="card"><div class="ct" id="daysTitle">Consultas por día</div><div class="ch" style="height:190px"><canvas id="cDays"></canvas></div></div>
-      <div class="two">
-        <div class="card"><div class="ct">Top 5 categorías</div><div class="ch" style="height:200px"><canvas id="cTopCat"></canvas></div></div>
-        <div class="card"><div class="ct">Por agente</div><div id="agentMini"><div class="empty">Sin datos</div></div></div>
-      </div>
+    <div class="tabs-bar">
+      <div class="tab-btn on" onclick="showTab('resumen',this)">Resumen</div>
+      <div class="tab-btn" onclick="showTab('categorias',this)">Categorías</div>
+      <div class="tab-btn" onclick="showTab('tiempos',this)">Tiempos & SLA</div>
+      <div class="tab-btn" onclick="showTab('capacidad',this)">Capacidad</div>
+      <div class="tab-btn" onclick="showTab('conversaciones',this)">Conversaciones</div>
+      <div class="tab-btn" onclick="showTab('clientes',this)">Clientes</div>
+      <div class="tab-btn" onclick="showTab('comparativa',this)">Comparativa</div>
     </div>
 
-    <!-- CATEGORÍAS -->
-    <div id="tab-categorias" class="tab-c">
-      <div class="card">
-        <div class="ct">Todas las categorías <span style="font-size:10px;color:var(--t3);font-weight:400;text-transform:none">(total consultas sin filtro de horario)</span></div>
-        <table class="tbl" id="catTable">
-          <thead><tr><th>Categoría</th><th>Cantidad</th><th>%</th><th>FRT prom</th><th>TTR prom</th></tr></thead>
-          <tbody id="catBody"></tbody>
-        </table>
-      </div>
-      <div class="card"><div class="ct">Distribución horaria <span style="font-size:10px;color:var(--t3);font-weight:400;text-transform:none">(todas las consultas)</span></div><div class="ch" style="height:200px"><canvas id="cHours"></canvas></div></div>
-    </div>
+    <div class="content">
 
-    <!-- TIEMPOS -->
-    <div id="tab-tiempos" class="tab-c">
-      <div class="card">
-        <div class="ct">SLA — Equipo completo <span style="font-size:10px;color:var(--t3);font-weight:400;text-transform:none">(lun-vie 9-18hs sin feriados)</span></div>
-        <table class="tbl">
-          <thead><tr><th>Métrica</th><th>Mediana</th><th>Promedio</th><th>Objetivo</th></tr></thead>
-          <tbody id="slaTeam"></tbody>
-        </table>
-      </div>
-      <div id="agentTimeCards"></div>
-      <div class="card"><div class="ct">Comparativa tiempos por agente</div><div class="ch" style="height:220px"><canvas id="cAgentTimes"></canvas></div></div>
-    </div>
-
-    <!-- CAPACIDAD -->
-    <div id="tab-capacidad" class="tab-c">
-      <div class="card">
-        <div class="ct">Consultas por hora hábil <span id="capSubtitle" style="font-size:10px;color:var(--t3);font-weight:400;text-transform:none"></span></div>
-        <table class="tbl">
-          <thead><tr><th>Agente</th><th>Consultas hábiles</th><th>Horas disponibles</th><th>Consultas/hora</th><th>Carga estimada</th></tr></thead>
-          <tbody id="capBody"></tbody>
-        </table>
-      </div>
-      <div class="two">
-        <div class="card">
-          <div class="ct">Origen de consultas</div>
-          <div id="channelList"><div class="empty">Sin datos</div></div>
+      <!-- RESUMEN -->
+      <div id="tab-resumen" class="tab-c on">
+        <div class="mc-grid" id="mcsRow"></div>
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-header"><div><div class="card-title">Consultas por día</div><div class="card-sub">Total sin filtro de horario</div></div></div>
+            <div class="ch" style="height:200px"><canvas id="cDays"></canvas></div>
+          </div>
+          <div class="card">
+            <div class="card-header"><div><div class="card-title">Distribución horaria</div><div class="card-sub">Picos de demanda</div></div></div>
+            <div class="ch" style="height:200px"><canvas id="cHoursR"></canvas></div>
+          </div>
         </div>
-        <div class="card">
-          <div class="ct">Complejidad operativa</div>
-          <div id="complexList"><div class="empty">Sin datos</div></div>
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-header"><div><div class="card-title">Top categorías</div></div></div>
+            <div class="ch" style="height:220px"><canvas id="cTopCat"></canvas></div>
+          </div>
+          <div class="card">
+            <div class="card-header"><div><div class="card-title">Por agente</div><div class="card-sub">Consultas hábiles</div></div></div>
+            <div class="agent-cards" id="agentCards"></div>
+          </div>
         </div>
       </div>
-      <div class="card"><div class="ct">Distribución horaria</div><div class="ch" style="height:200px"><canvas id="cHours2"></canvas></div></div>
-    </div>
 
-    <!-- COMPARATIVA -->
-    <div id="tab-comparativa" class="tab-c">
-      <div class="card" style="margin-bottom:16px">
-        <div class="ct">Seleccioná períodos a comparar <span style="font-size:10px;color:var(--t3);font-weight:400;text-transform:none">(hasta 3)</span></div>
-        <div style="display:flex;flex-wrap:wrap;gap:8px" id="compSelector"></div>
+      <!-- CATEGORÍAS -->
+      <div id="tab-categorias" class="tab-c">
+        <div class="card">
+          <div class="card-header"><div><div class="card-title">Todas las categorías</div><div class="card-sub">Cantidad · % · Tiempos · Complejidad</div></div></div>
+          <table class="tbl">
+            <thead><tr><th>Categoría</th><th class="r">Consultas</th><th class="r">%</th><th class="r">FRT prom</th><th class="r">TTR prom</th><th class="r">Msgs avg</th><th class="r">Same-day</th></tr></thead>
+            <tbody id="catBody"></tbody>
+          </table>
+        </div>
+        <div class="card">
+          <div class="card-header"><div><div class="card-title">Complejidad por categoría</div><div class="card-sub">Mensajes promedio · eje X = mensajes, eje Y = % resolución mismo día, tamaño = volumen</div></div></div>
+          <div class="ch" style="height:280px"><canvas id="cBubble"></canvas></div>
+        </div>
       </div>
-      <div id="compContent"><div class="empty">Seleccioná al menos un período para comparar.</div></div>
+
+      <!-- TIEMPOS -->
+      <div id="tab-tiempos" class="tab-c">
+        <div class="card">
+          <div class="card-header"><div><div class="card-title">SLA — Equipo completo</div><div class="card-sub">Lun-vie · 9-18hs · sin feriados</div></div></div>
+          <div id="slaTeam"></div>
+        </div>
+        <div id="agentSlaCards"></div>
+        <div class="card">
+          <div class="card-header"><div><div class="card-title">Comparativa visual de tiempos</div></div></div>
+          <div class="ch" style="height:240px"><canvas id="cAgentTimes"></canvas></div>
+        </div>
+      </div>
+
+      <!-- CAPACIDAD -->
+      <div id="tab-capacidad" class="tab-c">
+        <div class="card">
+          <div class="card-header"><div><div class="card-title">Carga por agente</div><div class="card-sub" id="capSub"></div></div></div>
+          <table class="tbl">
+            <thead><tr><th>Agente</th><th class="r">Consultas hábiles</th><th class="r">Horas disponibles</th><th class="r">Consultas/hora</th><th class="r">Carga estimada</th></tr></thead>
+            <tbody id="capBody"></tbody>
+          </table>
+        </div>
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-header"><div><div class="card-title">Origen de consultas</div></div></div>
+            <div id="channelList"></div>
+          </div>
+          <div class="card">
+            <div class="card-header"><div><div class="card-title">Complejidad operativa</div></div></div>
+            <div id="complexList"></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><div><div class="card-title">Heatmap — Volumen por hora y día</div><div class="card-sub">Más oscuro = más consultas</div></div></div>
+          <div id="heatmapContainer"></div>
+        </div>
+      </div>
+
+      <!-- CONVERSACIONES -->
+      <div id="tab-conversaciones" class="tab-c">
+        <div class="mc-grid" style="grid-template-columns:repeat(3,1fr)">
+          <div class="mc green"><div class="mc-icon green"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 3L6 10l-3-3"/></svg></div><div class="mc-label">Resolución mismo día</div><div class="mc-v" id="sdPct">—</div><div class="mc-sub" id="sdCount">de las consultas</div></div>
+          <div class="mc accent"><div class="mc-icon accent"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="8" cy="8" r="6"/><path d="M8 4v4l2 2"/></svg></div><div class="mc-label">Time to Assignment</div><div class="mc-v" id="ttaVal">—</div><div class="mc-sub" id="ttaSub">mediana</div></div>
+          <div class="mc amber"><div class="mc-icon amber"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 2v4l3 2"/><circle cx="8" cy="8" r="6"/></svg></div><div class="mc-label">Cerradas por AI</div><div class="mc-v" id="aiVal">—</div><div class="mc-sub">sin intervención humana</div></div>
+        </div>
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-header"><div><div class="card-title">Resolución mismo día por categoría</div></div></div>
+            <table class="tbl">
+              <thead><tr><th>Categoría</th><th class="r">Total</th><th class="r">Same-day</th><th class="r">%</th></tr></thead>
+              <tbody id="sdBody"></tbody>
+            </table>
+          </div>
+          <div class="card">
+            <div class="card-header"><div><div class="card-title">Mensajes promedio por categoría</div><div class="card-sub">Mayor = más compleja</div></div></div>
+            <div class="ch" style="height:280px"><canvas id="cMsgs"></canvas></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CLIENTES -->
+      <div id="tab-clientes" class="tab-c">
+        <div class="mc-grid">
+          <div class="mc accent"><div class="mc-icon accent"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="8" cy="6" r="3"/><path d="M2 14c0-4 3-6 6-6s6 2 6 6"/></svg></div><div class="mc-label">Contactos únicos</div><div class="mc-v" id="cliTotal">—</div></div>
+          <div class="mc green"><div class="mc-icon green"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 2v12M2 8h12"/></svg></div><div class="mc-label">Recurrentes (+1)</div><div class="mc-v" id="cliRecurr">—</div></div>
+          <div class="mc amber"><div class="mc-icon amber"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12h3V6H2zM6 12h3V3H6zM10 12h3V8h-3z"/></svg></div><div class="mc-label">Alta frecuencia (+10)</div><div class="mc-v" id="cliHigh">—</div></div>
+          <div class="mc red"><div class="mc-icon red"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 2l2 4h4l-3 3 1 4-4-2-4 2 1-4-3-3h4z"/></svg></div><div class="mc-label">Más activo</div><div class="mc-v" id="cliTop">—</div><div class="mc-sub">consultas</div></div>
+        </div>
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-header"><div><div class="card-title">Distribución de frecuencia</div></div></div>
+            <div class="ch" style="height:200px"><canvas id="cCliFreq"></canvas></div>
+          </div>
+          <div class="card">
+            <div class="card-header"><div><div class="card-title">Top categorías de clientes frecuentes</div></div></div>
+            <div class="ch" style="height:200px"><canvas id="cCliCats"></canvas></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><div><div class="card-title">Top 20 contactos más activos</div></div></div>
+          <table class="tbl">
+            <thead><tr><th>#</th><th>Contact ID</th><th class="r">Consultas</th><th>Categoría principal</th><th class="r">Última consulta</th></tr></thead>
+            <tbody id="topCliBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- COMPARATIVA -->
+      <div id="tab-comparativa" class="tab-c">
+        <div class="card">
+          <div class="card-header"><div><div class="card-title">Seleccioná períodos a comparar</div><div class="card-sub">El período activo del sidebar es siempre la columna base. Elegí hasta 3 para comparar.</div></div></div>
+          <div class="comp-selector" id="compSelector"></div>
+        </div>
+        <div id="compContent"><div class="empty"><div class="empty-icon">↔</div>Seleccioná al menos un período para comparar.</div></div>
+      </div>
+
     </div>
-  </main>
+  </div>
 </div>
 
 <!-- MODAL -->
 <div class="modal-ov" id="modalOv">
   <div class="modal">
-    <h2>Configurar reporte</h2>
-    <p id="modalDesc">Completá los datos antes de procesar.</p>
-    <div class="modal-sec">¿Hubo feriados? (se excluyen de tiempos)</div>
+    <div class="modal-title">Configurar reporte</div>
+    <div class="modal-desc" id="modalDesc">Completá los datos antes de procesar.</div>
+    <div class="modal-section">Feriados (se excluyen de tiempos)</div>
     <div class="day-grid" id="dayGrid"></div>
-    <div class="modal-sec">¿Qué agentes incluir?</div>
-    <div class="at" id="agentSel"></div>
-    <div class="modal-sec" style="margin-top:16px">Subido por (opcional)</div>
+    <div class="modal-section">Agentes a incluir</div>
+    <div class="agent-grid" id="agentSel"></div>
+    <div class="modal-section">Subido por (opcional)</div>
     <input type="text" id="uploadedBy" class="inp" placeholder="Tu nombre...">
-    <div class="ma">
+    <div class="modal-actions">
       <button class="btn" onclick="document.getElementById('modalOv').classList.remove('show')">Cancelar</button>
       <button class="btn pri" id="confirmBtn" onclick="confirmUpload()">Procesar y guardar</button>
     </div>
@@ -256,65 +523,88 @@ const SB_KEY='sb_publishable_I6Gek16X8uwcgWh0069Tqw_EhQ9LjZ9';
 const {createClient}=supabase;
 const db=createClient(SB_URL,SB_KEY);
 
-const COLORS=['#2a5fad','#0f7a5a','#c94e28','#a06010','#4a3faa','#b83d6a','#3a6b10','#6b6860','#7a2f0f','#1a6b7a'];
+const PALETTE=['#6366f1','#10b981','#f59e0b','#ef4444','#8b5cf6','#ec4899','#14b8a6','#f97316','#06b6d4','#84cc16'];
 const MONTHS=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 const SLA={frt:10,art:20,ttr:120};
 const MAX_CPH=4;
+const AV_COLORS=['av-1','av-2','av-3','av-4'];
 
 const EQ_INT=new Set([318356816,315475410,295606873,340645465,318432393,318432542,318434168,331566697,316942904,318426014,343325858]);
 const CLOSED_BY={906585:'Mateo Lopez',906580:'Pablo Moreno',906560:'María Rosino',949998:'Camila Fernandez'};
 
-function normCat(r){
-  if(!r)return'Sin categoría';
-  const s=String(r).trim();
-  if(['Impuestos','Impuestos provinciales','Deudas'].includes(s))return'Impuestos/Deuda';
-  if(['Otros - gestión de asesorías','Otros - notificaciones domicilio fiscal electrónico','Otros - otras notificaciones al mail','Otros - test','Otra'].includes(s))return'Otros';
-  return s||'Sin categoría';
-}
+function normCat(r){if(!r)return'Sin categoría';const s=String(r).trim();if(['Impuestos','Impuestos provinciales','Deudas'].includes(s))return'Impuestos/Deuda';if(['Otros - gestión de asesorías','Otros - notificaciones domicilio fiscal electrónico','Otros - otras notificaciones al mail','Otros - test','Otra'].includes(s))return'Otros';return s||'Sin categoría';}
 function pm(v){if(!v)return null;const p=String(v).split(':');if(p.length!==3)return null;const[h,m,s]=p.map(Number);return isNaN(h)?null:h*60+m+s/60;}
 function avg(a){const x=a.filter(v=>v!=null&&!isNaN(v));return x.length?x.reduce((s,v)=>s+v,0)/x.length:0;}
 function med(a){const x=[...a.filter(v=>v!=null&&!isNaN(v))].sort((a,b)=>a-b);if(!x.length)return 0;const m=Math.floor(x.length/2);return x.length%2?x[m]:(x[m-1]+x[m])/2;}
 function hms(m){if(!m||isNaN(m)||m===0)return'—';const h=Math.floor(m/60),mn=Math.floor(m%60),ss=Math.round((m*60)%60);return`${h}:${String(mn).padStart(2,'0')}:${String(ss).padStart(2,'0')}`;}
 function fmtM(m){if(!m||isNaN(m)||m===0)return'—';if(m<60)return Math.round(m)+'m';return Math.floor(m/60)+'h '+Math.round(m%60)+'m';}
 function ini(n){return n.split(' ').filter(Boolean).slice(0,2).map(w=>w[0]).join('').toUpperCase();}
-function toast(msg,err=false){const t=document.getElementById('toast');t.textContent=msg;t.className='toast'+(err?' err':'');t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3000);}
+function toast(msg,err=false){const t=document.getElementById('toast');t.textContent=msg;t.className='toast'+(err?' err':'');t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3200);}
 function dch(id){if(charts[id]){charts[id].destroy();delete charts[id];}}
 function mkChart(id,type,data,opts){dch(id);const ctx=document.getElementById(id);if(!ctx)return;charts[id]=new Chart(ctx,{type,data,options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},...opts}});}
 
 let allWeeks=[],activeIdx=0,charts={},curTab='resumen';
-let pendingRows=null,pendingHols=new Set(),pendingAgents=new Set(),pendingDetectedAgents=[];
-let compIds=[];
+let pendingRows=null,pendingHols=new Set(),pendingAgents=new Set();
+let compIds=[],activeAgentFilter='all';
 
 // ── Supabase ──
 async function fetchWeeks(){
   const{data,error}=await db.from('weekly_reports').select('*').order('week_start',{ascending:false});
-  if(error){toast('Error: '+error.message,true);return;}
+  if(error){toast('Error cargando datos: '+error.message,true);return;}
   allWeeks=(data||[]).map(r=>{
     const from=new Date((r.week_start||'2000-01-01')+'T12:00:00');
     const to=new Date((r.week_end||r.week_start||'2000-01-01')+'T12:00:00');
     const diff=Math.round((to-from)/(1000*60*60*24))+1;
     const isM=diff>10;
-    const fl=isM?MONTHS[from.getMonth()]+' '+from.getFullYear():'Sem. '+( r.week_start||'').substring(5).replace('-','/')+' al '+(r.week_end||'').substring(5).replace('-','/');
+    const fl=isM?MONTHS[from.getMonth()]+' '+from.getFullYear():'Sem. '+(r.week_start||'').substring(5).replace('-','/')+' — '+(r.week_end||'').substring(5).replace('-','/');
     return{id:r.id,week:r.week_label,fl,isM,ws:r.week_start,we:r.week_end,
       total:r.total||0,totalH:r.total_habil||0,workDays:r.working_days||0,availHrs:r.available_hours||0,
       frtMed:r.frt_med||0,frtAvg:r.frt_avg||0,artMed:r.art_med||0,artAvg:r.art_avg||0,ttrMed:r.ttr_med||0,ttrAvg:r.ttr_avg||0,
       days:r.days||{},hours:r.hours||{},cats:r.cats||{},catTimes:r.cat_times||{},
       channels:r.channels||{},botCount:r.bot_count||0,reassigned:r.reassigned_count||0,
+      sdTotal:r.same_day_total||0,sdBycat:r.same_day_by_cat||{},msgsByCat:r.msgs_by_cat||{},
+      ttaMed:r.tta_med||0,ttaAvg:r.tta_avg||0,aiClosed:r.ai_closed||0,
+      topContacts:r.top_contacts||[],contactFreq:r.contact_freq||{},totalContacts:0,
       agents:r.agents||{},holidays:r.holidays||[],by:r.uploaded_by};
   });
   if(allWeeks.length)activeIdx=0;
+  buildPeriodSelector();
+  buildAgentChips();
   renderAll();
 }
 
 async function saveWeek(p){const{error}=await db.from('weekly_reports').upsert(p,{onConflict:'week_label'});if(error)throw error;}
-async function deleteWeek(wl){const{error}=await db.from('weekly_reports').delete().eq('week_label',wl);if(error)throw error;}
 
-// ── Parse dates ──
+function buildPeriodSelector(){
+  const sel=document.getElementById('periodSelect');
+  sel.innerHTML=allWeeks.length?allWeeks.map((w,i)=>`<option value="${i}" ${i===activeIdx?'selected':''}>${w.fl} · ${w.total} consultas</option>`).join(''):'<option>Sin datos</option>';
+}
+
+function onPeriodChange(){
+  activeIdx=parseInt(document.getElementById('periodSelect').value)||0;
+  compIds=[];renderAll();
+}
+
+function buildAgentChips(){
+  const w=allWeeks[activeIdx];if(!w)return;
+  const agents=Object.keys(w.agents||{}).filter(n=>n&&n!=='Sin agente');
+  const chips=document.getElementById('agentChips');
+  chips.innerHTML=`<div class="agent-chip on" data-agent="all" onclick="toggleAgent('all',this)">Todos</div>`+
+    agents.map(a=>`<div class="agent-chip" data-agent="${a}" onclick="toggleAgent('${a}',this)">${a.split(' ')[0]}</div>`).join('');
+}
+
+function toggleAgent(agent,el){
+  activeAgentFilter=agent;
+  document.querySelectorAll('.agent-chip').forEach(c=>c.classList.remove('on'));
+  el.classList.add('on');
+  renderAll();
+}
+
+// ── Parse ──
 function exDH(raw){
   if(!raw||raw==='')return{f:'',h:-1};
   if(typeof raw==='number'){const d=XLSX.SSF.parse_date_code(raw);if(d)return{f:`${d.y}-${String(d.m).padStart(2,'0')}-${String(d.d).padStart(2,'0')}`,h:d.H||0};return{f:'',h:-1};}
-  const s=String(raw);
-  const m=s.match(/(\d{4}-\d{2}-\d{2})[\sT](\d{1,2}):/);
+  const s=String(raw);const m=s.match(/(\d{4}-\d{2}-\d{2})[\sT](\d{1,2}):/);
   if(m)return{f:m[1],h:parseInt(m[2],10)};
   const p=new Date(s);if(!isNaN(p))return{f:p.toISOString().substring(0,10),h:p.getHours()};
   return{f:'',h:-1};
@@ -322,30 +612,24 @@ function exDH(raw){
 
 // ── Modal ──
 function showModal(weekDates,detectedAgents){
-  pendingHols=new Set();pendingAgents=new Set(detectedAgents);pendingDetectedAgents=detectedAgents;
+  pendingHols=new Set();pendingAgents=new Set(detectedAgents);
   document.getElementById('uploadedBy').value='';
   const dates=[...weekDates].sort();
-  document.getElementById('modalDesc').textContent=`Período detectado: ${dates[0]} al ${dates[dates.length-1]} · ${dates.length} días`;
-  // Day grid
+  document.getElementById('modalDesc').textContent=`Período: ${dates[0]} al ${dates[dates.length-1]} · ${dates.length} días detectados`;
   const grid=document.getElementById('dayGrid');grid.innerHTML='';
   dates.forEach(d=>{
     const dt=new Date(d+'T12:00:00');const dow=dt.getDay();
-    const dn=['dom','lun','mar','mié','jue','vie','sáb'];
-    const we=dow===0||dow===6;
+    const dn=['dom','lun','mar','mié','jue','vie','sáb'];const we=dow===0||dow===6;
     const btn=document.createElement('div');btn.className='db'+(we?' we':'');
     btn.innerHTML=`<div class="db-n">${dn[dow]}</div><div class="db-d">${d.substring(8)}</div>`;
     if(!we){btn.onclick=()=>{if(pendingHols.has(d)){pendingHols.delete(d);btn.classList.remove('sel');}else{pendingHols.add(d);btn.classList.add('sel');}}}
     grid.appendChild(btn);
   });
-  // Agent selector
   const asel=document.getElementById('agentSel');asel.innerHTML='';
   detectedAgents.forEach(name=>{
-    const btn=document.createElement('div');btn.className='at-btn sel';
-    btn.innerHTML=`<span style="width:14px;height:14px;border:1.5px solid currentColor;border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:10px;flex-shrink:0">✓</span>${name}`;
-    btn.onclick=()=>{
-      if(pendingAgents.has(name)){pendingAgents.delete(name);btn.classList.remove('sel');btn.querySelector('span').textContent='';}
-      else{pendingAgents.add(name);btn.classList.add('sel');btn.querySelector('span').textContent='✓';}
-    };
+    const btn=document.createElement('div');btn.className='ag-btn sel';
+    btn.innerHTML=`<span style="font-size:16px">✓</span>${name}`;
+    btn.onclick=()=>{if(pendingAgents.has(name)){pendingAgents.delete(name);btn.classList.remove('sel');btn.querySelector('span').textContent='○';}else{pendingAgents.add(name);btn.classList.add('sel');btn.querySelector('span').textContent='✓';}};
     asel.appendChild(btn);
   });
   document.getElementById('modalOv').classList.add('show');
@@ -353,7 +637,7 @@ function showModal(weekDates,detectedAgents){
 
 async function confirmUpload(){
   const btn=document.getElementById('confirmBtn');
-  btn.disabled=true;btn.innerHTML='<span class="sp"></span> Guardando...';
+  btn.disabled=true;btn.innerHTML='<span class="sp"></span> Procesando...';
   document.getElementById('modalOv').classList.remove('show');
   if(!pendingRows){btn.disabled=false;btn.innerHTML='Procesar y guardar';return;}
   const result=computeWeek(pendingRows,pendingHols,pendingAgents);
@@ -366,10 +650,13 @@ async function confirmUpload(){
     frt_med:result.frtMed,frt_avg:result.frtAvg,art_med:result.artMed,art_avg:result.artAvg,ttr_med:result.ttrMed,ttr_avg:result.ttrAvg,
     days:result.days,hours:result.hours,cats:result.cats,cat_times:result.catTimes,
     channels:result.channels,bot_count:result.botCount,reassigned_count:result.reassigned,
+    same_day_total:result.sdTotal,same_day_by_cat:result.sdBycat,msgs_by_cat:result.msgsByCat,
+    tta_avg:result.ttaAvg,tta_med:result.ttaMed,ai_closed:result.aiClosed,
+    top_contacts:result.topContacts,contact_freq:result.contactFreq,
     agents:result.agents,holidays:[...pendingHols],uploaded_by:by||null
   };
-  try{await saveWeek(p);toast('Guardado ✓');await fetchWeeks();}
-  catch(e){toast('Error: '+e.message,true);}
+  try{await saveWeek(p);toast('✓ Reporte guardado correctamente');await fetchWeeks();}
+  catch(e){toast('Error al guardar: '+e.message,true);}
   btn.disabled=false;btn.innerHTML='Procesar y guardar';
 }
 
@@ -379,7 +666,11 @@ function computeWeek(rows,hols,activeAgents){
   const col=n=>hdrs.findIndex(h=>h.toLowerCase().includes(n.toLowerCase()));
   const iS=col('DateTime Conversation Started'),iCID=col('Contact ID'),iCB=col('Closed By');
   const iFRT=col('First Response Time'),iART=col('Average Response Time'),iTTR=col('Resolution Time');
-  const iCat=col('Conversation Category'),iSrc=col('Opened By Source'),iNote=col('Closing Note Summary'),iNA=col('Number of Assignments');
+  const iCat=col('Conversation Category'),iSrc=col('Opened By Source'),iNote=col('Closing Note Summary');
+  const iNA=col('Number of Assignments'),iTTA=col('Time to First Assignment');
+  const iMO=col('Number of Outgoing Messages'),iMI=col('Number of Incoming Messages');
+  const iRes=col('DateTime Conversation Resolved'),iCBS=col('Closed By Source');
+  const iDay=col('DateTime Conversation Started');
 
   const data=rows.slice(1).filter(r=>r&&r.length>4&&r[iS]);
   const wDates=new Set();
@@ -395,66 +686,71 @@ function computeWeek(rows,hols,activeAgents){
     const isWE=dow===0||dow===6,isFer=hols.has(f),inH=h>=9&&h<18;
     const habTime=!isWE&&!isFer&&inH;
     const cid=parseInt(r[iCID]);const cbid=parseInt(r[iCB]);
-    const isInt=EQ_INT.has(cid);
-    const agent=CLOSED_BY[cbid]||'';
+    const isInt=EQ_INT.has(cid);const agent=CLOSED_BY[cbid]||'';
     const src=String(r[iSrc]||'').trim();
-    const hasBot=String(r[iNote]||'').toLowerCase().includes('workflow')||String(r[iNote]||'').toLowerCase().includes('automatización');
+    const hasBot=String(r[iNote]||'').toLowerCase().includes('workflow');
     const numA=parseInt(r[iNA])||0;
+    const resolvedDate=String(r[iRes]||'').substring(0,10);
+    const sameDay=f===resolvedDate&&resolvedDate!=='';
+    const totalMsgs=(parseInt(r[iMO])||0)+(parseInt(r[iMI])||0);
+    const aiClosed=String(r[iCBS]||'').trim()==='ai_agent';
+    const contactId=String(r[iCID]||'').trim();
     return{f,h,ds:DN[dow],dow,isInt,agent,habTime,catN:normCat(r[iCat]),
-      frt:pm(r[iFRT]),art:pm(r[iART]),ttr:pm(r[iTTR]),src,hasBot,reassigned:numA>1};
+      frt:pm(r[iFRT]),art:pm(r[iART]),ttr:pm(r[iTTR]),tta:pm(r[iTTA]),
+      src,hasBot,reassigned:numA>1,sameDay,totalMsgs,aiClosed,contactId};
   });
 
-  // ALL external rows for counts
   const allR=processed.filter(r=>!r.isInt&&r.f);
-  // Habil rows for times — only selected agents
   const habR=processed.filter(r=>r.habTime&&!r.isInt&&(activeAgents.size===0||activeAgents.has(r.agent)));
 
-  // Cats (all external)
-  const cats={};allR.forEach(r=>{cats[r.catN]=(cats[r.catN]||0)+1;});
-  // Days (all external)
-  const days={};allR.forEach(r=>{if(DO.includes(r.ds))days[r.ds]=(days[r.ds]||0)+1;});
+  const cats={},days={},hours={};
+  allR.forEach(r=>{
+    cats[r.catN]=(cats[r.catN]||0)+1;
+    if(DO.includes(r.ds))days[r.ds]=(days[r.ds]||0)+1;
+    if(r.h>=0&&r.h<=23)hours[r.h]=(hours[r.h]||0)+1;
+  });
   const ordD={};DO.forEach(d=>{if(days[d])ordD[d]=days[d];});
-  // Hours (all external)
-  const hours={};allR.forEach(r=>{if(r.h>=0&&r.h<=23)hours[r.h]=(hours[r.h]||0)+1;});
 
-  // Cat times (habil)
   const ctMap={};
   habR.forEach(r=>{if(!ctMap[r.catN])ctMap[r.catN]={count:0,frts:[],ttrs:[]};ctMap[r.catN].count++;ctMap[r.catN].frts.push(r.frt);ctMap[r.catN].ttrs.push(r.ttr);});
   const catTimes={};Object.entries(ctMap).forEach(([c,i])=>{catTimes[c]={count:i.count,frtAvg:+avg(i.frts).toFixed(1),ttrAvg:+avg(i.ttrs).toFixed(1)};});
 
-  // Channels & bot (all external)
-  const channels={};let botC=0,reassC=0;
-  allR.forEach(r=>{channels[r.src]=(channels[r.src]||0)+1;if(r.hasBot)botC++;if(r.reassigned)reassC++;});
+  const channels={};let botC=0,reassC=0,sdTotal=0,aiCl=0;
+  const sdCat={},msgsCat={},ttaVals=[],contactMap={};
+  allR.forEach(r=>{
+    channels[r.src]=(channels[r.src]||0)+1;
+    if(r.hasBot)botC++;if(r.reassigned)reassC++;
+    if(r.sameDay)sdTotal++;
+    if(r.aiClosed)aiCl++;
+    if(!sdCat[r.catN])sdCat[r.catN]={total:0,sd:0,msgs:[]};
+    sdCat[r.catN].total++;if(r.sameDay)sdCat[r.catN].sd++;sdCat[r.catN].msgs.push(r.totalMsgs);
+    if(r.tta!=null)ttaVals.push(r.tta);
+    if(r.contactId&&r.contactId!=='NaN'){
+      if(!contactMap[r.contactId])contactMap[r.contactId]={count:0,cats:{},last:''};
+      contactMap[r.contactId].count++;contactMap[r.contactId].cats[r.catN]=(contactMap[r.contactId].cats[r.catN]||0)+1;
+      if(r.f>contactMap[r.contactId].last)contactMap[r.contactId].last=r.f;
+    }
+  });
+  const sdBycat={},msgsByCat={};
+  Object.entries(sdCat).forEach(([c,i])=>{sdBycat[c]={total:i.total,sd:i.sd,pct:+((i.sd/i.total)*100).toFixed(1)};msgsByCat[c]={count:i.total,avg:+(i.msgs.reduce((a,b)=>a+b,0)/i.msgs.length).toFixed(1)};});
+  const ttaMed=ttaVals.length?[...ttaVals].sort((a,b)=>a-b)[Math.floor(ttaVals.length/2)]:0;
+  const ttaAvgV=avg(ttaVals);
+  const topContacts=Object.entries(contactMap).sort((a,b)=>b[1].count-a[1].count).slice(0,20).map(([id,i])=>({id,count:i.count,topCat:Object.entries(i.cats).sort((a,b)=>b[1]-a[1])[0]?.[0]||'—',last:i.last}));
+  const freq={1:0,'2-5':0,'6-10':0,'10+':0};
+  Object.values(contactMap).forEach(c=>{if(c.count===1)freq[1]++;else if(c.count<=5)freq['2-5']++;else if(c.count<=10)freq['6-10']++;else freq['10+']++;});
 
-  // Agents (habil, filtered)
   const agMap={};
-  habR.forEach(r=>{
-    const a=r.agent||'Sin agente';
-    if(!agMap[a])agMap[a]={count:0,frts:[],arts:[],ttrs:[],cats:{}};
-    agMap[a].count++;agMap[a].frts.push(r.frt);agMap[a].arts.push(r.art);agMap[a].ttrs.push(r.ttr);
-    agMap[a].cats[r.catN]=(agMap[a].cats[r.catN]||0)+1;
-  });
+  habR.forEach(r=>{const a=r.agent||'Sin agente';if(!agMap[a])agMap[a]={count:0,frts:[],arts:[],ttrs:[],cats:{}};agMap[a].count++;agMap[a].frts.push(r.frt);agMap[a].arts.push(r.art);agMap[a].ttrs.push(r.ttr);agMap[a].cats[r.catN]=(agMap[a].cats[r.catN]||0)+1;});
   const agents={};
-  Object.entries(agMap).forEach(([n,i])=>{
-    if(n==='Sin agente')return;
-    agents[n]={count:i.count,frtMed:+med(i.frts).toFixed(1),frtAvg:+avg(i.frts).toFixed(1),artMed:+med(i.arts).toFixed(1),artAvg:+avg(i.arts).toFixed(1),ttrMed:+med(i.ttrs).toFixed(1),ttrAvg:+avg(i.ttrs).toFixed(1),cats:i.cats};
-  });
+  Object.entries(agMap).forEach(([n,i])=>{if(n==='Sin agente')return;agents[n]={count:i.count,frtMed:+med(i.frts).toFixed(1),frtAvg:+avg(i.frts).toFixed(1),artMed:+med(i.arts).toFixed(1),artAvg:+avg(i.arts).toFixed(1),ttrMed:+med(i.ttrs).toFixed(1),ttrAvg:+avg(i.ttrs).toFixed(1),cats:i.cats};});
 
-  // Working days
-  const sd=[...wDates].sort();
-  const s=new Date(sd[0]+'T12:00:00'),e=new Date(sd[sd.length-1]+'T12:00:00');
-  let wd=0;const cur=new Date(s);
-  while(cur<=e){const dw=cur.getDay();const iso=cur.toISOString().substring(0,10);if(dw!==0&&dw!==6&&!hols.has(iso))wd++;cur.setDate(cur.getDate()+1);}
-  const aH=wd*9;
+  const sd=[...wDates].sort();const s=new Date(sd[0]+'T12:00:00'),e=new Date(sd[sd.length-1]+'T12:00:00');
+  let wd=0;const cur=new Date(s);while(cur<=e){const dw=cur.getDay();const iso=cur.toISOString().substring(0,10);if(dw!==0&&dw!==6&&!hols.has(iso))wd++;cur.setDate(cur.getDate()+1);}
+  const aH=wd*9;Object.values(agents).forEach(a=>{a.cph=aH>0?+(a.count/aH).toFixed(2):0;});
 
-  // Add cph to agents
-  Object.values(agents).forEach(a=>{a.cph=aH>0?+(a.count/aH).toFixed(2):0;});
-
-  const from=new Date(sd[0]+'T12:00:00');
-  const diff=Math.round((e-s)/(1000*60*60*24))+1;
+  const from=new Date(sd[0]+'T12:00:00');const diff=Math.round((e-s)/(1000*60*60*24))+1;
   const isM=diff>10;
-  const fl=isM?MONTHS[from.getMonth()]+' '+from.getFullYear():'Sem. '+sd[0].substring(5).replace('-','/')+' al '+sd[sd.length-1].substring(5).replace('-','/');
-
+  const fl=isM?MONTHS[from.getMonth()]+' '+from.getFullYear():'Sem. '+sd[0].substring(5).replace('-','/')+' — '+sd[sd.length-1].substring(5).replace('-','/');
   const allFRT=habR.map(r=>r.frt),allART=habR.map(r=>r.art),allTTR=habR.map(r=>r.ttr);
 
   return{week:sd[0]+' al '+sd[sd.length-1],ws:sd[0],we:sd[sd.length-1],fl,isM,
@@ -462,145 +758,340 @@ function computeWeek(rows,hols,activeAgents){
     frtMed:+med(allFRT).toFixed(1),frtAvg:+avg(allFRT).toFixed(1),
     artMed:+med(allART).toFixed(1),artAvg:+avg(allART).toFixed(1),
     ttrMed:+med(allTTR).toFixed(1),ttrAvg:+avg(allTTR).toFixed(1),
-    days:ordD,hours,cats,catTimes,channels,botCount:botC,reassigned:reassC,agents};
+    days:ordD,hours,cats,catTimes,channels,botCount:botC,reassigned:reassC,
+    sdTotal,sdBycat,msgsByCat,ttaMed:+ttaMed.toFixed(1),ttaAvg:+ttaAvgV.toFixed(1),aiClosed:aiCl,
+    topContacts,contactFreq:freq,agents};
 }
 
 // ── Render ──
 function renderAll(){
-  renderPills();
-  if(!allWeeks.length){document.getElementById('pageTitle').textContent='Dashboard Operaciones';document.getElementById('pageSub').textContent='Cargá el primer reporte para empezar';return;}
+  if(!allWeeks.length){
+    document.getElementById('pageTitle').textContent='Dashboard Operaciones';
+    document.getElementById('pageMeta').textContent='Cargá el primer reporte para comenzar';
+    return;
+  }
+  const w=getFilteredWeek();
+  buildPeriodSelector();buildAgentChips();
+  const badge=w.isM?'<span class="hbadge hbadge-m">Mensual</span>':'<span class="hbadge hbadge-w">Semanal</span>';
+  document.getElementById('pageTitle').textContent=w.fl||w.week;
+  document.getElementById('pageMeta').textContent=`${w.total} consultas totales · ${w.totalH} hábiles${w.by?' · '+w.by:''}`;
+  document.getElementById('headerBadges').innerHTML=badge;
+  renderResumen(w);renderCategorias(w);renderTiempos(w);renderCapacidad(w);renderConversaciones(w);renderClientes(w);renderComparativa(w);
+}
+
+function getFilteredWeek(){
   const w=allWeeks[activeIdx];
-  const badge=w.isM?'<span class="badge bm">Mensual</span>':'<span class="badge bw">Semanal</span>';
-  document.getElementById('pageTitle').innerHTML=(w.fl||w.week)+badge;
-  document.getElementById('pageSub').textContent=w.total+' consultas totales · '+w.totalH+' hábiles'+(w.by?' · '+w.by:'');
-  document.getElementById('daysTitle').textContent=w.isM?'Consultas por día de la semana (acumulado mensual)':'Consultas por día';
-  renderResumen(w);renderCategorias(w);renderTiempos(w);renderCapacidad(w);renderComparativa(w);
-}
-
-function renderPills(){
-  const mly=allWeeks.filter(w=>w.isM),wly=allWeeks.filter(w=>!w.isM);
-  const pH=(w,i)=>{const ri=allWeeks.findIndex(x=>x.id===w.id);return`<div class="pill ${ri===activeIdx?'on':''}" onclick="selWeek(${ri})"><div><div class="pill-lbl">${w.fl||w.week.substring(0,10)}</div><div class="pill-sub">${w.total} consultas${w.by?' · '+w.by:''}</div></div><span class="pill-del" onclick="event.stopPropagation();delWeek(${ri},'${w.week}')">✕</span></div>`;};
-  document.getElementById('monthlyPills').innerHTML=mly.length?mly.map(pH).join(''):'<div class="empty" style="padding:8px 0;font-size:11px">—</div>';
-  document.getElementById('weeklyPills').innerHTML=wly.length?wly.map(pH).join(''):'<div class="empty" style="padding:8px 0;font-size:11px">Sin datos</div>';
-}
-
-function slaRow(lbl,m,a,obj){
-  const mo=m<=obj,ao=a<=obj;
-  return`<tr><td>${lbl}</td><td class="${mo?'ok':'fail'}">${hms(m)}</td><td class="${ao?'ok':'fail'}">${hms(a)}</td><td style="color:var(--t3)">${hms(obj)}</td></tr>`;
+  if(!w)return{total:0,totalH:0,cats:{},days:{},hours:{},agents:{},catTimes:{},sdBycat:{},msgsByCat:{},topContacts:[],contactFreq:{},channels:{},fl:'',week:''};
+  if(activeAgentFilter==='all')return w;
+  // Filter agents
+  const fa=w.agents[activeAgentFilter]||{count:0};
+  return{...w,agents:{[activeAgentFilter]:fa},totalH:fa.count||0,
+    frtMed:fa.frtMed||0,frtAvg:fa.frtAvg||0,artMed:fa.artMed||0,artAvg:fa.artAvg||0,ttrMed:fa.ttrMed||0,ttrAvg:fa.ttrAvg||0};
 }
 
 function renderResumen(w){
   const prev=allWeeks.find((x,i)=>i>activeIdx&&x.isM===w.isM)||null;
-  function dl(cur,pv,lower=false){if(!prev||pv==null)return'';const d=cur-pv;if(Math.abs(d)<0.1)return'';const s=d>0?'+':'';const g=lower?(d<0):(d>0);return`<div class="mc-d ${g?'up':'dn'}">${s}${Math.round(d)} vs ant.</div>`;}
+  function dl(cur,pv,lower=false){if(!prev||pv==null||Math.abs(cur-pv)<0.1)return'';const d=cur-pv;const g=lower?(d<0):(d>0);return`<div class="mc-delta ${g?'up':'dn'}">${d>0?'↑':'↓'} ${Math.abs(Math.round(d))} vs ant.</div>`;}
+
   document.getElementById('mcsRow').innerHTML=`
-    <div class="mc"><div class="mc-l">Consultas totales</div><div class="mc-v">${w.total}</div><div class="mc-s">${w.totalH} en horario hábil</div>${dl(w.total,prev?.total)}</div>
-    <div class="mc"><div class="mc-l">FRT mediana</div><div class="mc-v">${fmtM(w.frtMed)}</div><div class="mc-s">objetivo &lt; 10m</div>${dl(w.frtMed,prev?.frtMed,true)}</div>
-    <div class="mc"><div class="mc-l">ART mediana</div><div class="mc-v">${fmtM(w.artMed)}</div><div class="mc-s">objetivo &lt; 20m</div>${dl(w.artMed,prev?.artMed,true)}</div>
-    <div class="mc"><div class="mc-l">TTR mediana</div><div class="mc-v">${fmtM(w.ttrMed)}</div><div class="mc-s">objetivo &lt; 2h</div>${dl(w.ttrMed,prev?.ttrMed,true)}</div>`;
+    <div class="mc accent">
+      <div class="mc-icon accent"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12h3V6H2zM6 12h3V3H6zM10 12h3V8h-3z"/></svg></div>
+      <div class="mc-label">Consultas totales</div><div class="mc-v">${w.total.toLocaleString('es')}</div>
+      <div class="mc-sub">${w.totalH} en horario hábil</div>${dl(w.total,prev?.total)}
+    </div>
+    <div class="mc green">
+      <div class="mc-icon green"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="8" cy="8" r="6"/><path d="M8 4v4l2 2"/></svg></div>
+      <div class="mc-label">FRT mediana</div><div class="mc-v">${fmtM(w.frtMed)}</div>
+      <div class="mc-sub">objetivo &lt; 10m</div>${dl(w.frtMed,prev?.frtMed,true)}
+    </div>
+    <div class="mc ${w.artMed<=SLA.art?'green':'amber'}">
+      <div class="mc-icon ${w.artMed<=SLA.art?'green':'amber'}"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 2v4l3 2"/><circle cx="8" cy="8" r="6"/></svg></div>
+      <div class="mc-label">ART mediana</div><div class="mc-v">${fmtM(w.artMed)}</div>
+      <div class="mc-sub">objetivo &lt; 20m</div>${dl(w.artMed,prev?.artMed,true)}
+    </div>
+    <div class="mc ${w.ttrMed<=SLA.ttr?'green':'red'}">
+      <div class="mc-icon ${w.ttrMed<=SLA.ttr?'green':'red'}"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 3L6 10l-3-3"/></svg></div>
+      <div class="mc-label">TTR mediana</div><div class="mc-v">${fmtM(w.ttrMed)}</div>
+      <div class="mc-sub">objetivo &lt; 2h</div>${dl(w.ttrMed,prev?.ttrMed,true)}
+    </div>`;
+
+  // Days chart
+  const dL=Object.keys(w.days),dV=Object.values(w.days);
+  mkChart('cDays','bar',{labels:dL,datasets:[{data:dV,backgroundColor:'#6366f1',borderRadius:6,borderSkipped:false}]},
+    {scales:{y:{beginAtZero:true,grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#8a8a96',font:{size:11}}},x:{grid:{display:false},ticks:{color:'#3a3a42',font:{size:12}}}}});
+
+  // Hours chart
+  renderHoursChart(w,'cHoursR');
+
+  // Donut
   const top5=Object.entries(w.cats).sort((a,b)=>b[1]-a[1]).slice(0,5);
-  mkChart('cDays','bar',{labels:Object.keys(w.days),datasets:[{data:Object.values(w.days),backgroundColor:'#2a5fad',borderRadius:4,borderSkipped:false}]},{scales:{y:{beginAtZero:true,grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#9c9a94',font:{size:11}}},x:{grid:{display:false},ticks:{color:'#6b6860'}}}});
-  mkChart('cTopCat','doughnut',{labels:top5.map(c=>c[0]),datasets:[{data:top5.map(c=>c[1]),backgroundColor:COLORS.slice(0,5),borderWidth:3,borderColor:'#fff'}]},{cutout:'62%'});
+  mkChart('cTopCat','doughnut',{labels:top5.map(c=>c[0]),datasets:[{data:top5.map(c=>c[1]),backgroundColor:PALETTE.slice(0,5),borderWidth:4,borderColor:'#fff'}]},{cutout:'65%'});
+
+  // Agent cards
   const ents=Object.entries(w.agents).filter(([n])=>n&&n!=='Sin agente').sort((a,b)=>b[1].count-a[1].count);
   const tot=ents.reduce((s,[,a])=>s+a.count,0)||1;
-  document.getElementById('agentMini').innerHTML=ents.length?ents.map(([name,info],i)=>`<div class="ar"><div class="av">${ini(name)}</div><div style="flex:1"><div class="an">${name}</div><div class="am">FRT: ${fmtM(info.frtMed)} · TTR: ${fmtM(info.ttrMed)} (med)</div><div class="bb"><div class="bf" style="width:${Math.round(info.count/tot*100)}%;background:${COLORS[i]}"></div></div></div><div class="ac">${info.count}</div></div>`).join(''):'<div class="empty">Sin datos</div>';
+  document.getElementById('agentCards').innerHTML=ents.map(([name,info],i)=>`
+    <div class="agent-card">
+      <div class="agent-card-top">
+        <div class="av ${AV_COLORS[i%4]}">${ini(name)}</div>
+        <div><div class="agent-card-name">${name}</div><div class="agent-card-count">${info.count} consultas (${(info.count/tot*100).toFixed(0)}%)</div></div>
+      </div>
+      <div class="agent-stat"><span class="agent-stat-l">FRT med</span><span class="agent-stat-v">${fmtM(info.frtMed)}</span></div>
+      <div class="agent-stat"><span class="agent-stat-l">TTR med</span><span class="agent-stat-v">${fmtM(info.ttrMed)}</span></div>
+      <div class="bar-track"><div class="bar-fill" style="width:${Math.round(info.count/tot*100)}%;background:${PALETTE[i%PALETTE.length]}"></div></div>
+    </div>`).join('');
 }
 
-function renderCategorias(w){
-  const sorted=Object.entries(w.cats).sort((a,b)=>b[1]-a[1]);
-  const total=sorted.reduce((s,[,v])=>s+v,0)||1;
-  document.getElementById('catBody').innerHTML=sorted.map(([name,count],i)=>{
-    const ct=w.catTimes?.[name];
-    return`<tr><td><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${COLORS[i%COLORS.length]};margin-right:8px"></span>${name}</td><td>${count}</td><td>${(count/total*100).toFixed(1)}%</td><td class="${ct&&ct.frtAvg<=SLA.frt?'ok':ct?'fail':''}">${ct?hms(ct.frtAvg):'—'}</td><td class="${ct&&ct.ttrAvg<=SLA.ttr?'ok':ct?'fail':''}">${ct?hms(ct.ttrAvg):'—'}</td></tr>`;
-  }).join('');
-  renderHourly(w,'cHours');
-}
-
-function renderHourly(w,canvasId){
+function renderHoursChart(w,canvasId){
   const h=w.hours||{};
   const sorted=Object.entries(h).sort((a,b)=>parseInt(a[0])-parseInt(b[0]));
   if(!sorted.length)return;
   const vals=sorted.map(([,v])=>v);const mx=Math.max(...vals);
-  mkChart(canvasId,'bar',{labels:sorted.map(([h])=>h+':00'),datasets:[{data:vals,backgroundColor:vals.map(v=>v>=mx*.8?'#c94e28':v>=mx*.5?'#a06010':'#2a5fad'),borderRadius:3,borderSkipped:false}]},{scales:{y:{beginAtZero:true,grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#9c9a94',font:{size:10}}},x:{grid:{display:false},ticks:{color:'#6b6860',font:{size:10},maxRotation:45,autoSkip:false}}}});
+  mkChart(canvasId,'bar',{labels:sorted.map(([h])=>h+':00'),datasets:[{data:vals,backgroundColor:vals.map(v=>v>=mx*.75?'#ef4444':v>=mx*.45?'#f59e0b':'#6366f1'),borderRadius:4,borderSkipped:false}]},
+    {scales:{y:{beginAtZero:true,grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#8a8a96',font:{size:10}}},x:{grid:{display:false},ticks:{color:'#8a8a96',font:{size:10},maxRotation:45,autoSkip:false}}}});
+}
+
+function renderCategorias(w){
+  const sorted=Object.entries(w.cats).sort((a,b)=>b[1]-a[1]);
+  const total=sorted.reduce((s,[,v])=>s+v,0)||1;const mx=sorted[0]?.[1]||1;
+  document.getElementById('catBody').innerHTML=sorted.map(([name,count],i)=>{
+    const ct=w.catTimes?.[name];const sd=w.sdBycat?.[name];const ms=w.msgsByCat?.[name];
+    const frtOk=ct&&ct.frtAvg<=SLA.frt;const ttrOk=ct&&ct.ttrAvg<=SLA.ttr;
+    const sdPill=sd?(sd.pct>=90?`<span class="pill-ok">${sd.pct}%</span>`:sd.pct>=70?`<span class="pill-mid">${sd.pct}%</span>`:`<span class="pill-fail">${sd.pct}%</span>`):'—';
+    return`<tr>
+      <td><span class="cat-dot" style="background:${PALETTE[i%PALETTE.length]}"></span><span style="font-weight:500">${name}</span></td>
+      <td class="r"><div style="display:flex;align-items:center;justify-content:flex-end;gap:6px"><div class="bar-inline-track"><div class="bar-inline-fill" style="width:${Math.round(count/mx*100)}%;background:${PALETTE[i%PALETTE.length]}"></div></div>${count}</div></td>
+      <td class="r">${(count/total*100).toFixed(1)}%</td>
+      <td class="r" style="color:${ct?(frtOk?'var(--green)':'var(--red)'):'var(--ink3)'}">${ct?hms(ct.frtAvg):'—'}</td>
+      <td class="r" style="color:${ct?(ttrOk?'var(--green)':'var(--red)'):'var(--ink3)'}">${ct?hms(ct.ttrAvg):'—'}</td>
+      <td class="r" style="font-family:'JetBrains Mono',monospace">${ms?ms.avg+'msg':'—'}</td>
+      <td class="r">${sdPill}</td>
+    </tr>`;
+  }).join('');
+
+  // Bubble chart
+  const bubData=sorted.map(([cat,count],i)=>{
+    const ms=w.msgsByCat?.[cat];const sd=w.sdBycat?.[cat];
+    if(!ms||!sd)return null;
+    return{x:ms.avg,y:sd.pct,r:Math.max(5,Math.min(22,Math.sqrt(count)*1.8)),label:cat,color:PALETTE[i%PALETTE.length]};
+  }).filter(Boolean);
+  dch('cBubble');
+  const ctx=document.getElementById('cBubble');
+  if(ctx&&bubData.length){
+    charts['cBubble']=new Chart(ctx,{type:'bubble',
+      data:{datasets:bubData.map(d=>({label:d.label,data:[{x:d.x,y:d.y,r:d.r}],backgroundColor:d.color+'aa',borderColor:d.color,borderWidth:1.5}))},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${c.raw.x} msgs · ${c.raw.y}% same-day`}}},
+        scales:{x:{title:{display:true,text:'Mensajes promedio por conversación',color:'#8a8a96',font:{size:11}},grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#8a8a96'}},y:{title:{display:true,text:'% mismo día',color:'#8a8a96',font:{size:11}},grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#8a8a96'},min:0,max:110}}}});
+  }
 }
 
 function renderTiempos(w){
-  document.getElementById('slaTeam').innerHTML=slaRow('KR1.1 FRT — 1ª respuesta',w.frtMed,w.frtAvg,SLA.frt)+slaRow('KR1.2 ART — Tiempo medio resp.',w.artMed,w.artAvg,SLA.art)+slaRow('KR1.3 TTR — Resolución total',w.ttrMed,w.ttrAvg,SLA.ttr);
+  function slaRow(label,med,avgg,obj){
+    const pctMed=Math.min((med/obj)*100,150);const okMed=med<=obj;const okAvg=avgg<=obj;
+    return`<div class="sla-row">
+      <div class="sla-label"><strong>${label.split('—')[0]}</strong><br><span style="font-size:11px;color:var(--ink3)">${label.split('—')[1]||''}</span></div>
+      <div class="sla-bar"><div class="sla-bar-fill" style="width:${Math.min(pctMed,100)}%;background:${okMed?'var(--green)':'var(--red)'}"></div></div>
+      <div class="sla-val ${okMed?'ok':'fail'}">${hms(med)}</div>
+      <div class="sla-val ${okAvg?'ok':'fail'}" style="font-size:11px">${hms(avgg)}</div>
+      <div class="sla-obj">${hms(obj)}</div>
+    </div>`;
+  }
+  const legend='<div style="display:flex;gap:16px;margin-bottom:14px;font-size:11px;color:var(--ink3)"><span>Barra = mediana vs objetivo</span><span style="font-family:JetBrains Mono">Col 1 = mediana · Col 2 = promedio · Col 3 = objetivo</span></div>';
+  document.getElementById('slaTeam').innerHTML=legend+slaRow('KR1.1 FRT—1ª respuesta',w.frtMed,w.frtAvg,SLA.frt)+slaRow('KR1.2 ART—Tiempo medio',w.artMed,w.artAvg,SLA.art)+slaRow('KR1.3 TTR—Resolución',w.ttrMed,w.ttrAvg,SLA.ttr);
+
   const ents=Object.entries(w.agents).filter(([n])=>n&&n!=='Sin agente').sort((a,b)=>b[1].count-a[1].count);
-  document.getElementById('agentTimeCards').innerHTML=ents.map(([name,info])=>`<div class="card"><div style="display:flex;align-items:center;gap:12px;margin-bottom:14px"><div class="av" style="width:38px;height:38px;font-size:13px">${ini(name)}</div><div><div style="font-size:15px;font-weight:500">${name}</div><div style="font-size:11px;color:var(--t3)">${info.count} consultas hábiles</div></div></div><table class="tbl"><thead><tr><th>Métrica</th><th>Mediana</th><th>Promedio</th><th>Objetivo</th></tr></thead><tbody>${slaRow('KR1.1 FRT',info.frtMed,info.frtAvg,SLA.frt)}${slaRow('KR1.2 ART',info.artMed,info.artAvg,SLA.art)}${slaRow('KR1.3 TTR',info.ttrMed,info.ttrAvg,SLA.ttr)}</tbody></table></div>`).join('');
-  mkChart('cAgentTimes','bar',{labels:ents.map(([n])=>n),datasets:[{label:'FRT avg',data:ents.map(([,a])=>+a.frtAvg.toFixed(1)),backgroundColor:'#2a5fad',borderRadius:4},{label:'ART avg',data:ents.map(([,a])=>+a.artAvg.toFixed(1)),backgroundColor:'#0f7a5a',borderRadius:4},{label:'TTR avg',data:ents.map(([,a])=>+a.ttrAvg.toFixed(1)),backgroundColor:'#c94e28',borderRadius:4}]},{scales:{y:{beginAtZero:true,grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#9c9a94',font:{size:11}}},x:{grid:{display:false},ticks:{color:'#6b6860'}}}});
+  document.getElementById('agentSlaCards').innerHTML=ents.map(([name,info],i)=>`
+    <div class="card">
+      <div class="card-header">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div class="av ${AV_COLORS[i%4]}" style="width:40px;height:40px;font-size:14px">${ini(name)}</div>
+          <div><div class="card-title">${name}</div><div class="card-sub">${info.count} consultas hábiles</div></div>
+        </div>
+      </div>
+      ${legend}
+      ${slaRow('KR1.1 FRT—1ª respuesta',info.frtMed,info.frtAvg,SLA.frt)}
+      ${slaRow('KR1.2 ART—Tiempo medio',info.artMed,info.artAvg,SLA.art)}
+      ${slaRow('KR1.3 TTR—Resolución',info.ttrMed,info.ttrAvg,SLA.ttr)}
+    </div>`).join('');
+
+  mkChart('cAgentTimes','bar',{labels:ents.map(([n])=>n),datasets:[
+    {label:'FRT',data:ents.map(([,a])=>+a.frtAvg.toFixed(1)),backgroundColor:'#6366f1',borderRadius:4},
+    {label:'ART',data:ents.map(([,a])=>+a.artAvg.toFixed(1)),backgroundColor:'#10b981',borderRadius:4},
+    {label:'TTR',data:ents.map(([,a])=>+a.ttrAvg.toFixed(1)),backgroundColor:'#f59e0b',borderRadius:4}]},
+    {scales:{y:{beginAtZero:true,grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#8a8a96',font:{size:11}}},x:{grid:{display:false},ticks:{color:'#3a3a42'}}}});
 }
 
 function renderCapacidad(w){
   const ents=Object.entries(w.agents).filter(([n])=>n&&n!=='Sin agente').sort((a,b)=>b[1].count-a[1].count);
   const aH=w.availHrs||0;const wd=w.workDays||0;
-  document.getElementById('capSubtitle').textContent=`${wd} días hábiles × 9hs = ${aH}hs disponibles por agente`;
-  const totC=ents.reduce((s,[,a])=>s+a.count,0);const totCph=aH>0?(totC/aH).toFixed(2):'—';
-  document.getElementById('capBody').innerHTML=ents.map(([name,info])=>{
+  document.getElementById('capSub').textContent=`${wd} días hábiles × 9hs = ${aH}hs disponibles por agente`;
+  const totC=ents.reduce((s,[,a])=>s+a.count,0);
+  document.getElementById('capBody').innerHTML=ents.map(([name,info],i)=>{
     const pct=Math.round((info.cph||0)/MAX_CPH*100);
-    return`<tr><td>${name}</td><td>${info.count}</td><td>${aH}hs</td><td style="font-family:'DM Mono',monospace;font-weight:500;text-align:right">${info.cph||0}</td><td><div style="display:flex;align-items:center;gap:8px;justify-content:flex-end"><div style="width:80px;height:6px;background:var(--s2);border-radius:3px;overflow:hidden"><div style="width:${Math.min(pct,100)}%;height:100%;background:${pct>90?'#c94e28':pct>70?'#a06010':'#0f7a5a'};border-radius:3px"></div></div><span style="font-family:'DM Mono',monospace;font-size:11px;min-width:36px;text-align:right;color:${pct>90?'var(--coral)':pct>70?'var(--amber)':'var(--teal)'}">${pct}%</span></div></td></tr>`;
-  }).join('')+`<tr style="border-top:2px solid var(--border2)"><td style="font-weight:500">Equipo total</td><td style="font-weight:500">${totC}</td><td>${aH}hs × ${ents.length}</td><td style="font-family:'DM Mono',monospace;font-weight:500;text-align:right">${totCph}</td><td></td></tr>`;
+    const col=pct>90?'var(--red)':pct>70?'var(--amber)':'var(--green)';
+    return`<tr>
+      <td><div style="display:flex;align-items:center;gap:8px"><div class="av ${AV_COLORS[i%4]}" style="width:28px;height:28px;font-size:10px">${ini(name)}</div>${name}</div></td>
+      <td class="r">${info.count}</td><td class="r">${aH}hs</td>
+      <td class="r" style="font-weight:600;color:${col}">${info.cph||0}</td>
+      <td class="r"><div style="display:flex;align-items:center;justify-content:flex-end;gap:8px">
+        <div style="width:100px;height:8px;background:var(--surface3);border-radius:4px;overflow:hidden"><div style="width:${Math.min(pct,100)}%;height:100%;background:${col};border-radius:4px"></div></div>
+        <span style="color:${col};font-weight:600;font-family:'JetBrains Mono',monospace;font-size:11px;min-width:34px">${pct}%</span>
+      </div></td>
+    </tr>`;
+  }).join('')+`<tr style="background:var(--surface2)"><td style="font-weight:600">Equipo total</td><td class="r" style="font-weight:600">${totC}</td><td class="r">${aH}hs × ${ents.length}</td><td class="r" style="font-weight:600">${aH>0?(totC/(aH)).toFixed(2):'—'}</td><td></td></tr>`;
 
-  // Channels
-  const ch=w.channels||{};const totCh=Object.values(ch).reduce((a,b)=>a+b,0)||1;
+  const ch=w.channels||{};const tot=Object.values(ch).reduce((a,b)=>a+b,0)||1;
   const chlbl={'contact':'Cliente inició','user':'Equipo inició','ctc_ads':'Anuncio','':'Desconocido'};
-  document.getElementById('channelList').innerHTML=Object.entries(ch).sort((a,b)=>b[1]-a[1]).map(([src,cnt],i)=>`<div class="cr"><div class="cd" style="background:${COLORS[i]}"></div><div class="cn">${chlbl[src]||src}</div><div class="cbg"><div class="cbf" style="width:${Math.round(cnt/totCh*100)}%;background:${COLORS[i]}"></div></div><div class="cc">${cnt}</div><div class="cp">${(cnt/totCh*100).toFixed(1)}%</div></div>`).join('')||'<div class="empty">Sin datos</div>';
+  document.getElementById('channelList').innerHTML=Object.entries(ch).sort((a,b)=>b[1]-a[1]).map(([src,cnt],i)=>`
+    <div class="sla-row">
+      <div class="sla-label">${chlbl[src]||src}</div>
+      <div class="sla-bar"><div class="sla-bar-fill" style="width:${Math.round(cnt/tot*100)}%;background:${PALETTE[i]}"></div></div>
+      <div class="sla-val" style="color:var(--ink)">${cnt}</div>
+      <div class="sla-obj">${(cnt/tot*100).toFixed(1)}%</div>
+    </div>`).join('')||'<div class="empty">Sin datos</div>';
 
-  // Complexity
   const bc=w.botCount||0,rc=w.reassigned||0;
   document.getElementById('complexList').innerHTML=`
-    <div class="cr"><div class="cd" style="background:#2a5fad"></div><div class="cn">Pasaron por workflow/bot</div><div class="cbg"><div class="cbf" style="width:${Math.round(bc/totCh*100)}%;background:#2a5fad"></div></div><div class="cc">${bc}</div><div class="cp">${(bc/totCh*100).toFixed(1)}%</div></div>
-    <div class="cr"><div class="cd" style="background:#c94e28"></div><div class="cn">Requirieron reasignación</div><div class="cbg"><div class="cbf" style="width:${Math.round(rc/totCh*100)}%;background:#c94e28"></div></div><div class="cc">${rc}</div><div class="cp">${(rc/totCh*100).toFixed(1)}%</div></div>
-    <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);font-size:11px;color:var(--t3);line-height:1.7">Reasignación = primer asignado ≠ quien cerró.</div>`;
+    <div class="sla-row"><div class="sla-label">Pasaron por workflow/bot</div><div class="sla-bar"><div class="sla-bar-fill" style="width:${Math.round(bc/tot*100)}%;background:#6366f1"></div></div><div class="sla-val" style="color:var(--ink)">${bc}</div><div class="sla-obj">${(bc/tot*100).toFixed(1)}%</div></div>
+    <div class="sla-row"><div class="sla-label">Requirieron reasignación</div><div class="sla-bar"><div class="sla-bar-fill" style="width:${Math.round(rc/tot*100)}%;background:#ef4444"></div></div><div class="sla-val" style="color:var(--ink)">${rc}</div><div class="sla-obj">${(rc/tot*100).toFixed(1)}%</div></div>`;
 
-  renderHourly(w,'cHours2');
+  // Heatmap: hours x days
+  const allH=w.hours||{};const days=['lun','mar','mié','jue','vie'];
+  const hours=Array.from({length:9},(_,i)=>9+i);
+  const maxV=Math.max(...Object.values(allH),1);
+  let hm=`<div class="heatmap" style="grid-template-columns:50px repeat(${hours.length},1fr);gap:4px;margin-top:8px">`;
+  hm+=`<div></div>${hours.map(h=>`<div class="hm-header">${h}:00</div>`).join('')}`;
+  days.forEach(day=>{
+    hm+=`<div class="hm-label">${day}</div>`;
+    hours.forEach(h=>{
+      const v=allH[h]||0;
+      const intensity=v/maxV;
+      const bg=`rgba(99,102,241,${(intensity*0.85+0.05).toFixed(2)})`;
+      const tc=intensity>0.5?'#fff':'#6366f1';
+      hm+=`<div class="hm-cell" style="background:${bg};color:${tc}" title="${h}:00 · ${v} consultas">${v>0?v:''}</div>`;
+    });
+  });
+  hm+='</div>';
+  document.getElementById('heatmapContainer').innerHTML=hm;
+}
+
+function renderConversaciones(w){
+  const total=w.total||1;
+  const sdPct=w.sdTotal?((w.sdTotal/total)*100).toFixed(1):'0';
+  document.getElementById('sdPct').textContent=sdPct+'%';
+  document.getElementById('sdCount').textContent=`${w.sdTotal||0} de ${total} consultas`;
+  document.getElementById('ttaVal').textContent=fmtM(w.ttaMed);
+  document.getElementById('ttaSub').textContent=`${fmtM(w.ttaAvg)} promedio`;
+  document.getElementById('aiVal').textContent=w.aiClosed||0;
+
+  const sdSorted=Object.entries(w.sdBycat||{}).sort((a,b)=>b[1].total-a[1].total);
+  document.getElementById('sdBody').innerHTML=sdSorted.map(([cat,info])=>`
+    <tr>
+      <td><span style="font-weight:500">${cat}</span></td>
+      <td class="r">${info.total}</td><td class="r">${info.sd}</td>
+      <td class="r">${info.pct>=90?`<span class="pill-ok">${info.pct}%</span>`:info.pct>=70?`<span class="pill-mid">${info.pct}%</span>`:`<span class="pill-fail">${info.pct}%</span>`}</td>
+    </tr>`).join('');
+
+  const msgSorted=Object.entries(w.msgsByCat||{}).sort((a,b)=>b[1].avg-a[1].avg);
+  mkChart('cMsgs','bar',{labels:msgSorted.map(([c])=>c),datasets:[{data:msgSorted.map(([,i])=>i.avg),backgroundColor:msgSorted.map((_,i)=>PALETTE[i%PALETTE.length]),borderRadius:4,borderSkipped:false}]},
+    {indexAxis:'y',scales:{x:{beginAtZero:true,grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#8a8a96',font:{size:11}}},y:{grid:{display:false},ticks:{color:'#3a3a42',font:{size:11}}}}});
+}
+
+function renderClientes(w){
+  const freq=w.contactFreq||{};const total=Object.values(freq).reduce((a,b)=>a+b,0)||1;
+  const recurr=(freq['2-5']||0)+(freq['6-10']||0)+(freq['10+']||0);
+  const top=w.topContacts?.[0];
+  document.getElementById('cliTotal').textContent=total.toLocaleString('es');
+  document.getElementById('cliRecurr').textContent=recurr+' ('+(recurr/total*100).toFixed(0)+'%)';
+  document.getElementById('cliHigh').textContent=freq['10+']||0;
+  document.getElementById('cliTop').textContent=top?top.count:'—';
+
+  mkChart('cCliFreq','doughnut',{labels:['1 consulta','2-5','6-10','10+'],datasets:[{data:[freq[1]||0,freq['2-5']||0,freq['6-10']||0,freq['10+']||0],backgroundColor:['#6366f1','#10b981','#f59e0b','#ef4444'],borderWidth:4,borderColor:'#fff'}]},{cutout:'60%'});
+
+  const freqC=(w.topContacts||[]).filter(c=>c.count>=6);
+  const cCt={};freqC.forEach(c=>{cCt[c.topCat]=(cCt[c.topCat]||0)+1;});
+  const cS=Object.entries(cCt).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  mkChart('cCliCats','bar',{labels:cS.map(c=>c[0]),datasets:[{data:cS.map(c=>c[1]),backgroundColor:PALETTE.slice(0,6),borderRadius:4,borderSkipped:false}]},
+    {scales:{y:{beginAtZero:true,grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#8a8a96',font:{size:11}}},x:{grid:{display:false},ticks:{color:'#3a3a42',font:{size:11},maxRotation:30}}}});
+
+  document.getElementById('topCliBody').innerHTML=(w.topContacts||[]).map((c,i)=>`
+    <tr>
+      <td style="color:var(--ink3);font-weight:500">#${i+1}</td>
+      <td><span style="font-family:'JetBrains Mono',monospace;font-size:11px;background:var(--surface2);padding:2px 8px;border-radius:4px">${c.id}</span></td>
+      <td class="r" style="font-weight:600">${c.count}</td>
+      <td><span class="cat-dot" style="background:${PALETTE[i%PALETTE.length]}"></span>${c.topCat}</td>
+      <td class="r" style="color:var(--ink3)">${c.last}</td>
+    </tr>`).join('');
 }
 
 function renderComparativa(w){
-  // Build selector with ALL other reports of ANY type
   const others=allWeeks.filter(x=>x.id!==w.id);
-  if(!compIds.length&&others.length){compIds=others.slice(0,3).map(x=>x.id);}
-  document.getElementById('compSelector').innerHTML=others.length?others.map(x=>`<div class="comp-pill ${compIds.includes(x.id)?'on':''}" onclick="toggleComp('${x.id}')">${x.fl||x.week.substring(0,10)}</div>`).join(''):'<span style="font-size:12px;color:var(--t3)">No hay otros reportes cargados aún.</span>';
+  if(!compIds.length&&others.length)compIds=others.slice(0,2).map(x=>x.id);
+  document.getElementById('compSelector').innerHTML=others.length?others.map(x=>`<div class="comp-chip ${compIds.includes(x.id)?'on':''}" onclick="toggleComp('${x.id}')">${x.fl||x.week.substring(0,10)}</div>`).join(''):'<span style="font-size:12px;color:var(--ink3)">No hay otros reportes cargados.</span>';
+
   const sel=compIds.map(id=>allWeeks.find(x=>x.id===id)).filter(Boolean);
-  if(!sel.length){document.getElementById('compContent').innerHTML='<div class="empty">Seleccioná al menos un período.</div>';return;}
+  if(!sel.length){document.getElementById('compContent').innerHTML='<div class="empty"><div class="empty-icon">↔</div>Seleccioná al menos un período.</div>';return;}
+
   const cols=[w,...sel];const lbls=cols.map(c=>c.fl||c.week.substring(0,10));
-  function tdV(v,first=false){return`<td class="${first?'hl neu':''}">${v??'—'}</td>`;}
-  function tdT(m,obj,first=false){if(!m||isNaN(m))return`<td class="${first?'hl':''}">—</td>`;return`<td class="${first?'hl ':''}${m<=obj?'ok':'fail'}">${hms(m)}</td>`;}
+  const isFirst=(i)=>i===0;
+
+  function tdV(v,first=false){return`<td class="r ${first?'':''}"><span style="${first?'font-weight:600;color:var(--accent)':''}">${v??'—'}</span></td>`;}
+  function tdT(m,obj,first=false){
+    if(!m||isNaN(m))return`<td class="r">—</td>`;
+    const ok=m<=obj;
+    return`<td class="r"><span style="font-weight:${first?'600':'400'};color:${ok?'var(--green)':'var(--red)'}">${hms(m)}</span></td>`;
+  }
 
   const agNames=[...new Set(cols.flatMap(c=>Object.keys(c.agents||{}).filter(n=>n&&n!=='Sin agente')))].sort();
 
-  let html=`<div class="card"><div class="ct">Comparativa de períodos</div>
-    <table class="tbl"><thead><tr><th></th>${cols.map((c,i)=>`<th class="${i===0?'cur':''}">${lbls[i]}</th>`).join('')}<th style="color:var(--text)">Objetivo</th></tr></thead><tbody>
-    <tr class="sh"><td colspan="${cols.length+2}">Volumen</td></tr>
-    <tr><td>Agentes activos</td>${cols.map((c,i)=>tdV(Object.keys(c.agents||{}).filter(n=>n&&n!=='Sin agente').length,i===0)).join('')}<td style="color:var(--t3)">—</td></tr>
-    <tr><td>Total consultas</td>${cols.map((c,i)=>tdV(c.total?.toLocaleString('es'),i===0)).join('')}<td style="color:var(--t3)">—</td></tr>
-    <tr><td>Consultas hábiles</td>${cols.map((c,i)=>tdV(c.totalH?.toLocaleString('es'),i===0)).join('')}<td style="color:var(--t3)">—</td></tr>
-    <tr class="sh"><td colspan="${cols.length+2}">SLA equipo (promedio)</td></tr>
-    <tr><td>KR1.1 FRT</td>${cols.map((c,i)=>tdT(c.frtAvg,SLA.frt,i===0)).join('')}<td style="color:var(--t3)">${hms(SLA.frt)}</td></tr>
-    <tr><td>KR1.2 ART</td>${cols.map((c,i)=>tdT(c.artAvg,SLA.art,i===0)).join('')}<td style="color:var(--t3)">${hms(SLA.art)}</td></tr>
-    <tr><td>KR1.3 TTR</td>${cols.map((c,i)=>tdT(c.ttrAvg,SLA.ttr,i===0)).join('')}<td style="color:var(--t3)">${hms(SLA.ttr)}</td></tr>
+  let html=`<div class="card">
+    <div class="card-header"><div class="card-title">Volumen & SLA</div></div>
+    <table class="tbl"><thead><tr>
+      <th>Métrica</th>
+      ${cols.map((c,i)=>`<th class="r" style="${i===0?'color:var(--accent);font-weight:700':''}">${lbls[i]}</th>`).join('')}
+      <th class="r" style="color:var(--ink3)">Objetivo</th>
+    </tr></thead><tbody>
+    <tr style="background:var(--surface2)"><td colspan="${cols.length+2}" style="font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink3);padding:8px 14px">Volumen</td></tr>
+    <tr><td>Total consultas</td>${cols.map((c,i)=>tdV(c.total?.toLocaleString('es'),i===0)).join('')}<td class="r" style="color:var(--ink3)">—</td></tr>
+    <tr><td>Consultas hábiles</td>${cols.map((c,i)=>tdV(c.totalH?.toLocaleString('es'),i===0)).join('')}<td class="r" style="color:var(--ink3)">—</td></tr>
+    <tr><td>Agentes activos</td>${cols.map((c,i)=>tdV(Object.keys(c.agents||{}).filter(n=>n&&n!=='Sin agente').length,i===0)).join('')}<td class="r" style="color:var(--ink3)">—</td></tr>
+    <tr style="background:var(--surface2)"><td colspan="${cols.length+2}" style="font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink3);padding:8px 14px">SLA Equipo (promedio)</td></tr>
+    <tr><td>KR1.1 FRT</td>${cols.map((c,i)=>tdT(c.frtAvg,SLA.frt,i===0)).join('')}<td class="r" style="color:var(--ink3)">${hms(SLA.frt)}</td></tr>
+    <tr><td>KR1.2 ART</td>${cols.map((c,i)=>tdT(c.artAvg,SLA.art,i===0)).join('')}<td class="r" style="color:var(--ink3)">${hms(SLA.art)}</td></tr>
+    <tr><td>KR1.3 TTR</td>${cols.map((c,i)=>tdT(c.ttrAvg,SLA.ttr,i===0)).join('')}<td class="r" style="color:var(--ink3)">${hms(SLA.ttr)}</td></tr>
+    <tr style="background:var(--surface2)"><td colspan="${cols.length+2}" style="font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink3);padding:8px 14px">Conversaciones</td></tr>
+    <tr><td>Resolución mismo día</td>${cols.map((c,i)=>tdV(c.sdTotal?(((c.sdTotal/c.total)*100).toFixed(1)+'%'):'—',i===0)).join('')}<td class="r" style="color:var(--ink3)">—</td></tr>
+    <tr><td>TTA mediana</td>${cols.map((c,i)=>tdV(fmtM(c.ttaMed),i===0)).join('')}<td class="r" style="color:var(--ink3)">—</td></tr>
     </tbody></table></div>`;
 
-  // Per agent
   if(agNames.length){
-    html+=`<div class="card"><div class="ct">Por agente</div><table class="tbl"><thead><tr><th></th>${cols.map((c,i)=>`<th class="${i===0?'cur':''}">${lbls[i]}</th>`).join('')}<th style="color:var(--text)">Objetivo</th></tr></thead><tbody>`;
-    html+=`<tr class="sh"><td colspan="${cols.length+2}">Consultas hábiles</td></tr>`;
-    agNames.forEach(n=>{html+=`<tr><td>${n}</td>${cols.map((c,i)=>{const a=c.agents?.[n];return tdV(a?a.count:'—',i===0);}).join('')}<td style="color:var(--t3)">—</td></tr>`;});
-    ['frtAvg','artAvg','ttrAvg'].forEach((k,ki)=>{
-      const lbls2=['KR1.1 FRT','KR1.2 ART','KR1.3 TTR'];const objs=[SLA.frt,SLA.art,SLA.ttr];
-      html+=`<tr class="sh"><td colspan="${cols.length+2}">${lbls2[ki]} promedio</td></tr>`;
-      agNames.forEach(n=>{html+=`<tr><td>${n}</td>${cols.map((c,i)=>{const a=c.agents?.[n];return a&&a[k]?tdT(a[k],objs[ki],i===0):tdV('—',i===0);}).join('')}<td style="color:var(--t3)">${hms(objs[ki])}</td></tr>`;});
+    html+=`<div class="card"><div class="card-header"><div class="card-title">Por agente</div></div>
+    <table class="tbl"><thead><tr><th>Agente / Métrica</th>${cols.map((c,i)=>`<th class="r" style="${i===0?'color:var(--accent);font-weight:700':''}">${lbls[i]}</th>`).join('')}<th class="r" style="color:var(--ink3)">Obj</th></tr></thead><tbody>`;
+    agNames.forEach(n=>{
+      html+=`<tr style="background:var(--surface2)"><td colspan="${cols.length+2}" style="font-weight:600;font-size:11px;color:var(--ink2);padding:8px 14px">${n}</td></tr>`;
+      html+=`<tr><td style="padding-left:24px;color:var(--ink3)">Consultas hábiles</td>${cols.map((c,i)=>{const a=c.agents?.[n];return tdV(a?a.count:'—',i===0);}).join('')}<td class="r" style="color:var(--ink3)">—</td></tr>`;
+      [['FRT','frtAvg',SLA.frt],['ART','artAvg',SLA.art],['TTR','ttrAvg',SLA.ttr]].forEach(([lbl,key,obj])=>{
+        html+=`<tr><td style="padding-left:24px;color:var(--ink3)">${lbl} promedio</td>${cols.map((c,i)=>{const a=c.agents?.[n];return a&&a[key]?tdT(a[key],obj,i===0):tdV('—',i===0);}).join('')}<td class="r" style="color:var(--ink3)">${hms(obj)}</td></tr>`;
+      });
     });
     html+=`</tbody></table></div>`;
   }
 
-  // Category variation vs first comparison period
   if(sel.length>0){
     const prev=sel[0];const totC=Object.values(w.cats).reduce((a,b)=>a+b,0)||1;const totP=Object.values(prev.cats).reduce((a,b)=>a+b,0)||1;
     const allCats=[...new Set([...Object.keys(w.cats),...Object.keys(prev.cats)])].sort();
     const rows=allCats.map(cat=>{const c=w.cats[cat]||0,p=prev.cats[cat]||0;return{cat,c,p,pc:c/totC*100,pp:p/totP*100,dc:c-p,dp:c/totC*100-p/totP*100};}).sort((a,b)=>Math.abs(b.dc)-Math.abs(a.dc));
-    html+=`<div class="card"><div class="ct">Variación de categorías vs ${prev.fl||prev.week.substring(0,10)}</div><table class="tbl"><thead><tr><th>Categoría</th><th class="cur">Cant</th><th class="cur">%</th><th>Ant. cant</th><th>Ant. %</th><th>Δ cant</th><th>Δ %</th></tr></thead><tbody>
-    ${rows.map(r=>`<tr><td>${r.cat}</td><td class="hl neu">${r.c}</td><td class="hl" style="color:var(--t2)">${r.pc.toFixed(1)}%</td><td>${r.p}</td><td style="color:var(--t2)">${r.pp.toFixed(1)}%</td><td class="${Math.abs(r.dc)>5?r.dc>0?'fail':'ok':''}">${r.dc>0?'+':''}${r.dc}</td><td class="${Math.abs(r.dp)>2?r.dp>0?'fail':'ok':''}">${r.dp>0?'+':''}${r.dp.toFixed(1)}%</td></tr>`).join('')}
-    <tr style="border-top:2px solid var(--border2)"><td style="font-weight:500">Total</td><td class="hl neu" style="font-weight:500">${totC}</td><td class="hl"></td><td style="font-weight:500">${totP}</td><td></td><td class="${totC>totP?'fail':'ok'}" style="font-weight:500">${totC>totP?'+':''}${totC-totP}</td><td></td></tr>
+    html+=`<div class="card"><div class="card-header"><div class="card-title">Variación de categorías</div><div class="card-sub">vs ${prev.fl||prev.week.substring(0,10)}</div></div>
+    <table class="tbl"><thead><tr><th>Categoría</th><th class="r" style="color:var(--accent)">${lbls[0]}</th><th class="r" style="color:var(--accent)">%</th><th class="r">${lbls[1]||'Anterior'}</th><th class="r">%</th><th class="r">Δ cant</th><th class="r">Δ %</th></tr></thead><tbody>
+    ${rows.map((r,i)=>`<tr>
+      <td><span class="cat-dot" style="background:${PALETTE[i%PALETTE.length]}"></span><span style="font-weight:500">${r.cat}</span></td>
+      <td class="r" style="font-weight:600;color:var(--accent)">${r.c}</td><td class="r" style="color:var(--ink3)">${r.pc.toFixed(1)}%</td>
+      <td class="r">${r.p}</td><td class="r" style="color:var(--ink3)">${r.pp.toFixed(1)}%</td>
+      <td class="r"><span class="${Math.abs(r.dc)>3?(r.dc>0?'pill-fail':'pill-ok'):''}"}>${r.dc>0?'+':''}${r.dc}</span></td>
+      <td class="r"><span class="${Math.abs(r.dp)>1?(r.dp>0?'pill-fail':'pill-ok'):''}"}>${r.dp>0?'+':''}${r.dp.toFixed(1)}%</span></td>
+    </tr>`).join('')}
+    <tr style="background:var(--surface2)"><td style="font-weight:600">Total</td><td class="r" style="font-weight:600;color:var(--accent)">${totC}</td><td class="r"></td><td class="r" style="font-weight:600">${totP}</td><td class="r"></td>
+    <td class="r"><span class="${totC>totP?'pill-fail':'pill-ok'}">${totC>totP?'+':''}${totC-totP}</span></td><td class="r"></td></tr>
     </tbody></table></div>`;
   }
 
@@ -609,23 +1100,16 @@ function renderComparativa(w){
 
 function toggleComp(id){
   const idx=compIds.indexOf(id);
-  if(idx>=0)compIds.splice(idx,1);
-  else if(compIds.length<3)compIds.push(id);
+  if(idx>=0)compIds.splice(idx,1);else if(compIds.length<3)compIds.push(id);
   renderComparativa(allWeeks[activeIdx]);
-}
-
-function selWeek(idx){activeIdx=idx;compIds=[];renderAll();}
-async function delWeek(idx,wl){
-  if(!confirm('¿Eliminar "'+wl+'"?'))return;
-  try{await deleteWeek(wl);toast('Eliminado');await fetchWeeks();}catch(e){toast('Error: '+e.message,true);}
 }
 
 function showTab(t,el){
   curTab=t;
   document.querySelectorAll('.tab-c').forEach(d=>d.classList.remove('on'));
   document.getElementById('tab-'+t).classList.add('on');
-  document.querySelectorAll('.nav-item').forEach(e=>e.classList.remove('on'));
-  if(el)el.classList.add('on');
+  document.querySelectorAll('.nav-item,.tab-btn').forEach(e=>e.classList.remove('on'));
+  document.querySelectorAll(`[onclick*="showTab('${t}"]`).forEach(e=>e.classList.add('on'));
 }
 
 document.getElementById('fileIn').addEventListener('change',function(e){
@@ -641,8 +1125,7 @@ document.getElementById('fileIn').addEventListener('change',function(e){
     const hdrs=rows[0].map(h=>String(h||'').trim());
     const iS=hdrs.findIndex(h=>h.toLowerCase().includes('datetime conversation started'));
     const iCB=hdrs.findIndex(h=>h.toLowerCase().includes('closed by'));
-    const wDates=new Set();
-    const agSet=new Set();
+    const wDates=new Set();const agSet=new Set();
     rows.slice(1).forEach(r=>{
       const{f}=exDH(r[iS]);if(f.match(/^\d{4}-\d{2}-\d{2}$/))wDates.add(f);
       const id=parseInt(r[iCB]);if(CLOSED_BY[id])agSet.add(CLOSED_BY[id]);
