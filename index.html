@@ -278,10 +278,8 @@ body { font-family: 'Inter', sans-serif; background: var(--paper); color: var(--
 
     <!-- Period selector -->
     <div class="sb-period">
-      <div class="sb-period-label">Período activo</div>
-      <select class="period-select" id="periodSelect" onchange="onPeriodChange()">
-        <option value="">Cargando...</option>
-      </select>
+      <div class="sb-period-label">Períodos guardados</div>
+      <div id="periodPills" style="max-height:220px;overflow-y:auto"></div>
     </div>
 
     <!-- Agent filter -->
@@ -647,12 +645,36 @@ async function fetchWeeks(){
 async function saveWeek(p){const{error}=await db.from('weekly_reports').upsert(p,{onConflict:'week_label'});if(error)throw error;}
 
 function buildPeriodSelector(){
-  const sel=document.getElementById('periodSelect');
-  sel.innerHTML=allWeeks.length?allWeeks.map((w,i)=>`<option value="${i}" ${i===activeIdx?'selected':''}>${w.fl} · ${w.total} consultas</option>`).join(''):'<option>Sin datos</option>';
+  const el=document.getElementById('periodPills');
+  if(!el)return;
+  if(!allWeeks.length){el.innerHTML='<div style="font-size:11px;color:rgba(255,255,255,0.3);padding:4px 0">Sin datos</div>';return;}
+  el.innerHTML=allWeeks.map((w,i)=>`
+    <div style="display:flex;align-items:center;gap:6px;padding:7px 10px;border-radius:8px;cursor:pointer;margin-bottom:4px;background:${i===activeIdx?'rgba(99,102,241,0.3)':'rgba(255,255,255,0.06)'};border:1px solid ${i===activeIdx?'rgba(99,102,241,0.6)':'transparent'};transition:all .15s" onclick="selPeriod(${i})">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12px;font-weight:500;color:${i===activeIdx?'#fff':'rgba(255,255,255,0.7)'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${w.fl||w.week.substring(0,10)}</div>
+        <div style="font-size:10px;color:rgba(255,255,255,0.35);margin-top:1px">${w.total} consultas${w.by?' · '+w.by:''}</div>
+      </div>
+      <div onclick="event.stopPropagation();delPeriod(${i},'${w.week}')" style="width:20px;height:20px;border-radius:4px;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,0.3);font-size:12px;flex-shrink:0;transition:all .15s" onmouseover="this.style.background='rgba(239,68,68,0.3)';this.style.color='#fca5a5'" onmouseout="this.style.background='';this.style.color='rgba(255,255,255,0.3)'">✕</div>
+    </div>`).join('');
+}
+
+function selPeriod(idx){
+  activeIdx=idx;compIds=[];
+  buildPeriodSelector();buildAgentChips();renderAll();
+}
+
+async function delPeriod(idx,weekLabel){
+  if(!confirm('¿Eliminar "'+weekLabel+'"?'))return;
+  try{
+    const{error}=await db.from('weekly_reports').delete().eq('week_label',weekLabel);
+    if(error)throw error;
+    toast('Reporte eliminado');
+    await fetchWeeks();
+  }catch(e){toast('Error: '+e.message,true);}
 }
 
 function onPeriodChange(){
-  activeIdx=parseInt(document.getElementById('periodSelect').value)||0;
+  activeIdx=parseInt(document.getElementById('periodSelect')?.value)||0;
   compIds=[];renderAll();
 }
 
