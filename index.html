@@ -323,6 +323,15 @@ body { font-family: 'Inter', sans-serif; background: var(--paper); color: var(--
         <svg class="ni" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 2v12M14 2v12M2 7h12"/><circle cx="2" cy="7" r="1.5" fill="currentColor"/><circle cx="14" cy="7" r="1.5" fill="currentColor"/></svg>
         Comparativa
       </div>
+      <div class="nav-section">Canales & Clientes</div>
+      <div class="nav-item" onclick="showTab('bot',this)">
+        <svg class="ni" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="2" width="10" height="9" rx="2"/><path d="M6 11v2M10 11v2M4 13h8"/><circle cx="6" cy="6" r="1" fill="currentColor"/><circle cx="10" cy="6" r="1" fill="currentColor"/><path d="M6 8.5s.5 1 2 1 2-1 2-1"/></svg>
+        Bot & AI
+      </div>
+      <div class="nav-item" onclick="showTab('clientes-plus',this)">
+        <svg class="ni" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6" cy="5" r="3"/><path d="M1 14c0-3 2-5 5-5s5 2 5 5"/><path d="M11 2s1 1 1 2-1 2-1 2"/><path d="M13 3s1.5 1 1.5 2S13 7 13 7"/></svg>
+        Clientes+
+      </div>
       <div class="nav-section">Modelos</div>
       <div class="nav-item" onclick="showTab('capacidad-avanzada',this)">
         <svg class="ni" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 14l4-8 3 5 2-3 3 6"/><circle cx="13" cy="3" r="2"/></svg>
@@ -335,10 +344,20 @@ body { font-family: 'Inter', sans-serif; background: var(--paper); color: var(--
     </div>
 
     <div class="sb-upload">
-      <label class="upload-btn" style="cursor:pointer">
+      <label class="upload-btn" style="cursor:pointer;margin-bottom:6px">
         <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 2v8M5 5l3-3 3 3"/><path d="M2 11v2a1 1 0 001 1h10a1 1 0 001-1v-2"/></svg>
-        Cargar reporte
+        Cargar conversaciones
         <input type="file" id="fileIn" accept=".xlsx,.csv" style="display:none">
+      </label>
+      <label style="cursor:pointer;width:100%;padding:8px;background:rgba(16,185,129,0.15);border:1px solid rgba(16,185,129,0.3);border-radius:8px;color:#6ee7b7;font-family:'Inter',sans-serif;font-size:11px;font-weight:500;display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:6px">
+        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="2" width="10" height="9" rx="2"/><circle cx="6" cy="6" r="1" fill="currentColor"/><circle cx="10" cy="6" r="1" fill="currentColor"/></svg>
+        Cargar mensajes
+        <input type="file" id="msgFileIn" accept=".csv" style="display:none">
+      </label>
+      <label style="cursor:pointer;width:100%;padding:8px;background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.3);border-radius:8px;color:#a5b4fc;font-family:'Inter',sans-serif;font-size:11px;font-weight:500;display:flex;align-items:center;justify-content:center;gap:6px">
+        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="8" cy="6" r="3"/><path d="M2 14c0-4 3-6 6-6s6 2 6 6"/></svg>
+        Actualizar contactos
+        <input type="file" id="conFileIn" accept=".csv" style="display:none">
       </label>
     </div>
   </aside>
@@ -361,6 +380,8 @@ body { font-family: 'Inter', sans-serif; background: var(--paper); color: var(--
       <div class="tab-btn" onclick="showTab('conversaciones',this)">Conversaciones</div>
       <div class="tab-btn" onclick="showTab('clientes',this)">Clientes</div>
       <div class="tab-btn" onclick="showTab('comparativa',this)">Comparativa</div>
+      <div class="tab-btn" onclick="showTab('bot',this)">Bot & AI</div>
+      <div class="tab-btn" onclick="showTab('clientes-plus',this)">Clientes+</div>
       <div class="tab-btn" onclick="showTab('capacidad-avanzada',this)">Cap. Avanzada</div>
       <div class="tab-btn" onclick="showTab('glosario',this)">Glosario</div>
     </div>
@@ -503,6 +524,60 @@ body { font-family: 'Inter', sans-serif; background: var(--paper); color: var(--
         <div id="compContent"><div class="empty"><div class="empty-icon">↔</div>Seleccioná al menos un período para comparar.</div></div>
       </div>
 
+
+      <!-- BOT & AI -->
+      <div id="tab-bot" class="tab-c">
+        <div class="mc-grid" id="botMcs"></div>
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-header"><div><div class="card-title">Flujo de conversaciones</div><div class="card-sub">Cómo interactúan bot y humano</div></div></div>
+            <div class="ch" style="height:220px"><canvas id="cBotFlow"></canvas></div>
+          </div>
+          <div class="card">
+            <div class="card-header"><div><div class="card-title">Tiempo de respuesta real</div><div class="card-sub">Humano vs AI por hora del día (mediana en minutos)</div></div></div>
+            <div class="ch" style="height:220px"><canvas id="cBotRT"></canvas></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><div><div class="card-title">Campañas broadcast del período</div><div class="card-sub">Mensajes masivos enviados — no son consultas orgánicas</div></div></div>
+          <div id="broadcastList"></div>
+        </div>
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-header"><div><div class="card-title">Mensajes por tipo de sender</div></div></div>
+            <div class="ch" style="height:200px"><canvas id="cSenders"></canvas></div>
+          </div>
+          <div class="card">
+            <div class="card-header"><div><div class="card-title">Períodos de mensajes cargados</div></div></div>
+            <div id="msgPeriodList"><div class="empty">Sin datos de mensajes</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CLIENTES+ -->
+      <div id="tab-clientes-plus" class="tab-c">
+        <div id="contactsStatus" class="card" style="background:var(--accentbg);border-color:var(--accent);margin-bottom:18px;display:none">
+          <div style="font-size:12px;color:var(--accent)">✓ Contactos cargados — los datos de clientes están disponibles</div>
+        </div>
+        <div class="mc-grid" style="grid-template-columns:repeat(3,1fr)" id="cliPlusMcs"></div>
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-header"><div><div class="card-title">Lifecycle de clientes que consultan</div></div></div>
+            <div class="ch" style="height:220px"><canvas id="cLifecycle"></canvas></div>
+          </div>
+          <div class="card">
+            <div class="card-header"><div><div class="card-title">Estado de suscripción</div></div></div>
+            <div class="ch" style="height:220px"><canvas id="cSubStatus"></canvas></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><div><div class="card-title">Top 30 clientes más activos</div><div class="card-sub">Con nombre real si los contactos están cargados</div></div></div>
+          <table class="tbl">
+            <thead><tr><th>#</th><th>Cliente</th><th class="r">Consultas</th><th>Lifecycle</th><th>Suscripción</th><th>Cat. Mono</th><th class="r">Deuda</th></tr></thead>
+            <tbody id="cliPlusBody"></tbody>
+          </table>
+        </div>
+      </div>
 
       <!-- CAPACIDAD AVANZADA -->
       <div id="tab-capacidad-avanzada" class="tab-c">
@@ -669,7 +744,356 @@ async function delPeriod(idx,weekLabel){
     const{error}=await db.from('weekly_reports').delete().eq('week_label',weekLabel);
     if(error)throw error;
     toast('Reporte eliminado');
-    await fetchWeeks();
+    await // ── Message reports state ──
+let msgReports=[], contactsDB={};
+
+// ── Load message reports from Supabase ──
+async function fetchMsgReports(){
+  const{data,error}=await db.from('message_reports').select('*').order('period_start',{ascending:false});
+  if(error) return;
+  msgReports=(data||[]).map(r=>({
+    id:r.id, label:r.period_label, start:r.period_start, end:r.period_end,
+    totalMsgs:r.total_msgs||0, humanMsgs:r.human_msgs||0, botMsgs:r.bot_msgs||0,
+    workflowMsgs:r.workflow_msgs||0, broadcastMsgs:r.broadcast_msgs||0, n8nMsgs:r.n8n_msgs||0,
+    aiOnlyConvs:r.ai_only_convs||0, escalationRate:r.escalation_rate||0,
+    humanRtMed:r.human_rt_med||0, humanRtAvg:r.human_rt_avg||0,
+    aiRtMed:r.ai_rt_med||0, aiRtAvg:r.ai_rt_avg||0,
+    broadcasts:r.broadcasts||{}, hourlyHuman:r.hourly_human_rt||{}, hourlyAi:r.hourly_ai_rt||{},
+    flowStats:r.flow_stats||{}, by:r.uploaded_by
+  }));
+  renderBot();
+}
+
+// ── Load contacts ──
+async function fetchContacts(){
+  const{data,error}=await db.from('contacts').select('*');
+  if(error) return;
+  contactsDB={};
+  (data||[]).forEach(c=>{contactsDB[c.contact_id]={name:(c.first_name||'')+(c.last_name?' '+c.last_name:''),lifecycle:c.lifecycle,sub:c.subscription_status,cat:c.category,debt:c.has_debt,feedback:c.feedback};});
+  if(Object.keys(contactsDB).length>0){
+    document.getElementById('contactsStatus')?.style && (document.getElementById('contactsStatus').style.display='block');
+  }
+  renderClientesPlus();
+}
+
+// ── Process messages CSV ──
+function processMsgCSV(rows){
+  const hdrs=rows[0].map(h=>String(h||'').trim());
+  const col=n=>hdrs.findIndex(h=>h.toLowerCase().includes(n.toLowerCase()));
+  const iTS=col('Date & Time'), iSender=col('Sender Type'), iCont=col('Contact ID');
+  const iMsgType=col('Message Type'), iContType=col('Content Type'), iSubType=col('Sub Type');
+
+  const data=rows.slice(1).filter(r=>r&&r[iTS]);
+  if(!data.length) return null;
+
+  // Parse timestamps
+  const parsed=data.map(r=>{
+    const ts=new Date(r[iTS]);
+    return{ts,sender:String(r[iSender]||'').trim(),cid:String(r[iCont]||''),
+      msgType:String(r[iMsgType]||'').trim(),subType:String(r[iSubType]||'').trim(),hora:ts.getHours()};
+  }).filter(r=>!isNaN(r.ts));
+
+  const dates=parsed.map(r=>r.ts);
+  const start=new Date(Math.min(...dates));
+  const end=new Date(Math.max(...dates));
+  const label=start.toISOString().substring(0,7)+' mensajes';
+
+  // Counts
+  const totalMsgs=parsed.length;
+  const humanMsgs=parsed.filter(r=>r.sender==='user').length;
+  const botMsgs=parsed.filter(r=>r.sender==='ai_agent').length;
+  const workflowMsgs=parsed.filter(r=>r.sender==='workflow').length;
+  const broadcastMsgs=parsed.filter(r=>r.sender==='broadcast').length;
+  const n8nMsgs=parsed.filter(r=>r.sender==='n8n').length;
+
+  // Flow per contact
+  const byContact={};
+  parsed.forEach(r=>{if(!byContact[r.cid])byContact[r.cid]=[];byContact[r.cid].push(r);});
+  let aiOnly=0,botHuman=0;
+  Object.values(byContact).forEach(msgs=>{
+    const senders=new Set(msgs.map(m=>m.sender));
+    const hasAI=senders.has('ai_agent');const hasHuman=senders.has('user');
+    if(hasAI&&!hasHuman)aiOnly++;
+    if(senders.has('workflow')&&hasHuman)botHuman++;
+  });
+  const totalConvs=Object.keys(byContact).length;
+  const escalationRate=totalConvs>0?Math.round(botHuman/totalConvs*100):0;
+
+  // Response times
+  const humanRTs=[],aiRTs=[];
+  const hourlyH={},hourlyA={};
+  Object.values(byContact).forEach(msgs=>{
+    const sorted=msgs.sort((a,b)=>a.ts-b.ts);
+    for(let i=0;i<sorted.length;i++){
+      const r=sorted[i];
+      if(r.msgType==='incoming'&&r.sender==='contact'){
+        const nxt=sorted.slice(i+1).find(m=>m.msgType==='outgoing'&&['user','ai_agent'].includes(m.sender));
+        if(nxt){
+          const rt=(nxt.ts-r.ts)/60000;
+          if(rt>0&&rt<60){
+            if(nxt.sender==='user'){humanRTs.push({rt,h:r.hora});}
+            else{aiRTs.push({rt,h:r.hora});}
+          }
+        }
+      }
+    }
+  });
+  const medRT=arr=>arr.length?[...arr].sort((a,b)=>a-b)[Math.floor(arr.length/2)]:0;
+  const avgRT=arr=>arr.length?arr.reduce((s,v)=>s+v,0)/arr.length:0;
+  for(let h=9;h<18;h++){
+    const hh=humanRTs.filter(x=>x.h===h).map(x=>x.rt);
+    const ha=aiRTs.filter(x=>x.h===h).map(x=>x.rt);
+    if(hh.length)hourlyH[h]=+medRT(hh).toFixed(1);
+    if(ha.length)hourlyA[h]=+medRT(ha).toFixed(1);
+  }
+
+  // Broadcasts
+  const broadcasts={};
+  parsed.filter(r=>r.sender==='broadcast').forEach(r=>{
+    const k=r.subType||'desconocido';broadcasts[k]=(broadcasts[k]||0)+1;
+  });
+
+  return{label,start:start.toISOString().substring(0,10),end:end.toISOString().substring(0,10),
+    totalMsgs,humanMsgs,botMsgs,workflowMsgs,broadcastMsgs,n8nMsgs,
+    aiOnlyConvs:aiOnly,escalationRate,
+    humanRtMed:+medRT(humanRTs.map(x=>x.rt)).toFixed(1),
+    humanRtAvg:+avgRT(humanRTs.map(x=>x.rt)).toFixed(1),
+    aiRtMed:+medRT(aiRTs.map(x=>x.rt)).toFixed(1),
+    aiRtAvg:+avgRT(aiRTs.map(x=>x.rt)).toFixed(1),
+    broadcasts,hourlyHuman:hourlyH,hourlyAi:hourlyA,
+    flowStats:{total:totalConvs,aiOnly,botHuman,humanOnly:totalConvs-aiOnly-botHuman}};
+}
+
+// ── Process contacts CSV ──
+function processContactsCSV(rows){
+  const hdrs=rows[0].map(h=>String(h||'').trim());
+  const col=n=>hdrs.findIndex(h=>h.toLowerCase()===n.toLowerCase());
+  const iID=col('ContactID'),iF=col('FirstName'),iL=col('LastName');
+  const iLife=col('Lifecycle'),iSub=col('subscription_status'),iCat=col('category');
+  const iDebt=col('has_debt'),iTags=col('Tags'),iFeed=col('feedback_lannis');
+  const iCreated=col('DateTimeCreated'),iLast=col('LastInteractionTime');
+
+  return rows.slice(1).filter(r=>r&&r[iID]).map(r=>({
+    contact_id:parseInt(r[iID])||0,
+    first_name:String(r[iF]||'').trim(),last_name:String(r[iL]||'').trim(),
+    lifecycle:String(r[iLife]||'').trim(),subscription_status:String(r[iSub]||'').trim(),
+    category:String(r[iCat]||'').trim(),
+    has_debt:String(r[iDebt]||'').toLowerCase()==='true',
+    tags:String(r[iTags]||'').trim(),feedback:String(r[iFeed]||'').trim(),
+    date_created:String(r[iCreated]||'').substring(0,10)||null,
+    last_interaction:String(r[iLast]||'').substring(0,10)||null,
+    updated_at:new Date().toISOString()
+  })).filter(c=>c.contact_id>0);
+}
+
+// ── Render Bot & AI ──
+function renderBot(){
+  // Use most recent msg report linked to active conversation period
+  const w=allWeeks[activeIdx];
+  const mr=msgReports[0]; // most recent
+  if(!mr){
+    document.getElementById('botMcs').innerHTML='<div class="empty" style="grid-column:span 4">Sin datos de mensajes — cargá el CSV de mensajes.</div>';
+    document.getElementById('msgPeriodList').innerHTML='<div class="empty">Sin períodos cargados</div>';
+    return;
+  }
+
+  // Metrics
+  document.getElementById('botMcs').innerHTML=`
+    <div class="mc accent"><div class="mc-icon accent"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="2" width="10" height="9" rx="2"/><circle cx="6" cy="6" r="1" fill="currentColor"/><circle cx="10" cy="6" r="1" fill="currentColor"/></svg></div>
+      <div class="mc-label">Mensajes totales</div><div class="mc-v">${mr.totalMsgs.toLocaleString('es')}</div><div class="mc-s">${mr.label}</div></div>
+    <div class="mc green"><div class="mc-icon green"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 2v4l3 2"/><circle cx="8" cy="8" r="6"/></svg></div>
+      <div class="mc-label">RT humano mediana</div><div class="mc-v">${mr.humanRtMed}m</div><div class="mc-s">vs AI: ${mr.aiRtMed}m</div></div>
+    <div class="mc ${mr.escalationRate>80?'red':'amber'}"><div class="mc-icon ${mr.escalationRate>80?'red':'amber'}"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 2l2 4h4l-3 3 1 4-4-2-4 2 1-4-3-3h4z"/></svg></div>
+      <div class="mc-label">Tasa de escalamiento</div><div class="mc-v">${mr.escalationRate}%</div><div class="mc-s">bot → humano</div></div>
+    <div class="mc green"><div class="mc-icon green"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 3L6 10l-3-3"/></svg></div>
+      <div class="mc-label">Resueltas solo por AI</div><div class="mc-v">${mr.aiOnlyConvs}</div><div class="mc-s">sin intervención humana</div></div>`;
+
+  // Flow donut
+  const fs=mr.flowStats||{};
+  mkChart('cBotFlow','doughnut',
+    {labels:['Bot → Humano','AI solo','Humano directo','Broadcast'],
+     datasets:[{data:[fs.botHuman||0,fs.aiOnly||0,fs.humanOnly||0,mr.broadcastMsgs||0],
+     backgroundColor:['#6366f1','#10b981','#f59e0b','#8b5cf6'],borderWidth:4,borderColor:'#fff'}]},
+    {cutout:'60%',plugins:{tooltip:{callbacks:{label:c=>`${c.label}: ${c.raw}`}}}});
+
+  // Hourly RT line chart
+  const hours=Array.from({length:9},(_,i)=>i+9);
+  const hLabels=hours.map(h=>h+':00');
+  const hHuman=hours.map(h=>mr.hourlyHuman[h]||null);
+  const hAI=hours.map(h=>mr.hourlyAi[h]||null);
+  mkChart('cBotRT','line',
+    {labels:hLabels,datasets:[
+      {label:'Humano',data:hHuman,borderColor:'#6366f1',backgroundColor:'rgba(99,102,241,0.1)',tension:.3,fill:true,pointRadius:5,pointBackgroundColor:'#6366f1',pointBorderColor:'#fff',pointBorderWidth:2},
+      {label:'AI agent',data:hAI,borderColor:'#10b981',backgroundColor:'rgba(16,185,129,0.1)',tension:.3,fill:true,pointRadius:5,pointBackgroundColor:'#10b981',pointBorderColor:'#fff',pointBorderWidth:2}
+    ]},
+    {scales:{y:{beginAtZero:true,grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#8a8a96',font:{size:11}},title:{display:true,text:'Minutos',color:'#8a8a96',font:{size:10}}},x:{grid:{display:false},ticks:{color:'#3a3a42',font:{size:10}}}},
+     plugins:{legend:{display:true,position:'top',labels:{font:{size:11},boxWidth:12}}}});
+
+  // Broadcasts
+  const bc=mr.broadcasts||{};
+  const bcSorted=Object.entries(bc).sort((a,b)=>b[1]-a[1]);
+  const bcTotal=bcSorted.reduce((s,[,v])=>s+v,0)||1;
+  document.getElementById('broadcastList').innerHTML=bcSorted.length?bcSorted.map(([name,count],i)=>`
+    <div class="sla-row">
+      <div class="sla-label" style="font-family:'JetBrains Mono',monospace;font-size:11px">${name.replace(' (es_AR) (MARKETING)','')}</div>
+      <div class="sla-bar"><div class="sla-bar-fill" style="width:${Math.round(count/bcSorted[0][1]*100)}%;background:${PALETTE[i%PALETTE.length]}"></div></div>
+      <div class="sla-val" style="color:var(--ink)">${count}</div>
+      <div class="sla-obj">${(count/bcTotal*100).toFixed(1)}%</div>
+    </div>`).join(''):'<div class="empty">Sin broadcasts</div>';
+
+  // Sender donut
+  mkChart('cSenders','doughnut',
+    {labels:['Humano','AI agent','Workflow','Broadcast','n8n','Cliente'],
+     datasets:[{data:[mr.humanMsgs,mr.botMsgs,mr.workflowMsgs,mr.broadcastMsgs,mr.n8nMsgs,mr.totalMsgs-mr.humanMsgs-mr.botMsgs-mr.workflowMsgs-mr.broadcastMsgs-mr.n8nMsgs],
+     backgroundColor:['#6366f1','#10b981','#f59e0b','#8b5cf6','#ec4899','#94a3b8'],borderWidth:4,borderColor:'#fff'}]},
+    {cutout:'55%'});
+
+  // Period list with delete
+  document.getElementById('msgPeriodList').innerHTML=msgReports.map((r,i)=>`
+    <div style="display:flex;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)">
+      <div style="flex:1"><div style="font-size:13px;font-weight:500">${r.label}</div><div style="font-size:11px;color:var(--ink3)">${r.totalMsgs.toLocaleString('es')} mensajes · RT humano: ${r.humanRtMed}m</div></div>
+      <div onclick="delMsgReport('${r.id}','${r.label}')" style="cursor:pointer;color:var(--ink4);font-size:12px;padding:4px 8px;border-radius:4px" onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--ink4)'">✕</div>
+    </div>`).join('')||'<div class="empty">Sin reportes</div>';
+}
+
+async function delMsgReport(id,label){
+  if(!confirm('¿Eliminar "'+label+'"?'))return;
+  const{error}=await db.from('message_reports').delete().eq('id',id);
+  if(error){toast('Error: '+error.message,true);return;}
+  toast('Eliminado');await fetchMsgReports();
+}
+
+// ── Render Clientes+ ──
+function renderClientesPlus(){
+  const w=allWeeks[activeIdx];if(!w)return;
+  const hasContacts=Object.keys(contactsDB).length>0;
+  if(hasContacts) document.getElementById('contactsStatus').style.display='block';
+
+  // Lifecycle breakdown from conversation data crossed with contacts
+  const topContacts=w.topContacts||[];
+  const lifecycles={},subStatuses={};
+  let debtCount=0,totalWithContact=0;
+
+  topContacts.forEach(c=>{
+    const info=contactsDB[parseInt(c.id)];
+    if(info){
+      totalWithContact++;
+      const lc=info.lifecycle||'Desconocido';
+      lifecycles[lc]=(lifecycles[lc]||0)+c.count;
+      const sub=info.sub||'Desconocido';
+      subStatuses[sub]=(subStatuses[sub]||0)+c.count;
+      if(info.debt)debtCount+=c.count;
+    }
+  });
+
+  const activeCount=subStatuses['active']||0;
+  const canceledCount=subStatuses['canceled']||0;
+  const totalCount=topContacts.reduce((s,c)=>s+c.count,0)||1;
+
+  document.getElementById('cliPlusMcs').innerHTML=`
+    <div class="mc green"><div class="mc-icon green"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 3L6 10l-3-3"/></svg></div>
+      <div class="mc-label">Suscriptos activos</div><div class="mc-v">${activeCount}</div><div class="mc-s">consultas de activos</div></div>
+    <div class="mc red"><div class="mc-icon red"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 4L4 12M4 4l8 8"/></svg></div>
+      <div class="mc-label">Cancelados que consultan</div><div class="mc-v">${canceledCount}</div><div class="mc-s">ex-clientes activos</div></div>
+    <div class="mc amber"><div class="mc-icon amber"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 2v4M8 10v4M2 8h4M10 8h4"/></svg></div>
+      <div class="mc-label">Consultas con deuda</div><div class="mc-v">${debtCount}</div><div class="mc-s">clientes con deuda pendiente</div></div>`;
+
+  // Lifecycle chart
+  const lcSorted=Object.entries(lifecycles).sort((a,b)=>b[1]-a[1]);
+  mkChart('cLifecycle','bar',
+    {labels:lcSorted.map(([l])=>l),datasets:[{data:lcSorted.map(([,v])=>v),backgroundColor:PALETTE,borderRadius:4}]},
+    {indexAxis:'y',scales:{x:{beginAtZero:true,grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#8a8a96',font:{size:10}}},y:{grid:{display:false},ticks:{color:'#3a3a42',font:{size:10}}}}});
+
+  // Sub status chart
+  const subColors={'active':'#10b981','canceled':'#ef4444','past_due':'#f59e0b','trialing':'#6366f1'};
+  const subSorted=Object.entries(subStatuses).sort((a,b)=>b[1]-a[1]);
+  mkChart('cSubStatus','doughnut',
+    {labels:subSorted.map(([s])=>s),datasets:[{data:subSorted.map(([,v])=>v),backgroundColor:subSorted.map(([s])=>subColors[s]||'#94a3b8'),borderWidth:4,borderColor:'#fff'}]},
+    {cutout:'60%'});
+
+  // Top clients table
+  document.getElementById('cliPlusBody').innerHTML=topContacts.slice(0,30).map((c,i)=>{
+    const info=contactsDB[parseInt(c.id)];
+    const name=info?.name||'—';
+    const lc=info?.lifecycle||'—';
+    const sub=info?.sub||'—';
+    const cat=info?.cat||'—';
+    const debt=info?.debt;
+    const subCol=sub==='active'?'var(--green)':sub==='canceled'?'var(--red)':'var(--amber)';
+    return`<tr>
+      <td style="color:var(--ink3);font-weight:500">#${i+1}</td>
+      <td><div style="font-weight:500">${name}</div><div style="font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--ink3)">${c.id}</div></td>
+      <td class="r" style="font-weight:600">${c.count}</td>
+      <td><span style="font-size:11px;padding:2px 8px;border-radius:12px;background:var(--accentbg);color:var(--accent)">${lc}</span></td>
+      <td><span style="font-size:11px;padding:2px 8px;border-radius:12px;background:var(--surface2);color:${subCol};font-weight:500">${sub}</span></td>
+      <td style="text-align:center;font-weight:600">${cat}</td>
+      <td class="r">${debt===true?'<span style="color:var(--red);font-size:11px">Con deuda</span>':debt===false?'<span style="color:var(--green);font-size:11px">Sin deuda</span>':'—'}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ── File handlers ──
+document.getElementById('msgFileIn').addEventListener('change',async function(e){
+  const file=e.target.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=async ev=>{
+    const wb=XLSX.read(new Uint8Array(ev.target.result),{type:'array',raw:false,dateNF:'yyyy-mm-dd hh:mm:ss'});
+    const ws=wb.Sheets[wb.SheetNames[0]];
+    const rows=XLSX.utils.sheet_to_json(ws,{header:1,raw:false,dateNF:'yyyy-mm-dd hh:mm:ss'});
+    if(!rows||rows.length<2){toast('No se pudieron leer datos.',true);return;}
+    const result=processMsgCSV(rows);
+    if(!result){toast('Archivo de mensajes inválido.',true);return;}
+    const by=prompt('¿Subido por? (opcional)','') || null;
+    try{
+      await db.from('message_reports').upsert({
+        period_label:result.label,period_start:result.start,period_end:result.end,
+        total_msgs:result.totalMsgs,human_msgs:result.humanMsgs,bot_msgs:result.botMsgs,
+        workflow_msgs:result.workflowMsgs,broadcast_msgs:result.broadcastMsgs,n8n_msgs:result.n8nMsgs,
+        ai_only_convs:result.aiOnlyConvs,escalation_rate:result.escalationRate,
+        human_rt_med:result.humanRtMed,human_rt_avg:result.humanRtAvg,
+        ai_rt_med:result.aiRtMed,ai_rt_avg:result.aiRtAvg,
+        broadcasts:result.broadcasts,hourly_human_rt:result.hourlyHuman,hourly_ai_rt:result.hourlyAi,
+        flow_stats:result.flowStats,uploaded_by:by
+      },{onConflict:'period_label'});
+      toast('✓ Mensajes guardados');await fetchMsgReports();
+    }catch(e){toast('Error: '+e.message,true);}
+  };
+  reader.readAsArrayBuffer(file);e.target.value='';
+});
+
+document.getElementById('conFileIn').addEventListener('change',async function(e){
+  const file=e.target.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=async ev=>{
+    const wb=XLSX.read(new Uint8Array(ev.target.result),{type:'array',raw:false});
+    const ws=wb.Sheets[wb.SheetNames[0]];
+    const rows=XLSX.utils.sheet_to_json(ws,{header:1,raw:false});
+    if(!rows||rows.length<2){toast('No se pudieron leer datos.',true);return;}
+    const contacts=processContactsCSV(rows);
+    if(!contacts.length){toast('Archivo de contactos inválido.',true);return;}
+    try{
+      // Upsert in batches of 100
+      for(let i=0;i<contacts.length;i+=100){
+        await db.from('contacts').upsert(contacts.slice(i,i+100),{onConflict:'contact_id'});
+      }
+      toast(`✓ ${contacts.length} contactos actualizados`);
+      await fetchContacts();
+    }catch(e){toast('Error: '+e.message,true);}
+  };
+  reader.readAsArrayBuffer(file);e.target.value='';
+});
+
+// Wire renderAll to include new tabs
+const _origRenderAll=renderAll;
+renderAll=function(){
+  _origRenderAll();
+  renderBot();
+  renderClientesPlus();
+};
+
+fetchWeeks();
+fetchMsgReports();
+fetchContacts();
   }catch(e){toast('Error: '+e.message,true);}
 }
 
@@ -967,7 +1391,356 @@ function renderGlosario(){
     </div>`).join('');
 }
 
-fetchWeeks();}
+// ── Message reports state ──
+let msgReports=[], contactsDB={};
+
+// ── Load message reports from Supabase ──
+async function fetchMsgReports(){
+  const{data,error}=await db.from('message_reports').select('*').order('period_start',{ascending:false});
+  if(error) return;
+  msgReports=(data||[]).map(r=>({
+    id:r.id, label:r.period_label, start:r.period_start, end:r.period_end,
+    totalMsgs:r.total_msgs||0, humanMsgs:r.human_msgs||0, botMsgs:r.bot_msgs||0,
+    workflowMsgs:r.workflow_msgs||0, broadcastMsgs:r.broadcast_msgs||0, n8nMsgs:r.n8n_msgs||0,
+    aiOnlyConvs:r.ai_only_convs||0, escalationRate:r.escalation_rate||0,
+    humanRtMed:r.human_rt_med||0, humanRtAvg:r.human_rt_avg||0,
+    aiRtMed:r.ai_rt_med||0, aiRtAvg:r.ai_rt_avg||0,
+    broadcasts:r.broadcasts||{}, hourlyHuman:r.hourly_human_rt||{}, hourlyAi:r.hourly_ai_rt||{},
+    flowStats:r.flow_stats||{}, by:r.uploaded_by
+  }));
+  renderBot();
+}
+
+// ── Load contacts ──
+async function fetchContacts(){
+  const{data,error}=await db.from('contacts').select('*');
+  if(error) return;
+  contactsDB={};
+  (data||[]).forEach(c=>{contactsDB[c.contact_id]={name:(c.first_name||'')+(c.last_name?' '+c.last_name:''),lifecycle:c.lifecycle,sub:c.subscription_status,cat:c.category,debt:c.has_debt,feedback:c.feedback};});
+  if(Object.keys(contactsDB).length>0){
+    document.getElementById('contactsStatus')?.style && (document.getElementById('contactsStatus').style.display='block');
+  }
+  renderClientesPlus();
+}
+
+// ── Process messages CSV ──
+function processMsgCSV(rows){
+  const hdrs=rows[0].map(h=>String(h||'').trim());
+  const col=n=>hdrs.findIndex(h=>h.toLowerCase().includes(n.toLowerCase()));
+  const iTS=col('Date & Time'), iSender=col('Sender Type'), iCont=col('Contact ID');
+  const iMsgType=col('Message Type'), iContType=col('Content Type'), iSubType=col('Sub Type');
+
+  const data=rows.slice(1).filter(r=>r&&r[iTS]);
+  if(!data.length) return null;
+
+  // Parse timestamps
+  const parsed=data.map(r=>{
+    const ts=new Date(r[iTS]);
+    return{ts,sender:String(r[iSender]||'').trim(),cid:String(r[iCont]||''),
+      msgType:String(r[iMsgType]||'').trim(),subType:String(r[iSubType]||'').trim(),hora:ts.getHours()};
+  }).filter(r=>!isNaN(r.ts));
+
+  const dates=parsed.map(r=>r.ts);
+  const start=new Date(Math.min(...dates));
+  const end=new Date(Math.max(...dates));
+  const label=start.toISOString().substring(0,7)+' mensajes';
+
+  // Counts
+  const totalMsgs=parsed.length;
+  const humanMsgs=parsed.filter(r=>r.sender==='user').length;
+  const botMsgs=parsed.filter(r=>r.sender==='ai_agent').length;
+  const workflowMsgs=parsed.filter(r=>r.sender==='workflow').length;
+  const broadcastMsgs=parsed.filter(r=>r.sender==='broadcast').length;
+  const n8nMsgs=parsed.filter(r=>r.sender==='n8n').length;
+
+  // Flow per contact
+  const byContact={};
+  parsed.forEach(r=>{if(!byContact[r.cid])byContact[r.cid]=[];byContact[r.cid].push(r);});
+  let aiOnly=0,botHuman=0;
+  Object.values(byContact).forEach(msgs=>{
+    const senders=new Set(msgs.map(m=>m.sender));
+    const hasAI=senders.has('ai_agent');const hasHuman=senders.has('user');
+    if(hasAI&&!hasHuman)aiOnly++;
+    if(senders.has('workflow')&&hasHuman)botHuman++;
+  });
+  const totalConvs=Object.keys(byContact).length;
+  const escalationRate=totalConvs>0?Math.round(botHuman/totalConvs*100):0;
+
+  // Response times
+  const humanRTs=[],aiRTs=[];
+  const hourlyH={},hourlyA={};
+  Object.values(byContact).forEach(msgs=>{
+    const sorted=msgs.sort((a,b)=>a.ts-b.ts);
+    for(let i=0;i<sorted.length;i++){
+      const r=sorted[i];
+      if(r.msgType==='incoming'&&r.sender==='contact'){
+        const nxt=sorted.slice(i+1).find(m=>m.msgType==='outgoing'&&['user','ai_agent'].includes(m.sender));
+        if(nxt){
+          const rt=(nxt.ts-r.ts)/60000;
+          if(rt>0&&rt<60){
+            if(nxt.sender==='user'){humanRTs.push({rt,h:r.hora});}
+            else{aiRTs.push({rt,h:r.hora});}
+          }
+        }
+      }
+    }
+  });
+  const medRT=arr=>arr.length?[...arr].sort((a,b)=>a-b)[Math.floor(arr.length/2)]:0;
+  const avgRT=arr=>arr.length?arr.reduce((s,v)=>s+v,0)/arr.length:0;
+  for(let h=9;h<18;h++){
+    const hh=humanRTs.filter(x=>x.h===h).map(x=>x.rt);
+    const ha=aiRTs.filter(x=>x.h===h).map(x=>x.rt);
+    if(hh.length)hourlyH[h]=+medRT(hh).toFixed(1);
+    if(ha.length)hourlyA[h]=+medRT(ha).toFixed(1);
+  }
+
+  // Broadcasts
+  const broadcasts={};
+  parsed.filter(r=>r.sender==='broadcast').forEach(r=>{
+    const k=r.subType||'desconocido';broadcasts[k]=(broadcasts[k]||0)+1;
+  });
+
+  return{label,start:start.toISOString().substring(0,10),end:end.toISOString().substring(0,10),
+    totalMsgs,humanMsgs,botMsgs,workflowMsgs,broadcastMsgs,n8nMsgs,
+    aiOnlyConvs:aiOnly,escalationRate,
+    humanRtMed:+medRT(humanRTs.map(x=>x.rt)).toFixed(1),
+    humanRtAvg:+avgRT(humanRTs.map(x=>x.rt)).toFixed(1),
+    aiRtMed:+medRT(aiRTs.map(x=>x.rt)).toFixed(1),
+    aiRtAvg:+avgRT(aiRTs.map(x=>x.rt)).toFixed(1),
+    broadcasts,hourlyHuman:hourlyH,hourlyAi:hourlyA,
+    flowStats:{total:totalConvs,aiOnly,botHuman,humanOnly:totalConvs-aiOnly-botHuman}};
+}
+
+// ── Process contacts CSV ──
+function processContactsCSV(rows){
+  const hdrs=rows[0].map(h=>String(h||'').trim());
+  const col=n=>hdrs.findIndex(h=>h.toLowerCase()===n.toLowerCase());
+  const iID=col('ContactID'),iF=col('FirstName'),iL=col('LastName');
+  const iLife=col('Lifecycle'),iSub=col('subscription_status'),iCat=col('category');
+  const iDebt=col('has_debt'),iTags=col('Tags'),iFeed=col('feedback_lannis');
+  const iCreated=col('DateTimeCreated'),iLast=col('LastInteractionTime');
+
+  return rows.slice(1).filter(r=>r&&r[iID]).map(r=>({
+    contact_id:parseInt(r[iID])||0,
+    first_name:String(r[iF]||'').trim(),last_name:String(r[iL]||'').trim(),
+    lifecycle:String(r[iLife]||'').trim(),subscription_status:String(r[iSub]||'').trim(),
+    category:String(r[iCat]||'').trim(),
+    has_debt:String(r[iDebt]||'').toLowerCase()==='true',
+    tags:String(r[iTags]||'').trim(),feedback:String(r[iFeed]||'').trim(),
+    date_created:String(r[iCreated]||'').substring(0,10)||null,
+    last_interaction:String(r[iLast]||'').substring(0,10)||null,
+    updated_at:new Date().toISOString()
+  })).filter(c=>c.contact_id>0);
+}
+
+// ── Render Bot & AI ──
+function renderBot(){
+  // Use most recent msg report linked to active conversation period
+  const w=allWeeks[activeIdx];
+  const mr=msgReports[0]; // most recent
+  if(!mr){
+    document.getElementById('botMcs').innerHTML='<div class="empty" style="grid-column:span 4">Sin datos de mensajes — cargá el CSV de mensajes.</div>';
+    document.getElementById('msgPeriodList').innerHTML='<div class="empty">Sin períodos cargados</div>';
+    return;
+  }
+
+  // Metrics
+  document.getElementById('botMcs').innerHTML=`
+    <div class="mc accent"><div class="mc-icon accent"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="2" width="10" height="9" rx="2"/><circle cx="6" cy="6" r="1" fill="currentColor"/><circle cx="10" cy="6" r="1" fill="currentColor"/></svg></div>
+      <div class="mc-label">Mensajes totales</div><div class="mc-v">${mr.totalMsgs.toLocaleString('es')}</div><div class="mc-s">${mr.label}</div></div>
+    <div class="mc green"><div class="mc-icon green"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 2v4l3 2"/><circle cx="8" cy="8" r="6"/></svg></div>
+      <div class="mc-label">RT humano mediana</div><div class="mc-v">${mr.humanRtMed}m</div><div class="mc-s">vs AI: ${mr.aiRtMed}m</div></div>
+    <div class="mc ${mr.escalationRate>80?'red':'amber'}"><div class="mc-icon ${mr.escalationRate>80?'red':'amber'}"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 2l2 4h4l-3 3 1 4-4-2-4 2 1-4-3-3h4z"/></svg></div>
+      <div class="mc-label">Tasa de escalamiento</div><div class="mc-v">${mr.escalationRate}%</div><div class="mc-s">bot → humano</div></div>
+    <div class="mc green"><div class="mc-icon green"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 3L6 10l-3-3"/></svg></div>
+      <div class="mc-label">Resueltas solo por AI</div><div class="mc-v">${mr.aiOnlyConvs}</div><div class="mc-s">sin intervención humana</div></div>`;
+
+  // Flow donut
+  const fs=mr.flowStats||{};
+  mkChart('cBotFlow','doughnut',
+    {labels:['Bot → Humano','AI solo','Humano directo','Broadcast'],
+     datasets:[{data:[fs.botHuman||0,fs.aiOnly||0,fs.humanOnly||0,mr.broadcastMsgs||0],
+     backgroundColor:['#6366f1','#10b981','#f59e0b','#8b5cf6'],borderWidth:4,borderColor:'#fff'}]},
+    {cutout:'60%',plugins:{tooltip:{callbacks:{label:c=>`${c.label}: ${c.raw}`}}}});
+
+  // Hourly RT line chart
+  const hours=Array.from({length:9},(_,i)=>i+9);
+  const hLabels=hours.map(h=>h+':00');
+  const hHuman=hours.map(h=>mr.hourlyHuman[h]||null);
+  const hAI=hours.map(h=>mr.hourlyAi[h]||null);
+  mkChart('cBotRT','line',
+    {labels:hLabels,datasets:[
+      {label:'Humano',data:hHuman,borderColor:'#6366f1',backgroundColor:'rgba(99,102,241,0.1)',tension:.3,fill:true,pointRadius:5,pointBackgroundColor:'#6366f1',pointBorderColor:'#fff',pointBorderWidth:2},
+      {label:'AI agent',data:hAI,borderColor:'#10b981',backgroundColor:'rgba(16,185,129,0.1)',tension:.3,fill:true,pointRadius:5,pointBackgroundColor:'#10b981',pointBorderColor:'#fff',pointBorderWidth:2}
+    ]},
+    {scales:{y:{beginAtZero:true,grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#8a8a96',font:{size:11}},title:{display:true,text:'Minutos',color:'#8a8a96',font:{size:10}}},x:{grid:{display:false},ticks:{color:'#3a3a42',font:{size:10}}}},
+     plugins:{legend:{display:true,position:'top',labels:{font:{size:11},boxWidth:12}}}});
+
+  // Broadcasts
+  const bc=mr.broadcasts||{};
+  const bcSorted=Object.entries(bc).sort((a,b)=>b[1]-a[1]);
+  const bcTotal=bcSorted.reduce((s,[,v])=>s+v,0)||1;
+  document.getElementById('broadcastList').innerHTML=bcSorted.length?bcSorted.map(([name,count],i)=>`
+    <div class="sla-row">
+      <div class="sla-label" style="font-family:'JetBrains Mono',monospace;font-size:11px">${name.replace(' (es_AR) (MARKETING)','')}</div>
+      <div class="sla-bar"><div class="sla-bar-fill" style="width:${Math.round(count/bcSorted[0][1]*100)}%;background:${PALETTE[i%PALETTE.length]}"></div></div>
+      <div class="sla-val" style="color:var(--ink)">${count}</div>
+      <div class="sla-obj">${(count/bcTotal*100).toFixed(1)}%</div>
+    </div>`).join(''):'<div class="empty">Sin broadcasts</div>';
+
+  // Sender donut
+  mkChart('cSenders','doughnut',
+    {labels:['Humano','AI agent','Workflow','Broadcast','n8n','Cliente'],
+     datasets:[{data:[mr.humanMsgs,mr.botMsgs,mr.workflowMsgs,mr.broadcastMsgs,mr.n8nMsgs,mr.totalMsgs-mr.humanMsgs-mr.botMsgs-mr.workflowMsgs-mr.broadcastMsgs-mr.n8nMsgs],
+     backgroundColor:['#6366f1','#10b981','#f59e0b','#8b5cf6','#ec4899','#94a3b8'],borderWidth:4,borderColor:'#fff'}]},
+    {cutout:'55%'});
+
+  // Period list with delete
+  document.getElementById('msgPeriodList').innerHTML=msgReports.map((r,i)=>`
+    <div style="display:flex;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)">
+      <div style="flex:1"><div style="font-size:13px;font-weight:500">${r.label}</div><div style="font-size:11px;color:var(--ink3)">${r.totalMsgs.toLocaleString('es')} mensajes · RT humano: ${r.humanRtMed}m</div></div>
+      <div onclick="delMsgReport('${r.id}','${r.label}')" style="cursor:pointer;color:var(--ink4);font-size:12px;padding:4px 8px;border-radius:4px" onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--ink4)'">✕</div>
+    </div>`).join('')||'<div class="empty">Sin reportes</div>';
+}
+
+async function delMsgReport(id,label){
+  if(!confirm('¿Eliminar "'+label+'"?'))return;
+  const{error}=await db.from('message_reports').delete().eq('id',id);
+  if(error){toast('Error: '+error.message,true);return;}
+  toast('Eliminado');await fetchMsgReports();
+}
+
+// ── Render Clientes+ ──
+function renderClientesPlus(){
+  const w=allWeeks[activeIdx];if(!w)return;
+  const hasContacts=Object.keys(contactsDB).length>0;
+  if(hasContacts) document.getElementById('contactsStatus').style.display='block';
+
+  // Lifecycle breakdown from conversation data crossed with contacts
+  const topContacts=w.topContacts||[];
+  const lifecycles={},subStatuses={};
+  let debtCount=0,totalWithContact=0;
+
+  topContacts.forEach(c=>{
+    const info=contactsDB[parseInt(c.id)];
+    if(info){
+      totalWithContact++;
+      const lc=info.lifecycle||'Desconocido';
+      lifecycles[lc]=(lifecycles[lc]||0)+c.count;
+      const sub=info.sub||'Desconocido';
+      subStatuses[sub]=(subStatuses[sub]||0)+c.count;
+      if(info.debt)debtCount+=c.count;
+    }
+  });
+
+  const activeCount=subStatuses['active']||0;
+  const canceledCount=subStatuses['canceled']||0;
+  const totalCount=topContacts.reduce((s,c)=>s+c.count,0)||1;
+
+  document.getElementById('cliPlusMcs').innerHTML=`
+    <div class="mc green"><div class="mc-icon green"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 3L6 10l-3-3"/></svg></div>
+      <div class="mc-label">Suscriptos activos</div><div class="mc-v">${activeCount}</div><div class="mc-s">consultas de activos</div></div>
+    <div class="mc red"><div class="mc-icon red"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 4L4 12M4 4l8 8"/></svg></div>
+      <div class="mc-label">Cancelados que consultan</div><div class="mc-v">${canceledCount}</div><div class="mc-s">ex-clientes activos</div></div>
+    <div class="mc amber"><div class="mc-icon amber"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 2v4M8 10v4M2 8h4M10 8h4"/></svg></div>
+      <div class="mc-label">Consultas con deuda</div><div class="mc-v">${debtCount}</div><div class="mc-s">clientes con deuda pendiente</div></div>`;
+
+  // Lifecycle chart
+  const lcSorted=Object.entries(lifecycles).sort((a,b)=>b[1]-a[1]);
+  mkChart('cLifecycle','bar',
+    {labels:lcSorted.map(([l])=>l),datasets:[{data:lcSorted.map(([,v])=>v),backgroundColor:PALETTE,borderRadius:4}]},
+    {indexAxis:'y',scales:{x:{beginAtZero:true,grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#8a8a96',font:{size:10}}},y:{grid:{display:false},ticks:{color:'#3a3a42',font:{size:10}}}}});
+
+  // Sub status chart
+  const subColors={'active':'#10b981','canceled':'#ef4444','past_due':'#f59e0b','trialing':'#6366f1'};
+  const subSorted=Object.entries(subStatuses).sort((a,b)=>b[1]-a[1]);
+  mkChart('cSubStatus','doughnut',
+    {labels:subSorted.map(([s])=>s),datasets:[{data:subSorted.map(([,v])=>v),backgroundColor:subSorted.map(([s])=>subColors[s]||'#94a3b8'),borderWidth:4,borderColor:'#fff'}]},
+    {cutout:'60%'});
+
+  // Top clients table
+  document.getElementById('cliPlusBody').innerHTML=topContacts.slice(0,30).map((c,i)=>{
+    const info=contactsDB[parseInt(c.id)];
+    const name=info?.name||'—';
+    const lc=info?.lifecycle||'—';
+    const sub=info?.sub||'—';
+    const cat=info?.cat||'—';
+    const debt=info?.debt;
+    const subCol=sub==='active'?'var(--green)':sub==='canceled'?'var(--red)':'var(--amber)';
+    return`<tr>
+      <td style="color:var(--ink3);font-weight:500">#${i+1}</td>
+      <td><div style="font-weight:500">${name}</div><div style="font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--ink3)">${c.id}</div></td>
+      <td class="r" style="font-weight:600">${c.count}</td>
+      <td><span style="font-size:11px;padding:2px 8px;border-radius:12px;background:var(--accentbg);color:var(--accent)">${lc}</span></td>
+      <td><span style="font-size:11px;padding:2px 8px;border-radius:12px;background:var(--surface2);color:${subCol};font-weight:500">${sub}</span></td>
+      <td style="text-align:center;font-weight:600">${cat}</td>
+      <td class="r">${debt===true?'<span style="color:var(--red);font-size:11px">Con deuda</span>':debt===false?'<span style="color:var(--green);font-size:11px">Sin deuda</span>':'—'}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ── File handlers ──
+document.getElementById('msgFileIn').addEventListener('change',async function(e){
+  const file=e.target.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=async ev=>{
+    const wb=XLSX.read(new Uint8Array(ev.target.result),{type:'array',raw:false,dateNF:'yyyy-mm-dd hh:mm:ss'});
+    const ws=wb.Sheets[wb.SheetNames[0]];
+    const rows=XLSX.utils.sheet_to_json(ws,{header:1,raw:false,dateNF:'yyyy-mm-dd hh:mm:ss'});
+    if(!rows||rows.length<2){toast('No se pudieron leer datos.',true);return;}
+    const result=processMsgCSV(rows);
+    if(!result){toast('Archivo de mensajes inválido.',true);return;}
+    const by=prompt('¿Subido por? (opcional)','') || null;
+    try{
+      await db.from('message_reports').upsert({
+        period_label:result.label,period_start:result.start,period_end:result.end,
+        total_msgs:result.totalMsgs,human_msgs:result.humanMsgs,bot_msgs:result.botMsgs,
+        workflow_msgs:result.workflowMsgs,broadcast_msgs:result.broadcastMsgs,n8n_msgs:result.n8nMsgs,
+        ai_only_convs:result.aiOnlyConvs,escalation_rate:result.escalationRate,
+        human_rt_med:result.humanRtMed,human_rt_avg:result.humanRtAvg,
+        ai_rt_med:result.aiRtMed,ai_rt_avg:result.aiRtAvg,
+        broadcasts:result.broadcasts,hourly_human_rt:result.hourlyHuman,hourly_ai_rt:result.hourlyAi,
+        flow_stats:result.flowStats,uploaded_by:by
+      },{onConflict:'period_label'});
+      toast('✓ Mensajes guardados');await fetchMsgReports();
+    }catch(e){toast('Error: '+e.message,true);}
+  };
+  reader.readAsArrayBuffer(file);e.target.value='';
+});
+
+document.getElementById('conFileIn').addEventListener('change',async function(e){
+  const file=e.target.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=async ev=>{
+    const wb=XLSX.read(new Uint8Array(ev.target.result),{type:'array',raw:false});
+    const ws=wb.Sheets[wb.SheetNames[0]];
+    const rows=XLSX.utils.sheet_to_json(ws,{header:1,raw:false});
+    if(!rows||rows.length<2){toast('No se pudieron leer datos.',true);return;}
+    const contacts=processContactsCSV(rows);
+    if(!contacts.length){toast('Archivo de contactos inválido.',true);return;}
+    try{
+      // Upsert in batches of 100
+      for(let i=0;i<contacts.length;i+=100){
+        await db.from('contacts').upsert(contacts.slice(i,i+100),{onConflict:'contact_id'});
+      }
+      toast(`✓ ${contacts.length} contactos actualizados`);
+      await fetchContacts();
+    }catch(e){toast('Error: '+e.message,true);}
+  };
+  reader.readAsArrayBuffer(file);e.target.value='';
+});
+
+// Wire renderAll to include new tabs
+const _origRenderAll=renderAll;
+renderAll=function(){
+  _origRenderAll();
+  renderBot();
+  renderClientesPlus();
+};
+
+fetchWeeks();
+fetchMsgReports();
+fetchContacts();}
   catch(e){toast('Error al guardar: '+e.message,true);}
   btn.disabled=false;btn.innerHTML='Procesar y guardar';
 }
@@ -1668,7 +2441,356 @@ function renderGlosario(){
     </div>`).join('');
 }
 
+// ── Message reports state ──
+let msgReports=[], contactsDB={};
+
+// ── Load message reports from Supabase ──
+async function fetchMsgReports(){
+  const{data,error}=await db.from('message_reports').select('*').order('period_start',{ascending:false});
+  if(error) return;
+  msgReports=(data||[]).map(r=>({
+    id:r.id, label:r.period_label, start:r.period_start, end:r.period_end,
+    totalMsgs:r.total_msgs||0, humanMsgs:r.human_msgs||0, botMsgs:r.bot_msgs||0,
+    workflowMsgs:r.workflow_msgs||0, broadcastMsgs:r.broadcast_msgs||0, n8nMsgs:r.n8n_msgs||0,
+    aiOnlyConvs:r.ai_only_convs||0, escalationRate:r.escalation_rate||0,
+    humanRtMed:r.human_rt_med||0, humanRtAvg:r.human_rt_avg||0,
+    aiRtMed:r.ai_rt_med||0, aiRtAvg:r.ai_rt_avg||0,
+    broadcasts:r.broadcasts||{}, hourlyHuman:r.hourly_human_rt||{}, hourlyAi:r.hourly_ai_rt||{},
+    flowStats:r.flow_stats||{}, by:r.uploaded_by
+  }));
+  renderBot();
+}
+
+// ── Load contacts ──
+async function fetchContacts(){
+  const{data,error}=await db.from('contacts').select('*');
+  if(error) return;
+  contactsDB={};
+  (data||[]).forEach(c=>{contactsDB[c.contact_id]={name:(c.first_name||'')+(c.last_name?' '+c.last_name:''),lifecycle:c.lifecycle,sub:c.subscription_status,cat:c.category,debt:c.has_debt,feedback:c.feedback};});
+  if(Object.keys(contactsDB).length>0){
+    document.getElementById('contactsStatus')?.style && (document.getElementById('contactsStatus').style.display='block');
+  }
+  renderClientesPlus();
+}
+
+// ── Process messages CSV ──
+function processMsgCSV(rows){
+  const hdrs=rows[0].map(h=>String(h||'').trim());
+  const col=n=>hdrs.findIndex(h=>h.toLowerCase().includes(n.toLowerCase()));
+  const iTS=col('Date & Time'), iSender=col('Sender Type'), iCont=col('Contact ID');
+  const iMsgType=col('Message Type'), iContType=col('Content Type'), iSubType=col('Sub Type');
+
+  const data=rows.slice(1).filter(r=>r&&r[iTS]);
+  if(!data.length) return null;
+
+  // Parse timestamps
+  const parsed=data.map(r=>{
+    const ts=new Date(r[iTS]);
+    return{ts,sender:String(r[iSender]||'').trim(),cid:String(r[iCont]||''),
+      msgType:String(r[iMsgType]||'').trim(),subType:String(r[iSubType]||'').trim(),hora:ts.getHours()};
+  }).filter(r=>!isNaN(r.ts));
+
+  const dates=parsed.map(r=>r.ts);
+  const start=new Date(Math.min(...dates));
+  const end=new Date(Math.max(...dates));
+  const label=start.toISOString().substring(0,7)+' mensajes';
+
+  // Counts
+  const totalMsgs=parsed.length;
+  const humanMsgs=parsed.filter(r=>r.sender==='user').length;
+  const botMsgs=parsed.filter(r=>r.sender==='ai_agent').length;
+  const workflowMsgs=parsed.filter(r=>r.sender==='workflow').length;
+  const broadcastMsgs=parsed.filter(r=>r.sender==='broadcast').length;
+  const n8nMsgs=parsed.filter(r=>r.sender==='n8n').length;
+
+  // Flow per contact
+  const byContact={};
+  parsed.forEach(r=>{if(!byContact[r.cid])byContact[r.cid]=[];byContact[r.cid].push(r);});
+  let aiOnly=0,botHuman=0;
+  Object.values(byContact).forEach(msgs=>{
+    const senders=new Set(msgs.map(m=>m.sender));
+    const hasAI=senders.has('ai_agent');const hasHuman=senders.has('user');
+    if(hasAI&&!hasHuman)aiOnly++;
+    if(senders.has('workflow')&&hasHuman)botHuman++;
+  });
+  const totalConvs=Object.keys(byContact).length;
+  const escalationRate=totalConvs>0?Math.round(botHuman/totalConvs*100):0;
+
+  // Response times
+  const humanRTs=[],aiRTs=[];
+  const hourlyH={},hourlyA={};
+  Object.values(byContact).forEach(msgs=>{
+    const sorted=msgs.sort((a,b)=>a.ts-b.ts);
+    for(let i=0;i<sorted.length;i++){
+      const r=sorted[i];
+      if(r.msgType==='incoming'&&r.sender==='contact'){
+        const nxt=sorted.slice(i+1).find(m=>m.msgType==='outgoing'&&['user','ai_agent'].includes(m.sender));
+        if(nxt){
+          const rt=(nxt.ts-r.ts)/60000;
+          if(rt>0&&rt<60){
+            if(nxt.sender==='user'){humanRTs.push({rt,h:r.hora});}
+            else{aiRTs.push({rt,h:r.hora});}
+          }
+        }
+      }
+    }
+  });
+  const medRT=arr=>arr.length?[...arr].sort((a,b)=>a-b)[Math.floor(arr.length/2)]:0;
+  const avgRT=arr=>arr.length?arr.reduce((s,v)=>s+v,0)/arr.length:0;
+  for(let h=9;h<18;h++){
+    const hh=humanRTs.filter(x=>x.h===h).map(x=>x.rt);
+    const ha=aiRTs.filter(x=>x.h===h).map(x=>x.rt);
+    if(hh.length)hourlyH[h]=+medRT(hh).toFixed(1);
+    if(ha.length)hourlyA[h]=+medRT(ha).toFixed(1);
+  }
+
+  // Broadcasts
+  const broadcasts={};
+  parsed.filter(r=>r.sender==='broadcast').forEach(r=>{
+    const k=r.subType||'desconocido';broadcasts[k]=(broadcasts[k]||0)+1;
+  });
+
+  return{label,start:start.toISOString().substring(0,10),end:end.toISOString().substring(0,10),
+    totalMsgs,humanMsgs,botMsgs,workflowMsgs,broadcastMsgs,n8nMsgs,
+    aiOnlyConvs:aiOnly,escalationRate,
+    humanRtMed:+medRT(humanRTs.map(x=>x.rt)).toFixed(1),
+    humanRtAvg:+avgRT(humanRTs.map(x=>x.rt)).toFixed(1),
+    aiRtMed:+medRT(aiRTs.map(x=>x.rt)).toFixed(1),
+    aiRtAvg:+avgRT(aiRTs.map(x=>x.rt)).toFixed(1),
+    broadcasts,hourlyHuman:hourlyH,hourlyAi:hourlyA,
+    flowStats:{total:totalConvs,aiOnly,botHuman,humanOnly:totalConvs-aiOnly-botHuman}};
+}
+
+// ── Process contacts CSV ──
+function processContactsCSV(rows){
+  const hdrs=rows[0].map(h=>String(h||'').trim());
+  const col=n=>hdrs.findIndex(h=>h.toLowerCase()===n.toLowerCase());
+  const iID=col('ContactID'),iF=col('FirstName'),iL=col('LastName');
+  const iLife=col('Lifecycle'),iSub=col('subscription_status'),iCat=col('category');
+  const iDebt=col('has_debt'),iTags=col('Tags'),iFeed=col('feedback_lannis');
+  const iCreated=col('DateTimeCreated'),iLast=col('LastInteractionTime');
+
+  return rows.slice(1).filter(r=>r&&r[iID]).map(r=>({
+    contact_id:parseInt(r[iID])||0,
+    first_name:String(r[iF]||'').trim(),last_name:String(r[iL]||'').trim(),
+    lifecycle:String(r[iLife]||'').trim(),subscription_status:String(r[iSub]||'').trim(),
+    category:String(r[iCat]||'').trim(),
+    has_debt:String(r[iDebt]||'').toLowerCase()==='true',
+    tags:String(r[iTags]||'').trim(),feedback:String(r[iFeed]||'').trim(),
+    date_created:String(r[iCreated]||'').substring(0,10)||null,
+    last_interaction:String(r[iLast]||'').substring(0,10)||null,
+    updated_at:new Date().toISOString()
+  })).filter(c=>c.contact_id>0);
+}
+
+// ── Render Bot & AI ──
+function renderBot(){
+  // Use most recent msg report linked to active conversation period
+  const w=allWeeks[activeIdx];
+  const mr=msgReports[0]; // most recent
+  if(!mr){
+    document.getElementById('botMcs').innerHTML='<div class="empty" style="grid-column:span 4">Sin datos de mensajes — cargá el CSV de mensajes.</div>';
+    document.getElementById('msgPeriodList').innerHTML='<div class="empty">Sin períodos cargados</div>';
+    return;
+  }
+
+  // Metrics
+  document.getElementById('botMcs').innerHTML=`
+    <div class="mc accent"><div class="mc-icon accent"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="2" width="10" height="9" rx="2"/><circle cx="6" cy="6" r="1" fill="currentColor"/><circle cx="10" cy="6" r="1" fill="currentColor"/></svg></div>
+      <div class="mc-label">Mensajes totales</div><div class="mc-v">${mr.totalMsgs.toLocaleString('es')}</div><div class="mc-s">${mr.label}</div></div>
+    <div class="mc green"><div class="mc-icon green"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 2v4l3 2"/><circle cx="8" cy="8" r="6"/></svg></div>
+      <div class="mc-label">RT humano mediana</div><div class="mc-v">${mr.humanRtMed}m</div><div class="mc-s">vs AI: ${mr.aiRtMed}m</div></div>
+    <div class="mc ${mr.escalationRate>80?'red':'amber'}"><div class="mc-icon ${mr.escalationRate>80?'red':'amber'}"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 2l2 4h4l-3 3 1 4-4-2-4 2 1-4-3-3h4z"/></svg></div>
+      <div class="mc-label">Tasa de escalamiento</div><div class="mc-v">${mr.escalationRate}%</div><div class="mc-s">bot → humano</div></div>
+    <div class="mc green"><div class="mc-icon green"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 3L6 10l-3-3"/></svg></div>
+      <div class="mc-label">Resueltas solo por AI</div><div class="mc-v">${mr.aiOnlyConvs}</div><div class="mc-s">sin intervención humana</div></div>`;
+
+  // Flow donut
+  const fs=mr.flowStats||{};
+  mkChart('cBotFlow','doughnut',
+    {labels:['Bot → Humano','AI solo','Humano directo','Broadcast'],
+     datasets:[{data:[fs.botHuman||0,fs.aiOnly||0,fs.humanOnly||0,mr.broadcastMsgs||0],
+     backgroundColor:['#6366f1','#10b981','#f59e0b','#8b5cf6'],borderWidth:4,borderColor:'#fff'}]},
+    {cutout:'60%',plugins:{tooltip:{callbacks:{label:c=>`${c.label}: ${c.raw}`}}}});
+
+  // Hourly RT line chart
+  const hours=Array.from({length:9},(_,i)=>i+9);
+  const hLabels=hours.map(h=>h+':00');
+  const hHuman=hours.map(h=>mr.hourlyHuman[h]||null);
+  const hAI=hours.map(h=>mr.hourlyAi[h]||null);
+  mkChart('cBotRT','line',
+    {labels:hLabels,datasets:[
+      {label:'Humano',data:hHuman,borderColor:'#6366f1',backgroundColor:'rgba(99,102,241,0.1)',tension:.3,fill:true,pointRadius:5,pointBackgroundColor:'#6366f1',pointBorderColor:'#fff',pointBorderWidth:2},
+      {label:'AI agent',data:hAI,borderColor:'#10b981',backgroundColor:'rgba(16,185,129,0.1)',tension:.3,fill:true,pointRadius:5,pointBackgroundColor:'#10b981',pointBorderColor:'#fff',pointBorderWidth:2}
+    ]},
+    {scales:{y:{beginAtZero:true,grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#8a8a96',font:{size:11}},title:{display:true,text:'Minutos',color:'#8a8a96',font:{size:10}}},x:{grid:{display:false},ticks:{color:'#3a3a42',font:{size:10}}}},
+     plugins:{legend:{display:true,position:'top',labels:{font:{size:11},boxWidth:12}}}});
+
+  // Broadcasts
+  const bc=mr.broadcasts||{};
+  const bcSorted=Object.entries(bc).sort((a,b)=>b[1]-a[1]);
+  const bcTotal=bcSorted.reduce((s,[,v])=>s+v,0)||1;
+  document.getElementById('broadcastList').innerHTML=bcSorted.length?bcSorted.map(([name,count],i)=>`
+    <div class="sla-row">
+      <div class="sla-label" style="font-family:'JetBrains Mono',monospace;font-size:11px">${name.replace(' (es_AR) (MARKETING)','')}</div>
+      <div class="sla-bar"><div class="sla-bar-fill" style="width:${Math.round(count/bcSorted[0][1]*100)}%;background:${PALETTE[i%PALETTE.length]}"></div></div>
+      <div class="sla-val" style="color:var(--ink)">${count}</div>
+      <div class="sla-obj">${(count/bcTotal*100).toFixed(1)}%</div>
+    </div>`).join(''):'<div class="empty">Sin broadcasts</div>';
+
+  // Sender donut
+  mkChart('cSenders','doughnut',
+    {labels:['Humano','AI agent','Workflow','Broadcast','n8n','Cliente'],
+     datasets:[{data:[mr.humanMsgs,mr.botMsgs,mr.workflowMsgs,mr.broadcastMsgs,mr.n8nMsgs,mr.totalMsgs-mr.humanMsgs-mr.botMsgs-mr.workflowMsgs-mr.broadcastMsgs-mr.n8nMsgs],
+     backgroundColor:['#6366f1','#10b981','#f59e0b','#8b5cf6','#ec4899','#94a3b8'],borderWidth:4,borderColor:'#fff'}]},
+    {cutout:'55%'});
+
+  // Period list with delete
+  document.getElementById('msgPeriodList').innerHTML=msgReports.map((r,i)=>`
+    <div style="display:flex;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)">
+      <div style="flex:1"><div style="font-size:13px;font-weight:500">${r.label}</div><div style="font-size:11px;color:var(--ink3)">${r.totalMsgs.toLocaleString('es')} mensajes · RT humano: ${r.humanRtMed}m</div></div>
+      <div onclick="delMsgReport('${r.id}','${r.label}')" style="cursor:pointer;color:var(--ink4);font-size:12px;padding:4px 8px;border-radius:4px" onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--ink4)'">✕</div>
+    </div>`).join('')||'<div class="empty">Sin reportes</div>';
+}
+
+async function delMsgReport(id,label){
+  if(!confirm('¿Eliminar "'+label+'"?'))return;
+  const{error}=await db.from('message_reports').delete().eq('id',id);
+  if(error){toast('Error: '+error.message,true);return;}
+  toast('Eliminado');await fetchMsgReports();
+}
+
+// ── Render Clientes+ ──
+function renderClientesPlus(){
+  const w=allWeeks[activeIdx];if(!w)return;
+  const hasContacts=Object.keys(contactsDB).length>0;
+  if(hasContacts) document.getElementById('contactsStatus').style.display='block';
+
+  // Lifecycle breakdown from conversation data crossed with contacts
+  const topContacts=w.topContacts||[];
+  const lifecycles={},subStatuses={};
+  let debtCount=0,totalWithContact=0;
+
+  topContacts.forEach(c=>{
+    const info=contactsDB[parseInt(c.id)];
+    if(info){
+      totalWithContact++;
+      const lc=info.lifecycle||'Desconocido';
+      lifecycles[lc]=(lifecycles[lc]||0)+c.count;
+      const sub=info.sub||'Desconocido';
+      subStatuses[sub]=(subStatuses[sub]||0)+c.count;
+      if(info.debt)debtCount+=c.count;
+    }
+  });
+
+  const activeCount=subStatuses['active']||0;
+  const canceledCount=subStatuses['canceled']||0;
+  const totalCount=topContacts.reduce((s,c)=>s+c.count,0)||1;
+
+  document.getElementById('cliPlusMcs').innerHTML=`
+    <div class="mc green"><div class="mc-icon green"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 3L6 10l-3-3"/></svg></div>
+      <div class="mc-label">Suscriptos activos</div><div class="mc-v">${activeCount}</div><div class="mc-s">consultas de activos</div></div>
+    <div class="mc red"><div class="mc-icon red"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 4L4 12M4 4l8 8"/></svg></div>
+      <div class="mc-label">Cancelados que consultan</div><div class="mc-v">${canceledCount}</div><div class="mc-s">ex-clientes activos</div></div>
+    <div class="mc amber"><div class="mc-icon amber"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 2v4M8 10v4M2 8h4M10 8h4"/></svg></div>
+      <div class="mc-label">Consultas con deuda</div><div class="mc-v">${debtCount}</div><div class="mc-s">clientes con deuda pendiente</div></div>`;
+
+  // Lifecycle chart
+  const lcSorted=Object.entries(lifecycles).sort((a,b)=>b[1]-a[1]);
+  mkChart('cLifecycle','bar',
+    {labels:lcSorted.map(([l])=>l),datasets:[{data:lcSorted.map(([,v])=>v),backgroundColor:PALETTE,borderRadius:4}]},
+    {indexAxis:'y',scales:{x:{beginAtZero:true,grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#8a8a96',font:{size:10}}},y:{grid:{display:false},ticks:{color:'#3a3a42',font:{size:10}}}}});
+
+  // Sub status chart
+  const subColors={'active':'#10b981','canceled':'#ef4444','past_due':'#f59e0b','trialing':'#6366f1'};
+  const subSorted=Object.entries(subStatuses).sort((a,b)=>b[1]-a[1]);
+  mkChart('cSubStatus','doughnut',
+    {labels:subSorted.map(([s])=>s),datasets:[{data:subSorted.map(([,v])=>v),backgroundColor:subSorted.map(([s])=>subColors[s]||'#94a3b8'),borderWidth:4,borderColor:'#fff'}]},
+    {cutout:'60%'});
+
+  // Top clients table
+  document.getElementById('cliPlusBody').innerHTML=topContacts.slice(0,30).map((c,i)=>{
+    const info=contactsDB[parseInt(c.id)];
+    const name=info?.name||'—';
+    const lc=info?.lifecycle||'—';
+    const sub=info?.sub||'—';
+    const cat=info?.cat||'—';
+    const debt=info?.debt;
+    const subCol=sub==='active'?'var(--green)':sub==='canceled'?'var(--red)':'var(--amber)';
+    return`<tr>
+      <td style="color:var(--ink3);font-weight:500">#${i+1}</td>
+      <td><div style="font-weight:500">${name}</div><div style="font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--ink3)">${c.id}</div></td>
+      <td class="r" style="font-weight:600">${c.count}</td>
+      <td><span style="font-size:11px;padding:2px 8px;border-radius:12px;background:var(--accentbg);color:var(--accent)">${lc}</span></td>
+      <td><span style="font-size:11px;padding:2px 8px;border-radius:12px;background:var(--surface2);color:${subCol};font-weight:500">${sub}</span></td>
+      <td style="text-align:center;font-weight:600">${cat}</td>
+      <td class="r">${debt===true?'<span style="color:var(--red);font-size:11px">Con deuda</span>':debt===false?'<span style="color:var(--green);font-size:11px">Sin deuda</span>':'—'}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ── File handlers ──
+document.getElementById('msgFileIn').addEventListener('change',async function(e){
+  const file=e.target.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=async ev=>{
+    const wb=XLSX.read(new Uint8Array(ev.target.result),{type:'array',raw:false,dateNF:'yyyy-mm-dd hh:mm:ss'});
+    const ws=wb.Sheets[wb.SheetNames[0]];
+    const rows=XLSX.utils.sheet_to_json(ws,{header:1,raw:false,dateNF:'yyyy-mm-dd hh:mm:ss'});
+    if(!rows||rows.length<2){toast('No se pudieron leer datos.',true);return;}
+    const result=processMsgCSV(rows);
+    if(!result){toast('Archivo de mensajes inválido.',true);return;}
+    const by=prompt('¿Subido por? (opcional)','') || null;
+    try{
+      await db.from('message_reports').upsert({
+        period_label:result.label,period_start:result.start,period_end:result.end,
+        total_msgs:result.totalMsgs,human_msgs:result.humanMsgs,bot_msgs:result.botMsgs,
+        workflow_msgs:result.workflowMsgs,broadcast_msgs:result.broadcastMsgs,n8n_msgs:result.n8nMsgs,
+        ai_only_convs:result.aiOnlyConvs,escalation_rate:result.escalationRate,
+        human_rt_med:result.humanRtMed,human_rt_avg:result.humanRtAvg,
+        ai_rt_med:result.aiRtMed,ai_rt_avg:result.aiRtAvg,
+        broadcasts:result.broadcasts,hourly_human_rt:result.hourlyHuman,hourly_ai_rt:result.hourlyAi,
+        flow_stats:result.flowStats,uploaded_by:by
+      },{onConflict:'period_label'});
+      toast('✓ Mensajes guardados');await fetchMsgReports();
+    }catch(e){toast('Error: '+e.message,true);}
+  };
+  reader.readAsArrayBuffer(file);e.target.value='';
+});
+
+document.getElementById('conFileIn').addEventListener('change',async function(e){
+  const file=e.target.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=async ev=>{
+    const wb=XLSX.read(new Uint8Array(ev.target.result),{type:'array',raw:false});
+    const ws=wb.Sheets[wb.SheetNames[0]];
+    const rows=XLSX.utils.sheet_to_json(ws,{header:1,raw:false});
+    if(!rows||rows.length<2){toast('No se pudieron leer datos.',true);return;}
+    const contacts=processContactsCSV(rows);
+    if(!contacts.length){toast('Archivo de contactos inválido.',true);return;}
+    try{
+      // Upsert in batches of 100
+      for(let i=0;i<contacts.length;i+=100){
+        await db.from('contacts').upsert(contacts.slice(i,i+100),{onConflict:'contact_id'});
+      }
+      toast(`✓ ${contacts.length} contactos actualizados`);
+      await fetchContacts();
+    }catch(e){toast('Error: '+e.message,true);}
+  };
+  reader.readAsArrayBuffer(file);e.target.value='';
+});
+
+// Wire renderAll to include new tabs
+const _origRenderAll=renderAll;
+renderAll=function(){
+  _origRenderAll();
+  renderBot();
+  renderClientesPlus();
+};
+
 fetchWeeks();
+fetchMsgReports();
+fetchContacts();
 </script>
 </body>
 </html>
