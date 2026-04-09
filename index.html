@@ -218,6 +218,11 @@ body{font-family:'Inter',sans-serif;background:var(--paper);color:var(--ink);min
   </div>
 
   <div class="sb-section">
+    <div class="sb-label">Mensajes guardados</div>
+    <div class="period-pills" id="msgPills"><div style="font-size:11px;color:rgba(255,255,255,0.25);padding:4px 0">Sin datos</div></div>
+  </div>
+
+  <div class="sb-section">
     <div class="sb-label">Filtrar por agente</div>
     <div class="agent-chips" id="agentChips">
       <div class="agent-chip on" onclick="setAgent('all',this)">Todos</div>
@@ -356,7 +361,12 @@ body{font-family:'Inter',sans-serif;background:var(--paper);color:var(--ink);min
       <div class="card"><div class="card-header"><div><div class="card-title">Campañas broadcast del período</div><div class="card-sub">Mensajes masivos — no son consultas orgánicas</div></div></div><div id="broadcastList"><div class="empty">Sin datos de mensajes cargados</div></div></div>
       <div class="g2">
         <div class="card"><div class="card-header"><div><div class="card-title">Mensajes por tipo de sender</div></div></div><div class="ch" style="height:200px"><canvas id="cSenders"></canvas></div></div>
-        <div class="card"><div class="card-header"><div><div class="card-title">Períodos de mensajes cargados</div></div></div><div id="msgPeriodList"><div class="empty">Sin datos</div></div></div>
+        <div class="card"><div class="card-header"><div><div class="card-title">Evolución — RT humano vs AI</div><div class="card-sub">Todos los períodos cargados</div></div></div><div class="ch" style="height:200px"><canvas id="cBotEvol"></canvas></div></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div><div class="card-title">Comparativa de períodos</div><div class="card-sub">Seleccioná hasta 3 períodos para comparar con el activo</div></div></div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px" id="msgCompSelector"></div>
+        <div id="msgCompContent"><div class="empty">Seleccioná al menos un período para comparar.</div></div>
       </div>
     </div>
 
@@ -450,7 +460,7 @@ function exDH(raw){if(!raw||raw==='')return{f:'',h:-1};if(typeof raw==='number')
 // ── State ──
 let allWeeks=[],activeIdx=0,charts={},curTab='resumen';
 let pendingRows=null,pendingHols=new Set(),pendingAgents=new Set();
-let compIds=[],agentFilter='all';
+let compIds=[],agentFilter='all',activeMsgIdx=0,msgCompIds=[];
 let msgReports=[],contactsDB={};
 
 // ── Supabase ──
@@ -490,6 +500,7 @@ async function fetchMsgReports(){
     broadcasts:r.broadcasts||{},hourlyHuman:r.hourly_human_rt||{},hourlyAi:r.hourly_ai_rt||{},
     flowStats:r.flow_stats||{},by:r.uploaded_by
   }));
+  renderMsgPills();
   renderBot();
 }
 
@@ -678,6 +689,21 @@ function renderPills(){
     </div>`).join('');
 }
 
+function renderMsgPills(){
+  const el=document.getElementById('msgPills');
+  if(!msgReports.length){el.innerHTML='<div style="font-size:11px;color:rgba(255,255,255,0.25);padding:4px 0">Sin datos</div>';return;}
+  el.innerHTML=msgReports.map((r,i)=>`
+    <div class="period-pill ${i===activeMsgIdx?'on':''}" onclick="selMsg(${i})">
+      <div class="period-pill-info">
+        <div class="period-pill-name">${r.label}</div>
+        <div class="period-pill-sub">${r.totalMsgs.toLocaleString('es')} msgs · RT: ${r.humanRtMed}m</div>
+      </div>
+      <div class="period-pill-del" onclick="event.stopPropagation();delMsg('${r.id}','${r.label}')">✕</div>
+    </div>`).join('');
+}
+
+function selMsg(i){activeMsgIdx=i;msgCompIds=[];renderMsgPills();renderBot();}
+
 function selPeriod(i){activeIdx=i;compIds=[];renderPills();buildAgentChips();renderAll();}
 
 async function delPeriod(i,wl){
@@ -853,11 +879,11 @@ function renderClientes(w){
 
 // ── Bot & AI ──
 function renderBot(){
-  const mr=msgReports[0];
+  const mr=msgReports[activeMsgIdx];
   if(!mr){
     document.getElementById('botMcs').innerHTML='<div class="empty" style="grid-column:span 4">Sin datos de mensajes — cargá el CSV de mensajes con el botón verde.</div>';
     document.getElementById('broadcastList').innerHTML='<div class="empty">Sin datos</div>';
-    document.getElementById('msgPeriodList').innerHTML='<div class="empty">Sin reportes</div>';
+    document.getElementById('msgCompContent').innerHTML='<div class="empty">Sin datos</div>';
     return;
   }
   document.getElementById('botMcs').innerHTML=`
@@ -865,22 +891,77 @@ function renderBot(){
     <div class="mc c-green"><div class="mc-icon green"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="8" cy="8" r="6"/><path d="M8 4v4l2 2"/></svg></div><div class="mc-label">RT humano mediana</div><div class="mc-val">${mr.humanRtMed}m</div><div class="mc-sub">AI: ${mr.aiRtMed}m</div></div>
     <div class="mc c-amber"><div class="mc-icon amber"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 2l2 4h4l-3 3 1 4-4-2-4 2 1-4-3-3h4z"/></svg></div><div class="mc-label">Escalamiento bot→humano</div><div class="mc-val">${mr.escalationRate}%</div><div class="mc-sub">de conversaciones</div></div>
     <div class="mc c-green"><div class="mc-icon green"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 3L6 10l-3-3"/></svg></div><div class="mc-label">Resueltas solo por AI</div><div class="mc-val">${mr.aiOnlyConvs}</div><div class="mc-sub">sin intervención humana</div></div>`;
+
   const fs=mr.flowStats||{};
   mkChart('cBotFlow','doughnut',{labels:['Bot→Humano','AI solo','Humano directo'],datasets:[{data:[fs.botHuman||0,fs.aiOnly||0,fs.humanOnly||0],backgroundColor:['#6366f1','#10b981','#f59e0b'],borderWidth:4,borderColor:'#fff'}]},{cutout:'60%'});
+
   const hrs=Array.from({length:9},(_,i)=>i+9);
-  mkChart('cBotRT','line',{labels:hrs.map(h=>h+':00'),datasets:[{label:'Humano',data:hrs.map(h=>mr.hourlyHuman[h]||null),borderColor:'#6366f1',backgroundColor:'rgba(99,102,241,0.08)',tension:.3,fill:true,pointRadius:4,pointBackgroundColor:'#6366f1',pointBorderColor:'#fff',pointBorderWidth:2},{label:'AI agent',data:hrs.map(h=>mr.hourlyAi[h]||null),borderColor:'#10b981',backgroundColor:'rgba(16,185,129,0.08)',tension:.3,fill:true,pointRadius:4,pointBackgroundColor:'#10b981',pointBorderColor:'#fff',pointBorderWidth:2}]},{plugins:{legend:{display:true,position:'top',labels:{font:{size:10},boxWidth:10}}},scales:{y:{beginAtZero:true,grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#8a8a96',font:{size:10}},title:{display:true,text:'Minutos',color:'#8a8a96',font:{size:9}}},x:{grid:{display:false},ticks:{color:'#3a3a42',font:{size:9}}}}});
+  mkChart('cBotRT','line',{labels:hrs.map(h=>h+':00'),datasets:[
+    {label:'Humano',data:hrs.map(h=>mr.hourlyHuman[h]||null),borderColor:'#6366f1',backgroundColor:'rgba(99,102,241,0.08)',tension:.3,fill:true,pointRadius:4,pointBackgroundColor:'#6366f1',pointBorderColor:'#fff',pointBorderWidth:2},
+    {label:'AI agent',data:hrs.map(h=>mr.hourlyAi[h]||null),borderColor:'#10b981',backgroundColor:'rgba(16,185,129,0.08)',tension:.3,fill:true,pointRadius:4,pointBackgroundColor:'#10b981',pointBorderColor:'#fff',pointBorderWidth:2}
+  ]},{plugins:{legend:{display:true,position:'top',labels:{font:{size:10},boxWidth:10}}},scales:{y:{beginAtZero:true,grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#8a8a96',font:{size:10}}},x:{grid:{display:false},ticks:{color:'#3a3a42',font:{size:9}}}}});
+
   const bc=mr.broadcasts||{};const bcSorted=Object.entries(bc).sort((a,b)=>b[1]-a[1]);const bcMax=bcSorted[0]?.[1]||1;
   document.getElementById('broadcastList').innerHTML=bcSorted.length?bcSorted.map(([name,count],i)=>`<div class="sla-row"><div class="sla-label" style="font-family:'JetBrains Mono',monospace;font-size:11px">${name.replace(' (es_AR) (MARKETING)','')}</div><div class="sla-bar"><div class="sla-bar-fill" style="width:${Math.round(count/bcMax*100)}%;background:${PAL[i%PAL.length]}"></div></div><div class="sla-val" style="color:var(--ink)">${count}</div></div>`).join(''):'<div class="empty">Sin broadcasts</div>';
+
   mkChart('cSenders','doughnut',{labels:['Humano','AI agent','Workflow','Broadcast','n8n'],datasets:[{data:[mr.humanMsgs,mr.botMsgs,mr.workflowMsgs,mr.broadcastMsgs,mr.n8nMsgs],backgroundColor:['#6366f1','#10b981','#f59e0b','#8b5cf6','#ec4899'],borderWidth:4,borderColor:'#fff'}]},{cutout:'55%'});
-  document.getElementById('msgPeriodList').innerHTML=msgReports.map(r=>`<div style="display:flex;align-items:center;padding:9px 0;border-bottom:1px solid var(--border)"><div style="flex:1"><div style="font-size:12px;font-weight:500">${r.label}</div><div style="font-size:10px;color:var(--ink3)">${r.totalMsgs.toLocaleString('es')} msgs · RT humano: ${r.humanRtMed}m · AI: ${r.aiRtMed}m</div></div><div onclick="delMsg('${r.id}','${r.label}')" style="cursor:pointer;color:var(--ink4);font-size:11px;padding:3px 7px;border-radius:4px" onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--ink4)'">✕</div></div>`).join('');
+
+  // Evolution chart — all periods
+  if(msgReports.length>1){
+    const sorted=[...msgReports].sort((a,b)=>new Date(a.start)-new Date(b.start));
+    mkChart('cBotEvol','line',{labels:sorted.map(r=>r.label),datasets:[
+      {label:'RT Humano',data:sorted.map(r=>r.humanRtMed),borderColor:'#6366f1',backgroundColor:'rgba(99,102,241,0.08)',tension:.3,fill:false,pointRadius:5,pointBackgroundColor:'#6366f1',pointBorderColor:'#fff',pointBorderWidth:2},
+      {label:'RT AI',data:sorted.map(r=>r.aiRtMed),borderColor:'#10b981',backgroundColor:'rgba(16,185,129,0.08)',tension:.3,fill:false,pointRadius:5,pointBackgroundColor:'#10b981',pointBorderColor:'#fff',pointBorderWidth:2},
+      {label:'Escalamiento %',data:sorted.map(r=>r.escalationRate),borderColor:'#f59e0b',backgroundColor:'rgba(245,158,11,0.08)',tension:.3,fill:false,pointRadius:5,pointBackgroundColor:'#f59e0b',pointBorderColor:'#fff',pointBorderWidth:2,yAxisID:'y2'}
+    ]},{plugins:{legend:{display:true,position:'top',labels:{font:{size:10},boxWidth:10}}},scales:{y:{beginAtZero:true,grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#8a8a96',font:{size:10}},title:{display:true,text:'Minutos',color:'#8a8a96',font:{size:9}}},y2:{position:'right',beginAtZero:true,grid:{display:false},ticks:{color:'#f59e0b',font:{size:10}},title:{display:true,text:'%',color:'#f59e0b',font:{size:9}}},x:{grid:{display:false},ticks:{color:'#3a3a42',font:{size:10}}}}});
+  }
+
+  // Comparativa selector
+  const others=msgReports.filter((_,i)=>i!==activeMsgIdx);
+  if(!msgCompIds.length&&others.length)msgCompIds=others.slice(0,2).map(r=>r.id);
+  document.getElementById('msgCompSelector').innerHTML=others.length?others.map(r=>`<div class="comp-chip ${msgCompIds.includes(r.id)?'on':''}" onclick="toggleMsgComp('${r.id}')">${r.label}</div>`).join(''):'<span style="font-size:12px;color:var(--ink3)">Cargá más períodos para comparar.</span>';
+
+  // Comparativa table
+  const selMsgs=msgCompIds.map(id=>msgReports.find(r=>r.id===id)).filter(Boolean);
+  if(!selMsgs.length){document.getElementById('msgCompContent').innerHTML='<div class="empty">Seleccioná al menos un período.</div>';return;}
+  const cols=[mr,...selMsgs];const lbls=cols.map(r=>r.label);
+  function tdV(v,first=false){return`<td class="r"><span style="${first?'font-weight:600;color:var(--accent)':''}">${v??'—'}</span></td>`;}
+  function tdNum(v,first=false,lo=false){
+    if(v==null||isNaN(v))return`<td class="r">—</td>`;
+    const base=cols[0][Object.keys(cols[0]).find(k=>cols[0][k]===v)];
+    return`<td class="r"><span style="font-weight:${first?'600':'400'};color:${first?'var(--accent)':'var(--ink)'}">${v}</span></td>`;
+  }
+  let html=`<table class="tbl"><thead><tr><th>Métrica</th>${cols.map((c,i)=>`<th class="r" style="${i===0?'color:var(--accent);font-weight:700':''}">${lbls[i]}</th>`).join('')}</tr></thead><tbody>
+  <tr class="tbl-section"><td colspan="${cols.length+1}">Volumen</td></tr>
+  <tr><td>Mensajes totales</td>${cols.map((c,i)=>tdV(c.totalMsgs?.toLocaleString('es'),i===0)).join('')}</tr>
+  <tr><td>Mensajes humanos</td>${cols.map((c,i)=>tdV(c.humanMsgs?.toLocaleString('es'),i===0)).join('')}</tr>
+  <tr><td>Mensajes AI agent</td>${cols.map((c,i)=>tdV(c.botMsgs?.toLocaleString('es'),i===0)).join('')}</tr>
+  <tr><td>Broadcasts</td>${cols.map((c,i)=>tdV(c.broadcastMsgs?.toLocaleString('es'),i===0)).join('')}</tr>
+  <tr class="tbl-section"><td colspan="${cols.length+1}">Tiempos de respuesta reales</td></tr>
+  <tr><td>RT humano — mediana</td>${cols.map((c,i)=>`<td class="r"><span style="${i===0?'font-weight:600;color:var(--accent)':''}">${c.humanRtMed}m</span></td>`).join('')}</tr>
+  <tr><td>RT humano — promedio</td>${cols.map((c,i)=>`<td class="r"><span style="${i===0?'font-weight:600;color:var(--accent)':''}">${c.humanRtAvg}m</span></td>`).join('')}</tr>
+  <tr><td>RT AI agent — mediana</td>${cols.map((c,i)=>`<td class="r"><span style="${i===0?'font-weight:600;color:var(--accent)':''}">${c.aiRtMed}m</span></td>`).join('')}</tr>
+  <tr class="tbl-section"><td colspan="${cols.length+1}">Automatización</td></tr>
+  <tr><td>Escalamiento bot→humano</td>${cols.map((c,i)=>`<td class="r"><span style="${i===0?'font-weight:600;color:var(--accent)':''}">${c.escalationRate}%</span></td>`).join('')}</tr>
+  <tr><td>Resueltas solo por AI</td>${cols.map((c,i)=>`<td class="r"><span style="${i===0?'font-weight:600;color:var(--accent)':''}">${c.aiOnlyConvs}</span></td>`).join('')}</tr>
+  </tbody></table>`;
+
+  // Broadcast comparison
+  const allBcNames=[...new Set(cols.flatMap(c=>Object.keys(c.broadcasts||{})))].sort();
+  if(allBcNames.length){
+    html+=`<div style="margin-top:16px"><table class="tbl"><thead><tr><th>Campaña broadcast</th>${cols.map((c,i)=>`<th class="r" style="${i===0?'color:var(--accent);font-weight:700':''}">${lbls[i]}</th>`).join('')}</tr></thead><tbody>
+    ${allBcNames.map(name=>`<tr><td style="font-family:'JetBrains Mono',monospace;font-size:11px">${name.replace(' (es_AR) (MARKETING)','')}</td>${cols.map((c,i)=>tdV(c.broadcasts?.[name]||0,i===0)).join('')}</tr>`).join('')}
+    </tbody></table></div>`;
+  }
+  document.getElementById('msgCompContent').innerHTML=html;
 }
 
-async function delMsg(id,label){
-  if(!confirm('¿Eliminar "'+label+'"?'))return;
-  const{error}=await db.from('message_reports').delete().eq('id',id);
-  if(error){toast('Error: '+error.message,true);return;}
-  toast('Eliminado');await fetchMsgReports();
+function toggleMsgComp(id){
+  const idx=msgCompIds.indexOf(id);
+  if(idx>=0)msgCompIds.splice(idx,1);else if(msgCompIds.length<3)msgCompIds.push(id);
+  renderBot();
 }
+
 
 // ── Comparativa ──
 function renderComparativa(w){
@@ -1003,6 +1084,8 @@ function renderGlosario(){
     ]},
     {title:'Bot & Mensajes',items:[
       {term:'RT real humano',formula:'Timestamp(respuesta_humana) − Timestamp(msg_cliente)',desc:'Tiempo real de respuesta calculado mensaje a mensaje del CSV de mensajes. Más preciso que ART.'},
+      {term:'Evolución RT',formula:'humanRtMed por período ordenado cronológicamente',desc:'Gráfico de línea que muestra cómo evoluciona el tiempo de respuesta humano y del AI mes a mes o semana a semana. Permite detectar si el equipo está mejorando o empeorando.'},
+      {term:'Comparativa de mensajes',formula:'Cols = [período activo, ...períodos seleccionados]',desc:'Compara cualquier combinación de períodos de mensajes: RT humano, RT AI, escalamiento, AI solo, broadcasts. Funciona tanto para comparar meses como semanas.'},
       {term:'Escalamiento',formula:'convs(workflow + user) ÷ total_convs',desc:'% de conversaciones que pasaron por bot Y luego requirieron intervención humana.'},
       {term:'AI only',formula:'convs(ai_agent) AND NOT(user)',desc:'Conversaciones donde el AI agent respondió sin que ningún humano interviniera.'},
       {term:'Broadcast',formula:'Sender Type = "broadcast"',desc:'Mensajes de campañas masivas. No son consultas orgánicas — se muestran separados.'},
