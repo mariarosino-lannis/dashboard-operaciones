@@ -744,643 +744,8 @@ async function delPeriod(idx,weekLabel){
     const{error}=await db.from('weekly_reports').delete().eq('week_label',weekLabel);
     if(error)throw error;
     toast('Reporte eliminado');
-    await // ── Message reports state ──
-let msgReports=[], contactsDB={};
-
-// ── Load message reports from Supabase ──
-async function fetchMsgReports(){
-  const{data,error}=await db.from('message_reports').select('*').order('period_start',{ascending:false});
-  if(error) return;
-  msgReports=(data||[]).map(r=>({
-    id:r.id, label:r.period_label, start:r.period_start, end:r.period_end,
-    totalMsgs:r.total_msgs||0, humanMsgs:r.human_msgs||0, botMsgs:r.bot_msgs||0,
-    workflowMsgs:r.workflow_msgs||0, broadcastMsgs:r.broadcast_msgs||0, n8nMsgs:r.n8n_msgs||0,
-    aiOnlyConvs:r.ai_only_convs||0, escalationRate:r.escalation_rate||0,
-    humanRtMed:r.human_rt_med||0, humanRtAvg:r.human_rt_avg||0,
-    aiRtMed:r.ai_rt_med||0, aiRtAvg:r.ai_rt_avg||0,
-    broadcasts:r.broadcasts||{}, hourlyHuman:r.hourly_human_rt||{}, hourlyAi:r.hourly_ai_rt||{},
-    flowStats:r.flow_stats||{}, by:r.uploaded_by
-  }));
-  renderBot();
-}
-
-// ── Load contacts ──
-async function fetchContacts(){
-  const{data,error}=await db.from('contacts').select('*');
-  if(error) return;
-  contactsDB={};
-  (data||[]).forEach(c=>{contactsDB[c.contact_id]={name:(c.first_name||'')+(c.last_name?' '+c.last_name:''),lifecycle:c.lifecycle,sub:c.subscription_status,cat:c.category,debt:c.has_debt,feedback:c.feedback};});
-  if(Object.keys(contactsDB).length>0){
-    document.getElementById('contactsStatus')?.style && (document.getElementById('contactsStatus').style.display='block');
-  }
-  renderClientesPlus();
-}
-
-// ── Process messages CSV ──
-function processMsgCSV(rows){
-  const hdrs=rows[0].map(h=>String(h||'').trim());
-  const col=n=>hdrs.findIndex(h=>h.toLowerCase().includes(n.toLowerCase()));
-  const iTS=col('Date & Time'), iSender=col('Sender Type'), iCont=col('Contact ID');
-  const iMsgType=col('Message Type'), iContType=col('Content Type'), iSubType=col('Sub Type');
-
-  const data=rows.slice(1).filter(r=>r&&r[iTS]);
-  if(!data.length) return null;
-
-  // Parse timestamps
-  const parsed=data.map(r=>{
-    const ts=new Date(r[iTS]);
-    return{ts,sender:String(r[iSender]||'').trim(),cid:String(r[iCont]||''),
-      msgType:String(r[iMsgType]||'').trim(),subType:String(r[iSubType]||'').trim(),hora:ts.getHours()};
-  }).filter(r=>!isNaN(r.ts));
-
-  const dates=parsed.map(r=>r.ts);
-  const start=new Date(Math.min(...dates));
-  const end=new Date(Math.max(...dates));
-  const label=start.toISOString().substring(0,7)+' mensajes';
-
-  // Counts
-  const totalMsgs=parsed.length;
-  const humanMsgs=parsed.filter(r=>r.sender==='user').length;
-  const botMsgs=parsed.filter(r=>r.sender==='ai_agent').length;
-  const workflowMsgs=parsed.filter(r=>r.sender==='workflow').length;
-  const broadcastMsgs=parsed.filter(r=>r.sender==='broadcast').length;
-  const n8nMsgs=parsed.filter(r=>r.sender==='n8n').length;
-
-  // Flow per contact
-  const byContact={};
-  parsed.forEach(r=>{if(!byContact[r.cid])byContact[r.cid]=[];byContact[r.cid].push(r);});
-  let aiOnly=0,botHuman=0;
-  Object.values(byContact).forEach(msgs=>{
-    const senders=new Set(msgs.map(m=>m.sender));
-    const hasAI=senders.has('ai_agent');const hasHuman=senders.has('user');
-    if(hasAI&&!hasHuman)aiOnly++;
-    if(senders.has('workflow')&&hasHuman)botHuman++;
-  });
-  const totalConvs=Object.keys(byContact).length;
-  const escalationRate=totalConvs>0?Math.round(botHuman/totalConvs*100):0;
-
-  // Response times
-  const humanRTs=[],aiRTs=[];
-  const hourlyH={},hourlyA={};
-  Object.values(byContact).forEach(msgs=>{
-    const sorted=msgs.sort((a,b)=>a.ts-b.ts);
-    for(let i=0;i<sorted.length;i++){
-      const r=sorted[i];
-      if(r.msgType==='incoming'&&r.sender==='contact'){
-        const nxt=sorted.slice(i+1).find(m=>m.msgType==='outgoing'&&['user','ai_agent'].includes(m.sender));
-        if(nxt){
-          const rt=(nxt.ts-r.ts)/60000;
-          if(rt>0&&rt<60){
-            if(nxt.sender==='user'){humanRTs.push({rt,h:r.hora});}
-            else{aiRTs.push({rt,h:r.hora});}
-          }
-        }
-      }
-    }
-  });
-  const medRT=arr=>arr.length?[...arr].sort((a,b)=>a-b)[Math.floor(arr.length/2)]:0;
-  const avgRT=arr=>arr.length?arr.reduce((s,v)=>s+v,0)/arr.length:0;
-  for(let h=9;h<18;h++){
-    const hh=humanRTs.filter(x=>x.h===h).map(x=>x.rt);
-    const ha=aiRTs.filter(x=>x.h===h).map(x=>x.rt);
-    if(hh.length)hourlyH[h]=+medRT(hh).toFixed(1);
-    if(ha.length)hourlyA[h]=+medRT(ha).toFixed(1);
-  }
-
-  // Broadcasts
-  const broadcasts={};
-  parsed.filter(r=>r.sender==='broadcast').forEach(r=>{
-    const k=r.subType||'desconocido';broadcasts[k]=(broadcasts[k]||0)+1;
-  });
-
-  return{label,start:start.toISOString().substring(0,10),end:end.toISOString().substring(0,10),
-    totalMsgs,humanMsgs,botMsgs,workflowMsgs,broadcastMsgs,n8nMsgs,
-    aiOnlyConvs:aiOnly,escalationRate,
-    humanRtMed:+medRT(humanRTs.map(x=>x.rt)).toFixed(1),
-    humanRtAvg:+avgRT(humanRTs.map(x=>x.rt)).toFixed(1),
-    aiRtMed:+medRT(aiRTs.map(x=>x.rt)).toFixed(1),
-    aiRtAvg:+avgRT(aiRTs.map(x=>x.rt)).toFixed(1),
-    broadcasts,hourlyHuman:hourlyH,hourlyAi:hourlyA,
-    flowStats:{total:totalConvs,aiOnly,botHuman,humanOnly:totalConvs-aiOnly-botHuman}};
-}
-
-// ── Process contacts CSV ──
-function processContactsCSV(rows){
-  const hdrs=rows[0].map(h=>String(h||'').trim());
-  const col=n=>hdrs.findIndex(h=>h.toLowerCase()===n.toLowerCase());
-  const iID=col('ContactID'),iF=col('FirstName'),iL=col('LastName');
-  const iLife=col('Lifecycle'),iSub=col('subscription_status'),iCat=col('category');
-  const iDebt=col('has_debt'),iTags=col('Tags'),iFeed=col('feedback_lannis');
-  const iCreated=col('DateTimeCreated'),iLast=col('LastInteractionTime');
-
-  return rows.slice(1).filter(r=>r&&r[iID]).map(r=>({
-    contact_id:parseInt(r[iID])||0,
-    first_name:String(r[iF]||'').trim(),last_name:String(r[iL]||'').trim(),
-    lifecycle:String(r[iLife]||'').trim(),subscription_status:String(r[iSub]||'').trim(),
-    category:String(r[iCat]||'').trim(),
-    has_debt:String(r[iDebt]||'').toLowerCase()==='true',
-    tags:String(r[iTags]||'').trim(),feedback:String(r[iFeed]||'').trim(),
-    date_created:String(r[iCreated]||'').substring(0,10)||null,
-    last_interaction:String(r[iLast]||'').substring(0,10)||null,
-    updated_at:new Date().toISOString()
-  })).filter(c=>c.contact_id>0);
-}
-
-// ── Render Bot & AI ──
-function renderBot(){
-  // Use most recent msg report linked to active conversation period
-  const w=allWeeks[activeIdx];
-  const mr=msgReports[0]; // most recent
-  if(!mr){
-    document.getElementById('botMcs').innerHTML='<div class="empty" style="grid-column:span 4">Sin datos de mensajes — cargá el CSV de mensajes.</div>';
-    document.getElementById('msgPeriodList').innerHTML='<div class="empty">Sin períodos cargados</div>';
-    return;
-  }
-
-  // Metrics
-  document.getElementById('botMcs').innerHTML=`
-    <div class="mc accent"><div class="mc-icon accent"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="2" width="10" height="9" rx="2"/><circle cx="6" cy="6" r="1" fill="currentColor"/><circle cx="10" cy="6" r="1" fill="currentColor"/></svg></div>
-      <div class="mc-label">Mensajes totales</div><div class="mc-v">${mr.totalMsgs.toLocaleString('es')}</div><div class="mc-s">${mr.label}</div></div>
-    <div class="mc green"><div class="mc-icon green"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 2v4l3 2"/><circle cx="8" cy="8" r="6"/></svg></div>
-      <div class="mc-label">RT humano mediana</div><div class="mc-v">${mr.humanRtMed}m</div><div class="mc-s">vs AI: ${mr.aiRtMed}m</div></div>
-    <div class="mc ${mr.escalationRate>80?'red':'amber'}"><div class="mc-icon ${mr.escalationRate>80?'red':'amber'}"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 2l2 4h4l-3 3 1 4-4-2-4 2 1-4-3-3h4z"/></svg></div>
-      <div class="mc-label">Tasa de escalamiento</div><div class="mc-v">${mr.escalationRate}%</div><div class="mc-s">bot → humano</div></div>
-    <div class="mc green"><div class="mc-icon green"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 3L6 10l-3-3"/></svg></div>
-      <div class="mc-label">Resueltas solo por AI</div><div class="mc-v">${mr.aiOnlyConvs}</div><div class="mc-s">sin intervención humana</div></div>`;
-
-  // Flow donut
-  const fs=mr.flowStats||{};
-  mkChart('cBotFlow','doughnut',
-    {labels:['Bot → Humano','AI solo','Humano directo','Broadcast'],
-     datasets:[{data:[fs.botHuman||0,fs.aiOnly||0,fs.humanOnly||0,mr.broadcastMsgs||0],
-     backgroundColor:['#6366f1','#10b981','#f59e0b','#8b5cf6'],borderWidth:4,borderColor:'#fff'}]},
-    {cutout:'60%',plugins:{tooltip:{callbacks:{label:c=>`${c.label}: ${c.raw}`}}}});
-
-  // Hourly RT line chart
-  const hours=Array.from({length:9},(_,i)=>i+9);
-  const hLabels=hours.map(h=>h+':00');
-  const hHuman=hours.map(h=>mr.hourlyHuman[h]||null);
-  const hAI=hours.map(h=>mr.hourlyAi[h]||null);
-  mkChart('cBotRT','line',
-    {labels:hLabels,datasets:[
-      {label:'Humano',data:hHuman,borderColor:'#6366f1',backgroundColor:'rgba(99,102,241,0.1)',tension:.3,fill:true,pointRadius:5,pointBackgroundColor:'#6366f1',pointBorderColor:'#fff',pointBorderWidth:2},
-      {label:'AI agent',data:hAI,borderColor:'#10b981',backgroundColor:'rgba(16,185,129,0.1)',tension:.3,fill:true,pointRadius:5,pointBackgroundColor:'#10b981',pointBorderColor:'#fff',pointBorderWidth:2}
-    ]},
-    {scales:{y:{beginAtZero:true,grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#8a8a96',font:{size:11}},title:{display:true,text:'Minutos',color:'#8a8a96',font:{size:10}}},x:{grid:{display:false},ticks:{color:'#3a3a42',font:{size:10}}}},
-     plugins:{legend:{display:true,position:'top',labels:{font:{size:11},boxWidth:12}}}});
-
-  // Broadcasts
-  const bc=mr.broadcasts||{};
-  const bcSorted=Object.entries(bc).sort((a,b)=>b[1]-a[1]);
-  const bcTotal=bcSorted.reduce((s,[,v])=>s+v,0)||1;
-  document.getElementById('broadcastList').innerHTML=bcSorted.length?bcSorted.map(([name,count],i)=>`
-    <div class="sla-row">
-      <div class="sla-label" style="font-family:'JetBrains Mono',monospace;font-size:11px">${name.replace(' (es_AR) (MARKETING)','')}</div>
-      <div class="sla-bar"><div class="sla-bar-fill" style="width:${Math.round(count/bcSorted[0][1]*100)}%;background:${PALETTE[i%PALETTE.length]}"></div></div>
-      <div class="sla-val" style="color:var(--ink)">${count}</div>
-      <div class="sla-obj">${(count/bcTotal*100).toFixed(1)}%</div>
-    </div>`).join(''):'<div class="empty">Sin broadcasts</div>';
-
-  // Sender donut
-  mkChart('cSenders','doughnut',
-    {labels:['Humano','AI agent','Workflow','Broadcast','n8n','Cliente'],
-     datasets:[{data:[mr.humanMsgs,mr.botMsgs,mr.workflowMsgs,mr.broadcastMsgs,mr.n8nMsgs,mr.totalMsgs-mr.humanMsgs-mr.botMsgs-mr.workflowMsgs-mr.broadcastMsgs-mr.n8nMsgs],
-     backgroundColor:['#6366f1','#10b981','#f59e0b','#8b5cf6','#ec4899','#94a3b8'],borderWidth:4,borderColor:'#fff'}]},
-    {cutout:'55%'});
-
-  // Period list with delete
-  document.getElementById('msgPeriodList').innerHTML=msgReports.map((r,i)=>`
-    <div style="display:flex;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)">
-      <div style="flex:1"><div style="font-size:13px;font-weight:500">${r.label}</div><div style="font-size:11px;color:var(--ink3)">${r.totalMsgs.toLocaleString('es')} mensajes · RT humano: ${r.humanRtMed}m</div></div>
-      <div onclick="delMsgReport('${r.id}','${r.label}')" style="cursor:pointer;color:var(--ink4);font-size:12px;padding:4px 8px;border-radius:4px" onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--ink4)'">✕</div>
-    </div>`).join('')||'<div class="empty">Sin reportes</div>';
-}
-
-async function delMsgReport(id,label){
-  if(!confirm('¿Eliminar "'+label+'"?'))return;
-  const{error}=await db.from('message_reports').delete().eq('id',id);
-  if(error){toast('Error: '+error.message,true);return;}
-  toast('Eliminado');await fetchMsgReports();
-}
-
-// ── Render Clientes+ ──
-function renderClientesPlus(){
-  const w=allWeeks[activeIdx];if(!w)return;
-  const hasContacts=Object.keys(contactsDB).length>0;
-  if(hasContacts) document.getElementById('contactsStatus').style.display='block';
-
-  // Lifecycle breakdown from conversation data crossed with contacts
-  const topContacts=w.topContacts||[];
-  const lifecycles={},subStatuses={};
-  let debtCount=0,totalWithContact=0;
-
-  topContacts.forEach(c=>{
-    const info=contactsDB[parseInt(c.id)];
-    if(info){
-      totalWithContact++;
-      const lc=info.lifecycle||'Desconocido';
-      lifecycles[lc]=(lifecycles[lc]||0)+c.count;
-      const sub=info.sub||'Desconocido';
-      subStatuses[sub]=(subStatuses[sub]||0)+c.count;
-      if(info.debt)debtCount+=c.count;
-    }
-  });
-
-  const activeCount=subStatuses['active']||0;
-  const canceledCount=subStatuses['canceled']||0;
-  const totalCount=topContacts.reduce((s,c)=>s+c.count,0)||1;
-
-  document.getElementById('cliPlusMcs').innerHTML=`
-    <div class="mc green"><div class="mc-icon green"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 3L6 10l-3-3"/></svg></div>
-      <div class="mc-label">Suscriptos activos</div><div class="mc-v">${activeCount}</div><div class="mc-s">consultas de activos</div></div>
-    <div class="mc red"><div class="mc-icon red"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 4L4 12M4 4l8 8"/></svg></div>
-      <div class="mc-label">Cancelados que consultan</div><div class="mc-v">${canceledCount}</div><div class="mc-s">ex-clientes activos</div></div>
-    <div class="mc amber"><div class="mc-icon amber"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 2v4M8 10v4M2 8h4M10 8h4"/></svg></div>
-      <div class="mc-label">Consultas con deuda</div><div class="mc-v">${debtCount}</div><div class="mc-s">clientes con deuda pendiente</div></div>`;
-
-  // Lifecycle chart
-  const lcSorted=Object.entries(lifecycles).sort((a,b)=>b[1]-a[1]);
-  mkChart('cLifecycle','bar',
-    {labels:lcSorted.map(([l])=>l),datasets:[{data:lcSorted.map(([,v])=>v),backgroundColor:PALETTE,borderRadius:4}]},
-    {indexAxis:'y',scales:{x:{beginAtZero:true,grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#8a8a96',font:{size:10}}},y:{grid:{display:false},ticks:{color:'#3a3a42',font:{size:10}}}}});
-
-  // Sub status chart
-  const subColors={'active':'#10b981','canceled':'#ef4444','past_due':'#f59e0b','trialing':'#6366f1'};
-  const subSorted=Object.entries(subStatuses).sort((a,b)=>b[1]-a[1]);
-  mkChart('cSubStatus','doughnut',
-    {labels:subSorted.map(([s])=>s),datasets:[{data:subSorted.map(([,v])=>v),backgroundColor:subSorted.map(([s])=>subColors[s]||'#94a3b8'),borderWidth:4,borderColor:'#fff'}]},
-    {cutout:'60%'});
-
-  // Top clients table
-  document.getElementById('cliPlusBody').innerHTML=topContacts.slice(0,30).map((c,i)=>{
-    const info=contactsDB[parseInt(c.id)];
-    const name=info?.name||'—';
-    const lc=info?.lifecycle||'—';
-    const sub=info?.sub||'—';
-    const cat=info?.cat||'—';
-    const debt=info?.debt;
-    const subCol=sub==='active'?'var(--green)':sub==='canceled'?'var(--red)':'var(--amber)';
-    return`<tr>
-      <td style="color:var(--ink3);font-weight:500">#${i+1}</td>
-      <td><div style="font-weight:500">${name}</div><div style="font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--ink3)">${c.id}</div></td>
-      <td class="r" style="font-weight:600">${c.count}</td>
-      <td><span style="font-size:11px;padding:2px 8px;border-radius:12px;background:var(--accentbg);color:var(--accent)">${lc}</span></td>
-      <td><span style="font-size:11px;padding:2px 8px;border-radius:12px;background:var(--surface2);color:${subCol};font-weight:500">${sub}</span></td>
-      <td style="text-align:center;font-weight:600">${cat}</td>
-      <td class="r">${debt===true?'<span style="color:var(--red);font-size:11px">Con deuda</span>':debt===false?'<span style="color:var(--green);font-size:11px">Sin deuda</span>':'—'}</td>
-    </tr>`;
-  }).join('');
-}
-
-// ── File handlers ──
-document.getElementById('msgFileIn').addEventListener('change',async function(e){
-  const file=e.target.files[0];if(!file)return;
-  const reader=new FileReader();
-  reader.onload=async ev=>{
-    const wb=XLSX.read(new Uint8Array(ev.target.result),{type:'array',raw:false,dateNF:'yyyy-mm-dd hh:mm:ss'});
-    const ws=wb.Sheets[wb.SheetNames[0]];
-    const rows=XLSX.utils.sheet_to_json(ws,{header:1,raw:false,dateNF:'yyyy-mm-dd hh:mm:ss'});
-    if(!rows||rows.length<2){toast('No se pudieron leer datos.',true);return;}
-    const result=processMsgCSV(rows);
-    if(!result){toast('Archivo de mensajes inválido.',true);return;}
-    const by=prompt('¿Subido por? (opcional)','') || null;
-    try{
-      await db.from('message_reports').upsert({
-        period_label:result.label,period_start:result.start,period_end:result.end,
-        total_msgs:result.totalMsgs,human_msgs:result.humanMsgs,bot_msgs:result.botMsgs,
-        workflow_msgs:result.workflowMsgs,broadcast_msgs:result.broadcastMsgs,n8n_msgs:result.n8nMsgs,
-        ai_only_convs:result.aiOnlyConvs,escalation_rate:result.escalationRate,
-        human_rt_med:result.humanRtMed,human_rt_avg:result.humanRtAvg,
-        ai_rt_med:result.aiRtMed,ai_rt_avg:result.aiRtAvg,
-        broadcasts:result.broadcasts,hourly_human_rt:result.hourlyHuman,hourly_ai_rt:result.hourlyAi,
-        flow_stats:result.flowStats,uploaded_by:by
-      },{onConflict:'period_label'});
-      toast('✓ Mensajes guardados');await fetchMsgReports();
-    }catch(e){toast('Error: '+e.message,true);}
-  };
-  reader.readAsArrayBuffer(file);e.target.value='';
-});
-
-document.getElementById('conFileIn').addEventListener('change',async function(e){
-  const file=e.target.files[0];if(!file)return;
-  const reader=new FileReader();
-  reader.onload=async ev=>{
-    const wb=XLSX.read(new Uint8Array(ev.target.result),{type:'array',raw:false});
-    const ws=wb.Sheets[wb.SheetNames[0]];
-    const rows=XLSX.utils.sheet_to_json(ws,{header:1,raw:false});
-    if(!rows||rows.length<2){toast('No se pudieron leer datos.',true);return;}
-    const contacts=processContactsCSV(rows);
-    if(!contacts.length){toast('Archivo de contactos inválido.',true);return;}
-    try{
-      // Upsert in batches of 100
-      for(let i=0;i<contacts.length;i+=100){
-        await db.from('contacts').upsert(contacts.slice(i,i+100),{onConflict:'contact_id'});
-      }
-      toast(`✓ ${contacts.length} contactos actualizados`);
-      await fetchContacts();
-    }catch(e){toast('Error: '+e.message,true);}
-  };
-  reader.readAsArrayBuffer(file);e.target.value='';
-});
-
-fetchWeeks();
-fetchMsgReports();
-fetchContacts();
+    await fetchWeeks();
   }catch(e){toast('Error: '+e.message,true);}
-}
-
-function onPeriodChange(){
-  activeIdx=parseInt(document.getElementById('periodSelect')?.value)||0;
-  compIds=[];renderAll();
-}
-
-function buildAgentChips(){
-  const w=allWeeks[activeIdx];if(!w)return;
-  const agents=Object.keys(w.agents||{}).filter(n=>n&&n!=='Sin agente');
-  const chips=document.getElementById('agentChips');
-  chips.innerHTML=`<div class="agent-chip on" data-agent="all" onclick="toggleAgent('all',this)">Todos</div>`+
-    agents.map(a=>`<div class="agent-chip" data-agent="${a}" onclick="toggleAgent('${a}',this)">${a.split(' ')[0]}</div>`).join('');
-}
-
-function toggleAgent(agent,el){
-  activeAgentFilter=agent;
-  document.querySelectorAll('.agent-chip').forEach(c=>c.classList.remove('on'));
-  el.classList.add('on');
-  renderAll();
-}
-
-// ── Parse ──
-function exDH(raw){
-  if(!raw||raw==='')return{f:'',h:-1};
-  if(typeof raw==='number'){const d=XLSX.SSF.parse_date_code(raw);if(d)return{f:`${d.y}-${String(d.m).padStart(2,'0')}-${String(d.d).padStart(2,'0')}`,h:d.H||0};return{f:'',h:-1};}
-  const s=String(raw);const m=s.match(/(\d{4}-\d{2}-\d{2})[\sT](\d{1,2}):/);
-  if(m)return{f:m[1],h:parseInt(m[2],10)};
-  const p=new Date(s);if(!isNaN(p))return{f:p.toISOString().substring(0,10),h:p.getHours()};
-  return{f:'',h:-1};
-}
-
-// ── Modal ──
-function showModal(weekDates,detectedAgents){
-  pendingHols=new Set();pendingAgents=new Set(detectedAgents);
-  document.getElementById('uploadedBy').value='';
-  const dates=[...weekDates].sort();
-  document.getElementById('modalDesc').textContent=`Período: ${dates[0]} al ${dates[dates.length-1]} · ${dates.length} días detectados`;
-  const grid=document.getElementById('dayGrid');grid.innerHTML='';
-  dates.forEach(d=>{
-    const dt=new Date(d+'T12:00:00');const dow=dt.getDay();
-    const dn=['dom','lun','mar','mié','jue','vie','sáb'];const we=dow===0||dow===6;
-    const btn=document.createElement('div');btn.className='db'+(we?' we':'');
-    btn.innerHTML=`<div class="db-n">${dn[dow]}</div><div class="db-d">${d.substring(8)}</div>`;
-    if(!we){btn.onclick=()=>{if(pendingHols.has(d)){pendingHols.delete(d);btn.classList.remove('sel');}else{pendingHols.add(d);btn.classList.add('sel');}}}
-    grid.appendChild(btn);
-  });
-  const asel=document.getElementById('agentSel');asel.innerHTML='';
-  detectedAgents.forEach(name=>{
-    const btn=document.createElement('div');btn.className='ag-btn sel';
-    btn.innerHTML=`<span style="font-size:16px">✓</span>${name}`;
-    btn.onclick=()=>{if(pendingAgents.has(name)){pendingAgents.delete(name);btn.classList.remove('sel');btn.querySelector('span').textContent='○';}else{pendingAgents.add(name);btn.classList.add('sel');btn.querySelector('span').textContent='✓';}};
-    asel.appendChild(btn);
-  });
-  document.getElementById('modalOv').classList.add('show');
-}
-
-async function confirmUpload(){
-  const btn=document.getElementById('confirmBtn');
-  btn.disabled=true;btn.innerHTML='<span class="sp"></span> Procesando...';
-  document.getElementById('modalOv').classList.remove('show');
-  if(!pendingRows){btn.disabled=false;btn.innerHTML='Procesar y guardar';return;}
-  const result=computeWeek(pendingRows,pendingHols,pendingAgents);
-  const by=document.getElementById('uploadedBy').value.trim();
-  pendingRows=null;
-  if(!result){toast('No se encontraron datos válidos.',true);btn.disabled=false;btn.innerHTML='Procesar y guardar';return;}
-  const p={
-    week_label:result.week,week_start:result.ws,week_end:result.we,
-    total:result.total,total_habil:result.totalH,working_days:result.workDays,available_hours:result.availHrs,
-    frt_med:result.frtMed,frt_avg:result.frtAvg,art_med:result.artMed,art_avg:result.artAvg,ttr_med:result.ttrMed,ttr_avg:result.ttrAvg,
-    days:result.days,hours:result.hours,cats:result.cats,cat_times:result.catTimes,
-    channels:result.channels,bot_count:result.botCount,reassigned_count:result.reassigned,
-    same_day_total:result.sdTotal,same_day_by_cat:result.sdBycat,msgs_by_cat:result.msgsByCat,
-    tta_avg:result.ttaAvg,tta_med:result.ttaMed,ai_closed:result.aiClosed,
-    top_contacts:result.topContacts,contact_freq:result.contactFreq,
-    agents:result.agents,holidays:[...pendingHols],uploaded_by:by||null
-  };
-  try{await saveWeek(p);toast('✓ Reporte guardado correctamente');await function renderCapacidadAvanzada(w){
-  const habil=w.agents||{};
-  // Compute from stored data
-  const artByCat=w.catTimes||{};
-  const msgsByCat=w.msgsByCat||{};
-  const hoursData=w.hours||{};
-  const total=w.total||1;
-  const totalH=w.totalH||1;
-  const wd=w.workDays||1;
-  const agents=Object.keys(habil).filter(n=>n&&n!=='Sin agente').length||3;
-
-  // We need raw CV data — approximate from stored data
-  // CV² for categories: use ratio of (ttrAvg vs frtAvg spread as proxy)
-  // For proper CV² we store it during compute — let's compute from available fields
-
-  // Build category analysis from stored catTimes + msgsByCat
-  const cats=Object.entries(artByCat).filter(([,v])=>v.count>=5).sort((a,b)=>b[1].count-a[1].count);
-
-  // Key metrics
-  const lambda=totalH/(wd*9); // avg consultas/hora
-  const artAvgMin=w.artAvg||0;
-  const mu=artAvgMin>0?60/artAvgMin:0;
-  const rho=agents>0&&mu>0?(lambda/mu)/agents:0;
-
-  document.getElementById('capAvMcs').innerHTML=`
-    <div class="mc accent"><div class="mc-icon accent"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 2v4l3 2"/><circle cx="8" cy="8" r="6"/></svg></div>
-      <div class="mc-label">λ — Tasa de llegada</div>
-      <div class="mc-v">${lambda.toFixed(2)}</div>
-      <div class="mc-s">consultas/hora hábil</div>
-    </div>
-    <div class="mc green"><div class="mc-icon green"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12h3V6H2zM6 12h3V3H6zM10 12h3V8h-3z"/></svg></div>
-      <div class="mc-label">μ — Tasa de servicio</div>
-      <div class="mc-v">${mu.toFixed(2)}</div>
-      <div class="mc-s">conv/hora por agente (ART)</div>
-    </div>
-    <div class="mc ${rho>0.85?'red':rho>0.7?'amber':'green'}">
-      <div class="mc-icon ${rho>0.85?'red':rho>0.7?'amber':'green'}"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 2a6 6 0 100 12A6 6 0 008 2z"/><path d="M8 6v4"/></svg></div>
-      <div class="mc-label">ρ — Utilización</div>
-      <div class="mc-v">${(rho*100).toFixed(0)}%</div>
-      <div class="mc-s">${rho>=1?'Sistema sobrecargado':rho>0.85?'Alta carga':'Dentro de capacidad'}</div>
-    </div>
-    <div class="mc accent"><div class="mc-icon accent"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 3L6 10l-3-3"/></svg></div>
-      <div class="mc-label">Agentes activos</div>
-      <div class="mc-v">${agents}</div>
-      <div class="mc-s">en el período</div>
-    </div>`;
-
-  // CV² by hour (approximate using hours distribution spread)
-  const hourVals=Object.entries(hoursData).sort((a,b)=>parseInt(a[0])-parseInt(b[0]));
-  const hourAvg=hourVals.reduce((s,[,v])=>s+v,0)/hourVals.length||1;
-  // Use relative variation as proxy for CV²
-  const hourCv2=hourVals.map(([h,v])=>({h:h+':00',cv2:((v-hourAvg)/hourAvg)**2*10}));
-  mkChart('cCvHora','bar',
-    {labels:hourCv2.map(x=>x.h),datasets:[{data:hourCv2.map(x=>+x.cv2.toFixed(2)),backgroundColor:hourCv2.map(x=>x.cv2>2?'#ef4444':x.cv2>1?'#f59e0b':'#10b981'),borderRadius:4,borderSkipped:false}]},
-    {scales:{y:{beginAtZero:true,grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#8a8a96',font:{size:10}},title:{display:true,text:'CV² relativo',color:'#8a8a96',font:{size:10}}},x:{grid:{display:false},ticks:{color:'#3a3a42',font:{size:10}}}}}
-  );
-
-  // CV² by category using frtAvg as proxy (high FRT variance = high CV²)
-  const catCv=cats.map(([cat,info])=>({
-    cat:cat.length>18?cat.substring(0,16)+'..':cat,
-    cv2:info.frtAvg>0?(info.frtAvg/60)**2:0.1, // simplified proxy
-    count:info.count
-  })).sort((a,b)=>b.cv2-a.cv2);
-
-  mkChart('cCvCat','bar',
-    {labels:catCv.map(x=>x.cat),datasets:[{data:catCv.map(x=>+x.cv2.toFixed(2)),backgroundColor:catCv.map(x=>x.cv2>2?'#ef4444':x.cv2>1?'#f59e0b':'#10b981'),borderRadius:4,borderSkipped:false}]},
-    {indexAxis:'y',scales:{x:{beginAtZero:true,grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#8a8a96',font:{size:10}}},y:{grid:{display:false},ticks:{color:'#3a3a42',font:{size:10}}}}}
-  );
-
-  // Automation table
-  document.getElementById('autoBody').innerHTML=cats.map(([cat,info])=>{
-    const msgs=msgsByCat[cat];
-    const artMin=info.frtAvg||0;
-    const cv2proxy=info.frtAvg>0?(info.frtAvg/60)**2:0;
-    const predLabel=cv2proxy<0.5?'<span class="pill-ok">Alta</span>':cv2proxy<1.5?'<span class="pill-mid">Media</span>':'<span class="pill-fail">Baja</span>';
-    const recoLabel=cv2proxy<0.5&&info.count>30?'<span class="pill-ok">✓ Automatizar</span>':cv2proxy<1.5?'<span class="pill-mid">Analizar</span>':'<span class="pill-fail">Mantener humano</span>';
-    return`<tr>
-      <td style="font-weight:500">${cat}</td>
-      <td class="r">${info.count}</td>
-      <td class="r" style="font-family:'JetBrains Mono',monospace">${hms(artMin)}</td>
-      <td class="r" style="font-family:'JetBrains Mono',monospace">${cv2proxy.toFixed(2)}</td>
-      <td class="r">${predLabel}</td>
-      <td class="r">${recoLabel}</td>
-    </tr>`;
-  }).join('');
-
-  // Simulator
-  document.getElementById('simCatSelector').innerHTML=cats.map(([cat,info])=>`
-    <div class="comp-chip" onclick="simAuto('${cat}',${info.count},${totalH},${wd},${agents},${w.artAvg||0})" style="cursor:pointer">${cat} (${info.count})</div>`).join('');
-
-  // Switching cost conclusion
-  const cvHoraAvg=hourCv2.reduce((s,x)=>s+x.cv2,0)/hourCv2.length;
-  const cvCatAvg=catCv.reduce((s,x)=>s+x.cv2,0)/catCv.length;
-  const ratio=cvCatAvg/cvHoraAvg;
-  const conclusion=ratio>1.3?
-    `<div style="display:flex;gap:16px;align-items:flex-start">
-      <div style="width:8px;height:8px;border-radius:50%;background:#ef4444;margin-top:5px;flex-shrink:0"></div>
-      <div><strong>Switching cost ALTO (ratio ${ratio.toFixed(2)}x)</strong><br><span style="color:var(--ink3);font-size:12px">La variabilidad entre categorías es mayor que la horaria. Cambiar de contexto entre temáticas tiene un costo cognitivo real. Recomendación: agrupar consultas del mismo tipo, especializar agentes por categoría.</span></div></div>`:
-    `<div style="display:flex;gap:16px;align-items:flex-start">
-      <div style="width:8px;height:8px;border-radius:50%;background:#10b981;margin-top:5px;flex-shrink:0"></div>
-      <div><strong>Switching cost BAJO (ratio ${ratio.toFixed(2)}x)</strong><br><span style="color:var(--ink3);font-size:12px">La variabilidad por categoría y por hora son similares. El costo cognitivo no viene principalmente del cambio de temática, sino de la variabilidad intrínseca de cada conversación. Usar fórmula G/G/c estándar es apropiado.</span></div></div>`;
-  document.getElementById('switchingConclusion').innerHTML=conclusion;
-}
-
-function simAuto(cat,nCat,totalH,wd,agents,artAvg){
-  const lambda=totalH/(wd*9);
-  const mu=artAvg>0?60/artAvg:1;
-  const rhoActual=(lambda/mu)/agents;
-
-  const lambdaNew=(totalH-nCat)/(wd*9);
-  const rhoNew=(lambdaNew/mu)/agents;
-  const pctReduction=((rhoActual-rhoNew)/rhoActual*100);
-  const col=rhoNew<0.7?'#10b981':rhoNew<0.85?'#f59e0b':'#ef4444';
-
-  document.getElementById('simResult').innerHTML=`
-    <div style="font-family:'Syne',sans-serif;font-size:14px;font-weight:600;margin-bottom:12px">Simulación: automatizar "${cat}" (${nCat} consultas)</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
-      <div style="background:var(--surface);border-radius:var(--rs);padding:14px;border:1px solid var(--border)">
-        <div style="font-size:10px;color:var(--ink3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">ρ actual</div>
-        <div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:700;color:#ef4444">${(rhoActual*100).toFixed(0)}%</div>
-      </div>
-      <div style="background:var(--surface);border-radius:var(--rs);padding:14px;border:1px solid var(--border)">
-        <div style="font-size:10px;color:var(--ink3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">ρ sin esta categoría</div>
-        <div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:700;color:${col}">${(rhoNew*100).toFixed(0)}%</div>
-      </div>
-      <div style="background:var(--surface);border-radius:var(--rs);padding:14px;border:1px solid var(--border)">
-        <div style="font-size:10px;color:var(--ink3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Reducción de carga</div>
-        <div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:700;color:#10b981">-${pctReduction.toFixed(1)}%</div>
-      </div>
-    </div>
-    <div style="margin-top:12px;font-size:12px;color:var(--ink3)">${rhoNew<0.8?'✓ Con esta automatización el equipo quedaría dentro de capacidad sostenible.':'⚠ Aún fuera de capacidad óptima. Considerar automatizar categorías adicionales.'}</div>`;
-
-  document.querySelectorAll('#simCatSelector .comp-chip').forEach(c=>c.classList.remove('on'));
-  event.target.classList.add('on');
-}
-
-function renderGlosario(){
-  const sections=[
-    {
-      title:'Métricas de volumen',
-      items:[
-        {term:'Consultas totales',formula:'COUNT(todas las filas externas)',desc:'Total de conversaciones abiertas en el período, excluyendo contactos del equipo interno (identificados por Contact ID).'},
-        {term:'Consultas hábiles',formula:'COUNT(lun-vie, 9-18hs, sin feriados)',desc:'Consultas que entraron en horario laboral. Es la base para calcular tiempos y capacidad. Los feriados se configuran al subir cada reporte.'},
-        {term:'Contactos internos excluidos',formula:'Contact ID ∈ {lista equipo interno}',desc:'Conversaciones entre miembros del equipo propio se excluyen de todos los conteos para no distorsionar las métricas de atención al cliente.'},
-      ]
-    },
-    {
-      title:'Tiempos de respuesta (SLA)',
-      items:[
-        {term:'FRT — First Response Time',formula:'DateTime First Response − DateTime Conversation Started',desc:'Tiempo desde que el cliente abre la conversación hasta que recibe la primera respuesta humana. Objetivo: < 10 minutos. Solo se calcula en consultas hábiles.'},
-        {term:'ART — Average Response Time',formula:'Promedio de tiempos entre cada par de mensajes del agente',desc:'Tiempo promedio que tarda el agente en responder cada mensaje dentro de la conversación. Refleja el ritmo de atención. Objetivo: < 20 minutos.'},
-        {term:'TTR — Time to Resolution',formula:'DateTime Conversation Resolved − DateTime Conversation Started',desc:'Tiempo total desde apertura hasta cierre. Incluye tiempo de espera del cliente entre mensajes, por eso puede ser mucho mayor que ART. Objetivo: < 2 horas.'},
-        {term:'Mediana vs Promedio',formula:'Mediana = valor central ordenado / Promedio = suma/n',desc:'Se muestra ambos porque el promedio se infla con outliers (conversaciones que quedaron abiertas overnight). La mediana es más representativa del caso típico.'},
-        {term:'TTA — Time to First Assignment',formula:'First Assignment Timestamp − DateTime Conversation Started',desc:'Tiempo hasta que la consulta se asigna a un agente. Refleja la velocidad del sistema de routing. No tiene objetivo definido aún.'},
-      ]
-    },
-    {
-      title:'Filtros y criterios de conteo',
-      items:[
-        {term:'Horario hábil',formula:'hora >= 9 AND hora < 18',desc:'Se toma la hora de inicio de la conversación. Consultas que entran a las 17:59 cuentan; las de las 18:00 en adelante no.'},
-        {term:'Días hábiles',formula:'día_semana ∉ {sábado, domingo} AND fecha ∉ feriados',desc:'Los feriados se seleccionan manualmente al subir cada reporte. Se excluyen del cálculo de tiempos y del denominador de capacidad.'},
-        {term:'Normalización de categorías',formula:'Impuestos + Impuestos provinciales + Deudas → Impuestos/Deuda',desc:'Varias categorías de Respond se agrupan para simplificar el análisis. "Otros" agrupa todas las variantes de notificaciones y tests.'},
-      ]
-    },
-    {
-      title:'Capacidad',
-      items:[
-        {term:'Consultas/hora (CPH)',formula:'Consultas hábiles ÷ (días hábiles × 9hs)',desc:'Tasa de llegada promedio de consultas por hora hábil disponible por agente. Referencia de capacidad máxima sostenible: 4 consultas/hora.'},
-        {term:'Carga % por agente',formula:'(consultas_agente / horas_disponibles) / MAX_CPH × 100',desc:'Qué porcentaje de la capacidad máxima estimada está usando cada agente. Verde < 70%, naranja 70-90%, rojo > 90%. MAX_CPH = 4 consultas/hora.'},
-        {term:'Horas disponibles',formula:'días_hábiles × 9hs',desc:'Total de horas hábiles en el período por agente. Base para calcular la carga y utilización.'},
-      ]
-    },
-    {
-      title:'Modelado avanzado — G/G/c (Kingman)',
-      items:[
-        {term:'λ — Tasa de llegada',formula:'consultas_hábiles ÷ (días_hábiles × 9hs)',desc:'Cuántas consultas llegan por hora en promedio. Es el input principal del modelo de capacidad.'},
-        {term:'μ — Tasa de servicio',formula:'1 ÷ (ART_promedio en horas)',desc:'Cuántas conversaciones puede manejar un agente por hora basado en el ART. Se usa ART en lugar de TTR porque el TTR incluye tiempo de espera del cliente, no tiempo activo del agente.'},
-        {term:'ρ — Utilización',formula:'ρ = λ ÷ (μ × c)',desc:'Fracción del tiempo que los agentes están ocupados. c = número de agentes. Si ρ ≥ 1 el sistema está sobrecargado. Óptimo: ρ < 0.80.'},
-        {term:'CV² — Coeficiente de variación al cuadrado',formula:'CV² = (desviación estándar ÷ media)²',desc:'Mide cuán predecible es el tiempo de atención. CV² = 1 → distribución exponencial (Erlang). CV² > 1 → alta variabilidad, se necesita Kingman. CV² < 1 → muy predecible.'},
-        {term:'Wq — Tiempo de espera en cola',formula:'Wq ≈ (ρ/(1-ρ)) × ((ca²+cs²)/2) × (1/μ/c)',desc:'Fórmula de Kingman para G/G/c. ca² = variabilidad de llegadas, cs² = variabilidad de servicio. Estima cuánto espera un cliente antes de ser atendido.'},
-        {term:'Switching cost',formula:'ratio = CV²_categoría ÷ CV²_hora',desc:'Si el ratio > 1.3, cambiar de categoría tiene un costo cognitivo real. Si ≈ 1, la variabilidad es intrínseca a cada conversación independientemente del tema.'},
-      ]
-    },
-    {
-      title:'Análisis de conversaciones',
-      items:[
-        {term:'Resolución mismo día',formula:'fecha_inicio = fecha_cierre',desc:'% de conversaciones resueltas el mismo día que se abrieron. Conversaciones que quedan abiertas overnight distorsionan el TTR promedio.'},
-        {term:'Mensajes promedio',formula:'AVG(Number of Outgoing Messages + Number of Incoming Messages)',desc:'Proxy de complejidad por categoría. Facturación tiene ~17 mensajes promedio vs Sueldos con ~2. Más mensajes = más carga cognitiva real aunque el TTR sea similar.'},
-        {term:'Workflow/Bot',formula:'Closing Note Summary CONTAINS "WORKFLOW" OR "automatización"',desc:'Proxy para detectar conversaciones donde intervino una automatización. No es 100% exacto ya que no todas las conversaciones tienen nota de cierre.'},
-        {term:'Reasignación',formula:'First Assignee ≠ Closed By',desc:'Conversaciones donde el agente que cerró no fue el primero asignado. Puede indicar escalamiento, transferencia o intervención de otro agente.'},
-      ]
-    },
-    {
-      title:'Análisis de clientes',
-      items:[
-        {term:'Contactos recurrentes',formula:'COUNT de Contact IDs con más de 1 consulta',desc:'Clientes que consultaron más de una vez en el período analizado.'},
-        {term:'Alta frecuencia',formula:'COUNT de Contact IDs con más de 10 consultas',desc:'Clientes muy activos que probablemente tienen necesidades recurrentes o están en un proceso largo.'},
-        {term:'Categoría principal del contacto',formula:'MODE(Conversation Category) por Contact ID',desc:'La categoría más frecuente de ese cliente en el período.'},
-      ]
-    },
-  ];
-
-  document.getElementById('glosarioContent').innerHTML=sections.map(s=>`
-    <div class="card" style="margin-bottom:16px">
-      <div class="card-header"><div class="card-title">${s.title}</div></div>
-      <table class="tbl">
-        <thead><tr><th style="width:200px">Término</th><th style="width:250px">Fórmula</th><th>Descripción</th></tr></thead>
-        <tbody>
-          ${s.items.map(item=>`
-            <tr>
-              <td style="font-weight:600;color:var(--accent)">${item.term}</td>
-              <td><code style="font-family:'JetBrains Mono',monospace;font-size:11px;background:var(--surface2);padding:3px 8px;border-radius:4px;display:block">${item.formula}</code></td>
-              <td style="color:var(--ink2);font-size:12px;line-height:1.6">${item.desc}</td>
-            </tr>`).join('')}
-        </tbody>
-      </table>
-    </div>`).join('');
 }
 
 // ── Message reports state ──
@@ -1724,9 +1089,304 @@ document.getElementById('conFileIn').addEventListener('change',async function(e)
 
 fetchWeeks();
 fetchMsgReports();
-fetchContacts();}
-  catch(e){toast('Error al guardar: '+e.message,true);}
+fetchContacts();
+
+function onPeriodChange(){
+  activeIdx=parseInt(document.getElementById('periodSelect')?.value)||0;
+  compIds=[];renderAll();
+}
+
+function buildAgentChips(){
+  const w=allWeeks[activeIdx];if(!w)return;
+  const agents=Object.keys(w.agents||{}).filter(n=>n&&n!=='Sin agente');
+  const chips=document.getElementById('agentChips');
+  chips.innerHTML=`<div class="agent-chip on" data-agent="all" onclick="toggleAgent('all',this)">Todos</div>`+
+    agents.map(a=>`<div class="agent-chip" data-agent="${a}" onclick="toggleAgent('${a}',this)">${a.split(' ')[0]}</div>`).join('');
+}
+
+function toggleAgent(agent,el){
+  activeAgentFilter=agent;
+  document.querySelectorAll('.agent-chip').forEach(c=>c.classList.remove('on'));
+  el.classList.add('on');
+  renderAll();
+}
+
+// ── Parse ──
+function exDH(raw){
+  if(!raw||raw==='')return{f:'',h:-1};
+  if(typeof raw==='number'){const d=XLSX.SSF.parse_date_code(raw);if(d)return{f:`${d.y}-${String(d.m).padStart(2,'0')}-${String(d.d).padStart(2,'0')}`,h:d.H||0};return{f:'',h:-1};}
+  const s=String(raw);const m=s.match(/(\d{4}-\d{2}-\d{2})[\sT](\d{1,2}):/);
+  if(m)return{f:m[1],h:parseInt(m[2],10)};
+  const p=new Date(s);if(!isNaN(p))return{f:p.toISOString().substring(0,10),h:p.getHours()};
+  return{f:'',h:-1};
+}
+
+// ── Modal ──
+function showModal(weekDates,detectedAgents){
+  pendingHols=new Set();pendingAgents=new Set(detectedAgents);
+  document.getElementById('uploadedBy').value='';
+  const dates=[...weekDates].sort();
+  document.getElementById('modalDesc').textContent=`Período: ${dates[0]} al ${dates[dates.length-1]} · ${dates.length} días detectados`;
+  const grid=document.getElementById('dayGrid');grid.innerHTML='';
+  dates.forEach(d=>{
+    const dt=new Date(d+'T12:00:00');const dow=dt.getDay();
+    const dn=['dom','lun','mar','mié','jue','vie','sáb'];const we=dow===0||dow===6;
+    const btn=document.createElement('div');btn.className='db'+(we?' we':'');
+    btn.innerHTML=`<div class="db-n">${dn[dow]}</div><div class="db-d">${d.substring(8)}</div>`;
+    if(!we){btn.onclick=()=>{if(pendingHols.has(d)){pendingHols.delete(d);btn.classList.remove('sel');}else{pendingHols.add(d);btn.classList.add('sel');}}}
+    grid.appendChild(btn);
+  });
+  const asel=document.getElementById('agentSel');asel.innerHTML='';
+  detectedAgents.forEach(name=>{
+    const btn=document.createElement('div');btn.className='ag-btn sel';
+    btn.innerHTML=`<span style="font-size:16px">✓</span>${name}`;
+    btn.onclick=()=>{if(pendingAgents.has(name)){pendingAgents.delete(name);btn.classList.remove('sel');btn.querySelector('span').textContent='○';}else{pendingAgents.add(name);btn.classList.add('sel');btn.querySelector('span').textContent='✓';}};
+    asel.appendChild(btn);
+  });
+  document.getElementById('modalOv').classList.add('show');
+}
+
+async function confirmUpload(){
+  const btn=document.getElementById('confirmBtn');
+  btn.disabled=true;btn.innerHTML='<span class="sp"></span> Procesando...';
+  document.getElementById('modalOv').classList.remove('show');
+  if(!pendingRows){btn.disabled=false;btn.innerHTML='Procesar y guardar';return;}
+  const result=computeWeek(pendingRows,pendingHols,pendingAgents);
+  const by=document.getElementById('uploadedBy').value.trim();
+  pendingRows=null;
+  if(!result){toast('No se encontraron datos válidos.',true);btn.disabled=false;btn.innerHTML='Procesar y guardar';return;}
+  const p={
+    week_label:result.week,week_start:result.ws,week_end:result.we,
+    total:result.total,total_habil:result.totalH,working_days:result.workDays,available_hours:result.availHrs,
+    frt_med:result.frtMed,frt_avg:result.frtAvg,art_med:result.artMed,art_avg:result.artAvg,ttr_med:result.ttrMed,ttr_avg:result.ttrAvg,
+    days:result.days,hours:result.hours,cats:result.cats,cat_times:result.catTimes,
+    channels:result.channels,bot_count:result.botCount,reassigned_count:result.reassigned,
+    same_day_total:result.sdTotal,same_day_by_cat:result.sdBycat,msgs_by_cat:result.msgsByCat,
+    tta_avg:result.ttaAvg,tta_med:result.ttaMed,ai_closed:result.aiClosed,
+    top_contacts:result.topContacts,contact_freq:result.contactFreq,
+    agents:result.agents,holidays:[...pendingHols],uploaded_by:by||null
+  };
+  try{await saveWeek(p);toast('✓ Reporte guardado correctamente');await fetchWeeks();}catch(e){toast('Error al guardar: '+e.message,true);}
   btn.disabled=false;btn.innerHTML='Procesar y guardar';
+}
+
+function renderCapacidadAvanzada(w){
+  const habil=w.agents||{};
+  // Compute from stored data
+  const artByCat=w.catTimes||{};
+  const msgsByCat=w.msgsByCat||{};
+  const hoursData=w.hours||{};
+  const total=w.total||1;
+  const totalH=w.totalH||1;
+  const wd=w.workDays||1;
+  const agents=Object.keys(habil).filter(n=>n&&n!=='Sin agente').length||3;
+
+  // We need raw CV data — approximate from stored data
+  // CV² for categories: use ratio of (ttrAvg vs frtAvg spread as proxy)
+  // For proper CV² we store it during compute — let's compute from available fields
+
+  // Build category analysis from stored catTimes + msgsByCat
+  const cats=Object.entries(artByCat).filter(([,v])=>v.count>=5).sort((a,b)=>b[1].count-a[1].count);
+
+  // Key metrics
+  const lambda=totalH/(wd*9); // avg consultas/hora
+  const artAvgMin=w.artAvg||0;
+  const mu=artAvgMin>0?60/artAvgMin:0;
+  const rho=agents>0&&mu>0?(lambda/mu)/agents:0;
+
+  document.getElementById('capAvMcs').innerHTML=`
+    <div class="mc accent"><div class="mc-icon accent"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 2v4l3 2"/><circle cx="8" cy="8" r="6"/></svg></div>
+      <div class="mc-label">λ — Tasa de llegada</div>
+      <div class="mc-v">${lambda.toFixed(2)}</div>
+      <div class="mc-s">consultas/hora hábil</div>
+    </div>
+    <div class="mc green"><div class="mc-icon green"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12h3V6H2zM6 12h3V3H6zM10 12h3V8h-3z"/></svg></div>
+      <div class="mc-label">μ — Tasa de servicio</div>
+      <div class="mc-v">${mu.toFixed(2)}</div>
+      <div class="mc-s">conv/hora por agente (ART)</div>
+    </div>
+    <div class="mc ${rho>0.85?'red':rho>0.7?'amber':'green'}">
+      <div class="mc-icon ${rho>0.85?'red':rho>0.7?'amber':'green'}"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 2a6 6 0 100 12A6 6 0 008 2z"/><path d="M8 6v4"/></svg></div>
+      <div class="mc-label">ρ — Utilización</div>
+      <div class="mc-v">${(rho*100).toFixed(0)}%</div>
+      <div class="mc-s">${rho>=1?'Sistema sobrecargado':rho>0.85?'Alta carga':'Dentro de capacidad'}</div>
+    </div>
+    <div class="mc accent"><div class="mc-icon accent"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 3L6 10l-3-3"/></svg></div>
+      <div class="mc-label">Agentes activos</div>
+      <div class="mc-v">${agents}</div>
+      <div class="mc-s">en el período</div>
+    </div>`;
+
+  // CV² by hour (approximate using hours distribution spread)
+  const hourVals=Object.entries(hoursData).sort((a,b)=>parseInt(a[0])-parseInt(b[0]));
+  const hourAvg=hourVals.reduce((s,[,v])=>s+v,0)/hourVals.length||1;
+  // Use relative variation as proxy for CV²
+  const hourCv2=hourVals.map(([h,v])=>({h:h+':00',cv2:((v-hourAvg)/hourAvg)**2*10}));
+  mkChart('cCvHora','bar',
+    {labels:hourCv2.map(x=>x.h),datasets:[{data:hourCv2.map(x=>+x.cv2.toFixed(2)),backgroundColor:hourCv2.map(x=>x.cv2>2?'#ef4444':x.cv2>1?'#f59e0b':'#10b981'),borderRadius:4,borderSkipped:false}]},
+    {scales:{y:{beginAtZero:true,grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#8a8a96',font:{size:10}},title:{display:true,text:'CV² relativo',color:'#8a8a96',font:{size:10}}},x:{grid:{display:false},ticks:{color:'#3a3a42',font:{size:10}}}}}
+  );
+
+  // CV² by category using frtAvg as proxy (high FRT variance = high CV²)
+  const catCv=cats.map(([cat,info])=>({
+    cat:cat.length>18?cat.substring(0,16)+'..':cat,
+    cv2:info.frtAvg>0?(info.frtAvg/60)**2:0.1, // simplified proxy
+    count:info.count
+  })).sort((a,b)=>b.cv2-a.cv2);
+
+  mkChart('cCvCat','bar',
+    {labels:catCv.map(x=>x.cat),datasets:[{data:catCv.map(x=>+x.cv2.toFixed(2)),backgroundColor:catCv.map(x=>x.cv2>2?'#ef4444':x.cv2>1?'#f59e0b':'#10b981'),borderRadius:4,borderSkipped:false}]},
+    {indexAxis:'y',scales:{x:{beginAtZero:true,grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#8a8a96',font:{size:10}}},y:{grid:{display:false},ticks:{color:'#3a3a42',font:{size:10}}}}}
+  );
+
+  // Automation table
+  document.getElementById('autoBody').innerHTML=cats.map(([cat,info])=>{
+    const msgs=msgsByCat[cat];
+    const artMin=info.frtAvg||0;
+    const cv2proxy=info.frtAvg>0?(info.frtAvg/60)**2:0;
+    const predLabel=cv2proxy<0.5?'<span class="pill-ok">Alta</span>':cv2proxy<1.5?'<span class="pill-mid">Media</span>':'<span class="pill-fail">Baja</span>';
+    const recoLabel=cv2proxy<0.5&&info.count>30?'<span class="pill-ok">✓ Automatizar</span>':cv2proxy<1.5?'<span class="pill-mid">Analizar</span>':'<span class="pill-fail">Mantener humano</span>';
+    return`<tr>
+      <td style="font-weight:500">${cat}</td>
+      <td class="r">${info.count}</td>
+      <td class="r" style="font-family:'JetBrains Mono',monospace">${hms(artMin)}</td>
+      <td class="r" style="font-family:'JetBrains Mono',monospace">${cv2proxy.toFixed(2)}</td>
+      <td class="r">${predLabel}</td>
+      <td class="r">${recoLabel}</td>
+    </tr>`;
+  }).join('');
+
+  // Simulator
+  document.getElementById('simCatSelector').innerHTML=cats.map(([cat,info])=>`
+    <div class="comp-chip" onclick="simAuto('${cat}',${info.count},${totalH},${wd},${agents},${w.artAvg||0})" style="cursor:pointer">${cat} (${info.count})</div>`).join('');
+
+  // Switching cost conclusion
+  const cvHoraAvg=hourCv2.reduce((s,x)=>s+x.cv2,0)/hourCv2.length;
+  const cvCatAvg=catCv.reduce((s,x)=>s+x.cv2,0)/catCv.length;
+  const ratio=cvCatAvg/cvHoraAvg;
+  const conclusion=ratio>1.3?
+    `<div style="display:flex;gap:16px;align-items:flex-start">
+      <div style="width:8px;height:8px;border-radius:50%;background:#ef4444;margin-top:5px;flex-shrink:0"></div>
+      <div><strong>Switching cost ALTO (ratio ${ratio.toFixed(2)}x)</strong><br><span style="color:var(--ink3);font-size:12px">La variabilidad entre categorías es mayor que la horaria. Cambiar de contexto entre temáticas tiene un costo cognitivo real. Recomendación: agrupar consultas del mismo tipo, especializar agentes por categoría.</span></div></div>`:
+    `<div style="display:flex;gap:16px;align-items:flex-start">
+      <div style="width:8px;height:8px;border-radius:50%;background:#10b981;margin-top:5px;flex-shrink:0"></div>
+      <div><strong>Switching cost BAJO (ratio ${ratio.toFixed(2)}x)</strong><br><span style="color:var(--ink3);font-size:12px">La variabilidad por categoría y por hora son similares. El costo cognitivo no viene principalmente del cambio de temática, sino de la variabilidad intrínseca de cada conversación. Usar fórmula G/G/c estándar es apropiado.</span></div></div>`;
+  document.getElementById('switchingConclusion').innerHTML=conclusion;
+}
+
+function simAuto(cat,nCat,totalH,wd,agents,artAvg){
+  const lambda=totalH/(wd*9);
+  const mu=artAvg>0?60/artAvg:1;
+  const rhoActual=(lambda/mu)/agents;
+
+  const lambdaNew=(totalH-nCat)/(wd*9);
+  const rhoNew=(lambdaNew/mu)/agents;
+  const pctReduction=((rhoActual-rhoNew)/rhoActual*100);
+  const col=rhoNew<0.7?'#10b981':rhoNew<0.85?'#f59e0b':'#ef4444';
+
+  document.getElementById('simResult').innerHTML=`
+    <div style="font-family:'Syne',sans-serif;font-size:14px;font-weight:600;margin-bottom:12px">Simulación: automatizar "${cat}" (${nCat} consultas)</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+      <div style="background:var(--surface);border-radius:var(--rs);padding:14px;border:1px solid var(--border)">
+        <div style="font-size:10px;color:var(--ink3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">ρ actual</div>
+        <div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:700;color:#ef4444">${(rhoActual*100).toFixed(0)}%</div>
+      </div>
+      <div style="background:var(--surface);border-radius:var(--rs);padding:14px;border:1px solid var(--border)">
+        <div style="font-size:10px;color:var(--ink3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">ρ sin esta categoría</div>
+        <div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:700;color:${col}">${(rhoNew*100).toFixed(0)}%</div>
+      </div>
+      <div style="background:var(--surface);border-radius:var(--rs);padding:14px;border:1px solid var(--border)">
+        <div style="font-size:10px;color:var(--ink3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Reducción de carga</div>
+        <div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:700;color:#10b981">-${pctReduction.toFixed(1)}%</div>
+      </div>
+    </div>
+    <div style="margin-top:12px;font-size:12px;color:var(--ink3)">${rhoNew<0.8?'✓ Con esta automatización el equipo quedaría dentro de capacidad sostenible.':'⚠ Aún fuera de capacidad óptima. Considerar automatizar categorías adicionales.'}</div>`;
+
+  document.querySelectorAll('#simCatSelector .comp-chip').forEach(c=>c.classList.remove('on'));
+  event.target.classList.add('on');
+}
+
+function renderGlosario(){
+  const sections=[
+    {
+      title:'Métricas de volumen',
+      items:[
+        {term:'Consultas totales',formula:'COUNT(todas las filas externas)',desc:'Total de conversaciones abiertas en el período, excluyendo contactos del equipo interno (identificados por Contact ID).'},
+        {term:'Consultas hábiles',formula:'COUNT(lun-vie, 9-18hs, sin feriados)',desc:'Consultas que entraron en horario laboral. Es la base para calcular tiempos y capacidad. Los feriados se configuran al subir cada reporte.'},
+        {term:'Contactos internos excluidos',formula:'Contact ID ∈ {lista equipo interno}',desc:'Conversaciones entre miembros del equipo propio se excluyen de todos los conteos para no distorsionar las métricas de atención al cliente.'},
+      ]
+    },
+    {
+      title:'Tiempos de respuesta (SLA)',
+      items:[
+        {term:'FRT — First Response Time',formula:'DateTime First Response − DateTime Conversation Started',desc:'Tiempo desde que el cliente abre la conversación hasta que recibe la primera respuesta humana. Objetivo: < 10 minutos. Solo se calcula en consultas hábiles.'},
+        {term:'ART — Average Response Time',formula:'Promedio de tiempos entre cada par de mensajes del agente',desc:'Tiempo promedio que tarda el agente en responder cada mensaje dentro de la conversación. Refleja el ritmo de atención. Objetivo: < 20 minutos.'},
+        {term:'TTR — Time to Resolution',formula:'DateTime Conversation Resolved − DateTime Conversation Started',desc:'Tiempo total desde apertura hasta cierre. Incluye tiempo de espera del cliente entre mensajes, por eso puede ser mucho mayor que ART. Objetivo: < 2 horas.'},
+        {term:'Mediana vs Promedio',formula:'Mediana = valor central ordenado / Promedio = suma/n',desc:'Se muestra ambos porque el promedio se infla con outliers (conversaciones que quedaron abiertas overnight). La mediana es más representativa del caso típico.'},
+        {term:'TTA — Time to First Assignment',formula:'First Assignment Timestamp − DateTime Conversation Started',desc:'Tiempo hasta que la consulta se asigna a un agente. Refleja la velocidad del sistema de routing. No tiene objetivo definido aún.'},
+      ]
+    },
+    {
+      title:'Filtros y criterios de conteo',
+      items:[
+        {term:'Horario hábil',formula:'hora >= 9 AND hora < 18',desc:'Se toma la hora de inicio de la conversación. Consultas que entran a las 17:59 cuentan; las de las 18:00 en adelante no.'},
+        {term:'Días hábiles',formula:'día_semana ∉ {sábado, domingo} AND fecha ∉ feriados',desc:'Los feriados se seleccionan manualmente al subir cada reporte. Se excluyen del cálculo de tiempos y del denominador de capacidad.'},
+        {term:'Normalización de categorías',formula:'Impuestos + Impuestos provinciales + Deudas → Impuestos/Deuda',desc:'Varias categorías de Respond se agrupan para simplificar el análisis. "Otros" agrupa todas las variantes de notificaciones y tests.'},
+      ]
+    },
+    {
+      title:'Capacidad',
+      items:[
+        {term:'Consultas/hora (CPH)',formula:'Consultas hábiles ÷ (días hábiles × 9hs)',desc:'Tasa de llegada promedio de consultas por hora hábil disponible por agente. Referencia de capacidad máxima sostenible: 4 consultas/hora.'},
+        {term:'Carga % por agente',formula:'(consultas_agente / horas_disponibles) / MAX_CPH × 100',desc:'Qué porcentaje de la capacidad máxima estimada está usando cada agente. Verde < 70%, naranja 70-90%, rojo > 90%. MAX_CPH = 4 consultas/hora.'},
+        {term:'Horas disponibles',formula:'días_hábiles × 9hs',desc:'Total de horas hábiles en el período por agente. Base para calcular la carga y utilización.'},
+      ]
+    },
+    {
+      title:'Modelado avanzado — G/G/c (Kingman)',
+      items:[
+        {term:'λ — Tasa de llegada',formula:'consultas_hábiles ÷ (días_hábiles × 9hs)',desc:'Cuántas consultas llegan por hora en promedio. Es el input principal del modelo de capacidad.'},
+        {term:'μ — Tasa de servicio',formula:'1 ÷ (ART_promedio en horas)',desc:'Cuántas conversaciones puede manejar un agente por hora basado en el ART. Se usa ART en lugar de TTR porque el TTR incluye tiempo de espera del cliente, no tiempo activo del agente.'},
+        {term:'ρ — Utilización',formula:'ρ = λ ÷ (μ × c)',desc:'Fracción del tiempo que los agentes están ocupados. c = número de agentes. Si ρ ≥ 1 el sistema está sobrecargado. Óptimo: ρ < 0.80.'},
+        {term:'CV² — Coeficiente de variación al cuadrado',formula:'CV² = (desviación estándar ÷ media)²',desc:'Mide cuán predecible es el tiempo de atención. CV² = 1 → distribución exponencial (Erlang). CV² > 1 → alta variabilidad, se necesita Kingman. CV² < 1 → muy predecible.'},
+        {term:'Wq — Tiempo de espera en cola',formula:'Wq ≈ (ρ/(1-ρ)) × ((ca²+cs²)/2) × (1/μ/c)',desc:'Fórmula de Kingman para G/G/c. ca² = variabilidad de llegadas, cs² = variabilidad de servicio. Estima cuánto espera un cliente antes de ser atendido.'},
+        {term:'Switching cost',formula:'ratio = CV²_categoría ÷ CV²_hora',desc:'Si el ratio > 1.3, cambiar de categoría tiene un costo cognitivo real. Si ≈ 1, la variabilidad es intrínseca a cada conversación independientemente del tema.'},
+      ]
+    },
+    {
+      title:'Análisis de conversaciones',
+      items:[
+        {term:'Resolución mismo día',formula:'fecha_inicio = fecha_cierre',desc:'% de conversaciones resueltas el mismo día que se abrieron. Conversaciones que quedan abiertas overnight distorsionan el TTR promedio.'},
+        {term:'Mensajes promedio',formula:'AVG(Number of Outgoing Messages + Number of Incoming Messages)',desc:'Proxy de complejidad por categoría. Facturación tiene ~17 mensajes promedio vs Sueldos con ~2. Más mensajes = más carga cognitiva real aunque el TTR sea similar.'},
+        {term:'Workflow/Bot',formula:'Closing Note Summary CONTAINS "WORKFLOW" OR "automatización"',desc:'Proxy para detectar conversaciones donde intervino una automatización. No es 100% exacto ya que no todas las conversaciones tienen nota de cierre.'},
+        {term:'Reasignación',formula:'First Assignee ≠ Closed By',desc:'Conversaciones donde el agente que cerró no fue el primero asignado. Puede indicar escalamiento, transferencia o intervención de otro agente.'},
+      ]
+    },
+    {
+      title:'Análisis de clientes',
+      items:[
+        {term:'Contactos recurrentes',formula:'COUNT de Contact IDs con más de 1 consulta',desc:'Clientes que consultaron más de una vez en el período analizado.'},
+        {term:'Alta frecuencia',formula:'COUNT de Contact IDs con más de 10 consultas',desc:'Clientes muy activos que probablemente tienen necesidades recurrentes o están en un proceso largo.'},
+        {term:'Categoría principal del contacto',formula:'MODE(Conversation Category) por Contact ID',desc:'La categoría más frecuente de ese cliente en el período.'},
+      ]
+    },
+  ];
+
+  document.getElementById('glosarioContent').innerHTML=sections.map(s=>`
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-header"><div class="card-title">${s.title}</div></div>
+      <table class="tbl">
+        <thead><tr><th style="width:200px">Término</th><th style="width:250px">Fórmula</th><th>Descripción</th></tr></thead>
+        <tbody>
+          ${s.items.map(item=>`
+            <tr>
+              <td style="font-weight:600;color:var(--accent)">${item.term}</td>
+              <td><code style="font-family:'JetBrains Mono',monospace;font-size:11px;background:var(--surface2);padding:3px 8px;border-radius:4px;display:block">${item.formula}</code></td>
+              <td style="color:var(--ink2);font-size:12px;line-height:1.6">${item.desc}</td>
+            </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>`).join('');
 }
 
 // ── Compute ──
@@ -2425,348 +2085,5 @@ function renderGlosario(){
     </div>`).join('');
 }
 
-// ── Message reports state ──
-let msgReports=[], contactsDB={};
-
-// ── Load message reports from Supabase ──
-async function fetchMsgReports(){
-  const{data,error}=await db.from('message_reports').select('*').order('period_start',{ascending:false});
-  if(error) return;
-  msgReports=(data||[]).map(r=>({
-    id:r.id, label:r.period_label, start:r.period_start, end:r.period_end,
-    totalMsgs:r.total_msgs||0, humanMsgs:r.human_msgs||0, botMsgs:r.bot_msgs||0,
-    workflowMsgs:r.workflow_msgs||0, broadcastMsgs:r.broadcast_msgs||0, n8nMsgs:r.n8n_msgs||0,
-    aiOnlyConvs:r.ai_only_convs||0, escalationRate:r.escalation_rate||0,
-    humanRtMed:r.human_rt_med||0, humanRtAvg:r.human_rt_avg||0,
-    aiRtMed:r.ai_rt_med||0, aiRtAvg:r.ai_rt_avg||0,
-    broadcasts:r.broadcasts||{}, hourlyHuman:r.hourly_human_rt||{}, hourlyAi:r.hourly_ai_rt||{},
-    flowStats:r.flow_stats||{}, by:r.uploaded_by
-  }));
-  renderBot();
-}
-
-// ── Load contacts ──
-async function fetchContacts(){
-  const{data,error}=await db.from('contacts').select('*');
-  if(error) return;
-  contactsDB={};
-  (data||[]).forEach(c=>{contactsDB[c.contact_id]={name:(c.first_name||'')+(c.last_name?' '+c.last_name:''),lifecycle:c.lifecycle,sub:c.subscription_status,cat:c.category,debt:c.has_debt,feedback:c.feedback};});
-  if(Object.keys(contactsDB).length>0){
-    document.getElementById('contactsStatus')?.style && (document.getElementById('contactsStatus').style.display='block');
-  }
-  renderClientesPlus();
-}
-
-// ── Process messages CSV ──
-function processMsgCSV(rows){
-  const hdrs=rows[0].map(h=>String(h||'').trim());
-  const col=n=>hdrs.findIndex(h=>h.toLowerCase().includes(n.toLowerCase()));
-  const iTS=col('Date & Time'), iSender=col('Sender Type'), iCont=col('Contact ID');
-  const iMsgType=col('Message Type'), iContType=col('Content Type'), iSubType=col('Sub Type');
-
-  const data=rows.slice(1).filter(r=>r&&r[iTS]);
-  if(!data.length) return null;
-
-  // Parse timestamps
-  const parsed=data.map(r=>{
-    const ts=new Date(r[iTS]);
-    return{ts,sender:String(r[iSender]||'').trim(),cid:String(r[iCont]||''),
-      msgType:String(r[iMsgType]||'').trim(),subType:String(r[iSubType]||'').trim(),hora:ts.getHours()};
-  }).filter(r=>!isNaN(r.ts));
-
-  const dates=parsed.map(r=>r.ts);
-  const start=new Date(Math.min(...dates));
-  const end=new Date(Math.max(...dates));
-  const label=start.toISOString().substring(0,7)+' mensajes';
-
-  // Counts
-  const totalMsgs=parsed.length;
-  const humanMsgs=parsed.filter(r=>r.sender==='user').length;
-  const botMsgs=parsed.filter(r=>r.sender==='ai_agent').length;
-  const workflowMsgs=parsed.filter(r=>r.sender==='workflow').length;
-  const broadcastMsgs=parsed.filter(r=>r.sender==='broadcast').length;
-  const n8nMsgs=parsed.filter(r=>r.sender==='n8n').length;
-
-  // Flow per contact
-  const byContact={};
-  parsed.forEach(r=>{if(!byContact[r.cid])byContact[r.cid]=[];byContact[r.cid].push(r);});
-  let aiOnly=0,botHuman=0;
-  Object.values(byContact).forEach(msgs=>{
-    const senders=new Set(msgs.map(m=>m.sender));
-    const hasAI=senders.has('ai_agent');const hasHuman=senders.has('user');
-    if(hasAI&&!hasHuman)aiOnly++;
-    if(senders.has('workflow')&&hasHuman)botHuman++;
-  });
-  const totalConvs=Object.keys(byContact).length;
-  const escalationRate=totalConvs>0?Math.round(botHuman/totalConvs*100):0;
-
-  // Response times
-  const humanRTs=[],aiRTs=[];
-  const hourlyH={},hourlyA={};
-  Object.values(byContact).forEach(msgs=>{
-    const sorted=msgs.sort((a,b)=>a.ts-b.ts);
-    for(let i=0;i<sorted.length;i++){
-      const r=sorted[i];
-      if(r.msgType==='incoming'&&r.sender==='contact'){
-        const nxt=sorted.slice(i+1).find(m=>m.msgType==='outgoing'&&['user','ai_agent'].includes(m.sender));
-        if(nxt){
-          const rt=(nxt.ts-r.ts)/60000;
-          if(rt>0&&rt<60){
-            if(nxt.sender==='user'){humanRTs.push({rt,h:r.hora});}
-            else{aiRTs.push({rt,h:r.hora});}
-          }
-        }
-      }
-    }
-  });
-  const medRT=arr=>arr.length?[...arr].sort((a,b)=>a-b)[Math.floor(arr.length/2)]:0;
-  const avgRT=arr=>arr.length?arr.reduce((s,v)=>s+v,0)/arr.length:0;
-  for(let h=9;h<18;h++){
-    const hh=humanRTs.filter(x=>x.h===h).map(x=>x.rt);
-    const ha=aiRTs.filter(x=>x.h===h).map(x=>x.rt);
-    if(hh.length)hourlyH[h]=+medRT(hh).toFixed(1);
-    if(ha.length)hourlyA[h]=+medRT(ha).toFixed(1);
-  }
-
-  // Broadcasts
-  const broadcasts={};
-  parsed.filter(r=>r.sender==='broadcast').forEach(r=>{
-    const k=r.subType||'desconocido';broadcasts[k]=(broadcasts[k]||0)+1;
-  });
-
-  return{label,start:start.toISOString().substring(0,10),end:end.toISOString().substring(0,10),
-    totalMsgs,humanMsgs,botMsgs,workflowMsgs,broadcastMsgs,n8nMsgs,
-    aiOnlyConvs:aiOnly,escalationRate,
-    humanRtMed:+medRT(humanRTs.map(x=>x.rt)).toFixed(1),
-    humanRtAvg:+avgRT(humanRTs.map(x=>x.rt)).toFixed(1),
-    aiRtMed:+medRT(aiRTs.map(x=>x.rt)).toFixed(1),
-    aiRtAvg:+avgRT(aiRTs.map(x=>x.rt)).toFixed(1),
-    broadcasts,hourlyHuman:hourlyH,hourlyAi:hourlyA,
-    flowStats:{total:totalConvs,aiOnly,botHuman,humanOnly:totalConvs-aiOnly-botHuman}};
-}
-
-// ── Process contacts CSV ──
-function processContactsCSV(rows){
-  const hdrs=rows[0].map(h=>String(h||'').trim());
-  const col=n=>hdrs.findIndex(h=>h.toLowerCase()===n.toLowerCase());
-  const iID=col('ContactID'),iF=col('FirstName'),iL=col('LastName');
-  const iLife=col('Lifecycle'),iSub=col('subscription_status'),iCat=col('category');
-  const iDebt=col('has_debt'),iTags=col('Tags'),iFeed=col('feedback_lannis');
-  const iCreated=col('DateTimeCreated'),iLast=col('LastInteractionTime');
-
-  return rows.slice(1).filter(r=>r&&r[iID]).map(r=>({
-    contact_id:parseInt(r[iID])||0,
-    first_name:String(r[iF]||'').trim(),last_name:String(r[iL]||'').trim(),
-    lifecycle:String(r[iLife]||'').trim(),subscription_status:String(r[iSub]||'').trim(),
-    category:String(r[iCat]||'').trim(),
-    has_debt:String(r[iDebt]||'').toLowerCase()==='true',
-    tags:String(r[iTags]||'').trim(),feedback:String(r[iFeed]||'').trim(),
-    date_created:String(r[iCreated]||'').substring(0,10)||null,
-    last_interaction:String(r[iLast]||'').substring(0,10)||null,
-    updated_at:new Date().toISOString()
-  })).filter(c=>c.contact_id>0);
-}
-
-// ── Render Bot & AI ──
-function renderBot(){
-  // Use most recent msg report linked to active conversation period
-  const w=allWeeks[activeIdx];
-  const mr=msgReports[0]; // most recent
-  if(!mr){
-    document.getElementById('botMcs').innerHTML='<div class="empty" style="grid-column:span 4">Sin datos de mensajes — cargá el CSV de mensajes.</div>';
-    document.getElementById('msgPeriodList').innerHTML='<div class="empty">Sin períodos cargados</div>';
-    return;
-  }
-
-  // Metrics
-  document.getElementById('botMcs').innerHTML=`
-    <div class="mc accent"><div class="mc-icon accent"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="2" width="10" height="9" rx="2"/><circle cx="6" cy="6" r="1" fill="currentColor"/><circle cx="10" cy="6" r="1" fill="currentColor"/></svg></div>
-      <div class="mc-label">Mensajes totales</div><div class="mc-v">${mr.totalMsgs.toLocaleString('es')}</div><div class="mc-s">${mr.label}</div></div>
-    <div class="mc green"><div class="mc-icon green"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 2v4l3 2"/><circle cx="8" cy="8" r="6"/></svg></div>
-      <div class="mc-label">RT humano mediana</div><div class="mc-v">${mr.humanRtMed}m</div><div class="mc-s">vs AI: ${mr.aiRtMed}m</div></div>
-    <div class="mc ${mr.escalationRate>80?'red':'amber'}"><div class="mc-icon ${mr.escalationRate>80?'red':'amber'}"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 2l2 4h4l-3 3 1 4-4-2-4 2 1-4-3-3h4z"/></svg></div>
-      <div class="mc-label">Tasa de escalamiento</div><div class="mc-v">${mr.escalationRate}%</div><div class="mc-s">bot → humano</div></div>
-    <div class="mc green"><div class="mc-icon green"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 3L6 10l-3-3"/></svg></div>
-      <div class="mc-label">Resueltas solo por AI</div><div class="mc-v">${mr.aiOnlyConvs}</div><div class="mc-s">sin intervención humana</div></div>`;
-
-  // Flow donut
-  const fs=mr.flowStats||{};
-  mkChart('cBotFlow','doughnut',
-    {labels:['Bot → Humano','AI solo','Humano directo','Broadcast'],
-     datasets:[{data:[fs.botHuman||0,fs.aiOnly||0,fs.humanOnly||0,mr.broadcastMsgs||0],
-     backgroundColor:['#6366f1','#10b981','#f59e0b','#8b5cf6'],borderWidth:4,borderColor:'#fff'}]},
-    {cutout:'60%',plugins:{tooltip:{callbacks:{label:c=>`${c.label}: ${c.raw}`}}}});
-
-  // Hourly RT line chart
-  const hours=Array.from({length:9},(_,i)=>i+9);
-  const hLabels=hours.map(h=>h+':00');
-  const hHuman=hours.map(h=>mr.hourlyHuman[h]||null);
-  const hAI=hours.map(h=>mr.hourlyAi[h]||null);
-  mkChart('cBotRT','line',
-    {labels:hLabels,datasets:[
-      {label:'Humano',data:hHuman,borderColor:'#6366f1',backgroundColor:'rgba(99,102,241,0.1)',tension:.3,fill:true,pointRadius:5,pointBackgroundColor:'#6366f1',pointBorderColor:'#fff',pointBorderWidth:2},
-      {label:'AI agent',data:hAI,borderColor:'#10b981',backgroundColor:'rgba(16,185,129,0.1)',tension:.3,fill:true,pointRadius:5,pointBackgroundColor:'#10b981',pointBorderColor:'#fff',pointBorderWidth:2}
-    ]},
-    {scales:{y:{beginAtZero:true,grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#8a8a96',font:{size:11}},title:{display:true,text:'Minutos',color:'#8a8a96',font:{size:10}}},x:{grid:{display:false},ticks:{color:'#3a3a42',font:{size:10}}}},
-     plugins:{legend:{display:true,position:'top',labels:{font:{size:11},boxWidth:12}}}});
-
-  // Broadcasts
-  const bc=mr.broadcasts||{};
-  const bcSorted=Object.entries(bc).sort((a,b)=>b[1]-a[1]);
-  const bcTotal=bcSorted.reduce((s,[,v])=>s+v,0)||1;
-  document.getElementById('broadcastList').innerHTML=bcSorted.length?bcSorted.map(([name,count],i)=>`
-    <div class="sla-row">
-      <div class="sla-label" style="font-family:'JetBrains Mono',monospace;font-size:11px">${name.replace(' (es_AR) (MARKETING)','')}</div>
-      <div class="sla-bar"><div class="sla-bar-fill" style="width:${Math.round(count/bcSorted[0][1]*100)}%;background:${PALETTE[i%PALETTE.length]}"></div></div>
-      <div class="sla-val" style="color:var(--ink)">${count}</div>
-      <div class="sla-obj">${(count/bcTotal*100).toFixed(1)}%</div>
-    </div>`).join(''):'<div class="empty">Sin broadcasts</div>';
-
-  // Sender donut
-  mkChart('cSenders','doughnut',
-    {labels:['Humano','AI agent','Workflow','Broadcast','n8n','Cliente'],
-     datasets:[{data:[mr.humanMsgs,mr.botMsgs,mr.workflowMsgs,mr.broadcastMsgs,mr.n8nMsgs,mr.totalMsgs-mr.humanMsgs-mr.botMsgs-mr.workflowMsgs-mr.broadcastMsgs-mr.n8nMsgs],
-     backgroundColor:['#6366f1','#10b981','#f59e0b','#8b5cf6','#ec4899','#94a3b8'],borderWidth:4,borderColor:'#fff'}]},
-    {cutout:'55%'});
-
-  // Period list with delete
-  document.getElementById('msgPeriodList').innerHTML=msgReports.map((r,i)=>`
-    <div style="display:flex;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)">
-      <div style="flex:1"><div style="font-size:13px;font-weight:500">${r.label}</div><div style="font-size:11px;color:var(--ink3)">${r.totalMsgs.toLocaleString('es')} mensajes · RT humano: ${r.humanRtMed}m</div></div>
-      <div onclick="delMsgReport('${r.id}','${r.label}')" style="cursor:pointer;color:var(--ink4);font-size:12px;padding:4px 8px;border-radius:4px" onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--ink4)'">✕</div>
-    </div>`).join('')||'<div class="empty">Sin reportes</div>';
-}
-
-async function delMsgReport(id,label){
-  if(!confirm('¿Eliminar "'+label+'"?'))return;
-  const{error}=await db.from('message_reports').delete().eq('id',id);
-  if(error){toast('Error: '+error.message,true);return;}
-  toast('Eliminado');await fetchMsgReports();
-}
-
-// ── Render Clientes+ ──
-function renderClientesPlus(){
-  const w=allWeeks[activeIdx];if(!w)return;
-  const hasContacts=Object.keys(contactsDB).length>0;
-  if(hasContacts) document.getElementById('contactsStatus').style.display='block';
-
-  // Lifecycle breakdown from conversation data crossed with contacts
-  const topContacts=w.topContacts||[];
-  const lifecycles={},subStatuses={};
-  let debtCount=0,totalWithContact=0;
-
-  topContacts.forEach(c=>{
-    const info=contactsDB[parseInt(c.id)];
-    if(info){
-      totalWithContact++;
-      const lc=info.lifecycle||'Desconocido';
-      lifecycles[lc]=(lifecycles[lc]||0)+c.count;
-      const sub=info.sub||'Desconocido';
-      subStatuses[sub]=(subStatuses[sub]||0)+c.count;
-      if(info.debt)debtCount+=c.count;
-    }
-  });
-
-  const activeCount=subStatuses['active']||0;
-  const canceledCount=subStatuses['canceled']||0;
-  const totalCount=topContacts.reduce((s,c)=>s+c.count,0)||1;
-
-  document.getElementById('cliPlusMcs').innerHTML=`
-    <div class="mc green"><div class="mc-icon green"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 3L6 10l-3-3"/></svg></div>
-      <div class="mc-label">Suscriptos activos</div><div class="mc-v">${activeCount}</div><div class="mc-s">consultas de activos</div></div>
-    <div class="mc red"><div class="mc-icon red"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 4L4 12M4 4l8 8"/></svg></div>
-      <div class="mc-label">Cancelados que consultan</div><div class="mc-v">${canceledCount}</div><div class="mc-s">ex-clientes activos</div></div>
-    <div class="mc amber"><div class="mc-icon amber"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 2v4M8 10v4M2 8h4M10 8h4"/></svg></div>
-      <div class="mc-label">Consultas con deuda</div><div class="mc-v">${debtCount}</div><div class="mc-s">clientes con deuda pendiente</div></div>`;
-
-  // Lifecycle chart
-  const lcSorted=Object.entries(lifecycles).sort((a,b)=>b[1]-a[1]);
-  mkChart('cLifecycle','bar',
-    {labels:lcSorted.map(([l])=>l),datasets:[{data:lcSorted.map(([,v])=>v),backgroundColor:PALETTE,borderRadius:4}]},
-    {indexAxis:'y',scales:{x:{beginAtZero:true,grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#8a8a96',font:{size:10}}},y:{grid:{display:false},ticks:{color:'#3a3a42',font:{size:10}}}}});
-
-  // Sub status chart
-  const subColors={'active':'#10b981','canceled':'#ef4444','past_due':'#f59e0b','trialing':'#6366f1'};
-  const subSorted=Object.entries(subStatuses).sort((a,b)=>b[1]-a[1]);
-  mkChart('cSubStatus','doughnut',
-    {labels:subSorted.map(([s])=>s),datasets:[{data:subSorted.map(([,v])=>v),backgroundColor:subSorted.map(([s])=>subColors[s]||'#94a3b8'),borderWidth:4,borderColor:'#fff'}]},
-    {cutout:'60%'});
-
-  // Top clients table
-  document.getElementById('cliPlusBody').innerHTML=topContacts.slice(0,30).map((c,i)=>{
-    const info=contactsDB[parseInt(c.id)];
-    const name=info?.name||'—';
-    const lc=info?.lifecycle||'—';
-    const sub=info?.sub||'—';
-    const cat=info?.cat||'—';
-    const debt=info?.debt;
-    const subCol=sub==='active'?'var(--green)':sub==='canceled'?'var(--red)':'var(--amber)';
-    return`<tr>
-      <td style="color:var(--ink3);font-weight:500">#${i+1}</td>
-      <td><div style="font-weight:500">${name}</div><div style="font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--ink3)">${c.id}</div></td>
-      <td class="r" style="font-weight:600">${c.count}</td>
-      <td><span style="font-size:11px;padding:2px 8px;border-radius:12px;background:var(--accentbg);color:var(--accent)">${lc}</span></td>
-      <td><span style="font-size:11px;padding:2px 8px;border-radius:12px;background:var(--surface2);color:${subCol};font-weight:500">${sub}</span></td>
-      <td style="text-align:center;font-weight:600">${cat}</td>
-      <td class="r">${debt===true?'<span style="color:var(--red);font-size:11px">Con deuda</span>':debt===false?'<span style="color:var(--green);font-size:11px">Sin deuda</span>':'—'}</td>
-    </tr>`;
-  }).join('');
-}
-
-// ── File handlers ──
-document.getElementById('msgFileIn').addEventListener('change',async function(e){
-  const file=e.target.files[0];if(!file)return;
-  const reader=new FileReader();
-  reader.onload=async ev=>{
-    const wb=XLSX.read(new Uint8Array(ev.target.result),{type:'array',raw:false,dateNF:'yyyy-mm-dd hh:mm:ss'});
-    const ws=wb.Sheets[wb.SheetNames[0]];
-    const rows=XLSX.utils.sheet_to_json(ws,{header:1,raw:false,dateNF:'yyyy-mm-dd hh:mm:ss'});
-    if(!rows||rows.length<2){toast('No se pudieron leer datos.',true);return;}
-    const result=processMsgCSV(rows);
-    if(!result){toast('Archivo de mensajes inválido.',true);return;}
-    const by=prompt('¿Subido por? (opcional)','') || null;
-    try{
-      await db.from('message_reports').upsert({
-        period_label:result.label,period_start:result.start,period_end:result.end,
-        total_msgs:result.totalMsgs,human_msgs:result.humanMsgs,bot_msgs:result.botMsgs,
-        workflow_msgs:result.workflowMsgs,broadcast_msgs:result.broadcastMsgs,n8n_msgs:result.n8nMsgs,
-        ai_only_convs:result.aiOnlyConvs,escalation_rate:result.escalationRate,
-        human_rt_med:result.humanRtMed,human_rt_avg:result.humanRtAvg,
-        ai_rt_med:result.aiRtMed,ai_rt_avg:result.aiRtAvg,
-        broadcasts:result.broadcasts,hourly_human_rt:result.hourlyHuman,hourly_ai_rt:result.hourlyAi,
-        flow_stats:result.flowStats,uploaded_by:by
-      },{onConflict:'period_label'});
-      toast('✓ Mensajes guardados');await fetchMsgReports();
-    }catch(e){toast('Error: '+e.message,true);}
-  };
-  reader.readAsArrayBuffer(file);e.target.value='';
-});
-
-document.getElementById('conFileIn').addEventListener('change',async function(e){
-  const file=e.target.files[0];if(!file)return;
-  const reader=new FileReader();
-  reader.onload=async ev=>{
-    const wb=XLSX.read(new Uint8Array(ev.target.result),{type:'array',raw:false});
-    const ws=wb.Sheets[wb.SheetNames[0]];
-    const rows=XLSX.utils.sheet_to_json(ws,{header:1,raw:false});
-    if(!rows||rows.length<2){toast('No se pudieron leer datos.',true);return;}
-    const contacts=processContactsCSV(rows);
-    if(!contacts.length){toast('Archivo de contactos inválido.',true);return;}
-    try{
-      // Upsert in batches of 100
-      for(let i=0;i<contacts.length;i+=100){
-        await db.from('contacts').upsert(contacts.slice(i,i+100),{onConflict:'contact_id'});
-      }
-      toast(`✓ ${contacts.length} contactos actualizados`);
-      await fetchContacts();
-    }catch(e){toast('Error: '+e.message,true);}
-  };
-  reader.readAsArrayBuffer(file);e.target.value='';
-});
-
-fetchWeeks();
-fetchMsgReports();
-fetchContacts();
-</script>
 </body>
 </html>
