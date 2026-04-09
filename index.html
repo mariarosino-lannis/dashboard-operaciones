@@ -1083,14 +1083,6 @@ document.getElementById('conFileIn').addEventListener('change',async function(e)
   reader.readAsArrayBuffer(file);e.target.value='';
 });
 
-// Wire renderAll to include new tabs
-const _origRenderAll=renderAll;
-renderAll=function(){
-  _origRenderAll();
-  renderBot();
-  renderClientesPlus();
-};
-
 fetchWeeks();
 fetchMsgReports();
 fetchContacts();
@@ -1730,14 +1722,6 @@ document.getElementById('conFileIn').addEventListener('change',async function(e)
   reader.readAsArrayBuffer(file);e.target.value='';
 });
 
-// Wire renderAll to include new tabs
-const _origRenderAll=renderAll;
-renderAll=function(){
-  _origRenderAll();
-  renderBot();
-  renderClientesPlus();
-};
-
 fetchWeeks();
 fetchMsgReports();
 fetchContacts();}
@@ -1861,7 +1845,7 @@ function renderAll(){
   document.getElementById('pageTitle').textContent=w.fl||w.week;
   document.getElementById('pageMeta').textContent=`${w.total} consultas totales · ${w.totalH} hábiles${w.by?' · '+w.by:''}`;
   document.getElementById('headerBadges').innerHTML=badge;
-  renderResumen(w);renderCategorias(w);renderTiempos(w);renderCapacidad(w);renderConversaciones(w);renderClientes(w);renderComparativa(w);renderCapacidadAvanzada(w);renderGlosario();
+  renderResumen(w);renderCategorias(w);renderTiempos(w);renderCapacidad(w);renderConversaciones(w);renderClientes(w);renderComparativa(w);renderCapacidadAvanzada(w);renderGlosario();renderBot();renderClientesPlus();
 }
 
 function getFilteredWeek(){
@@ -2779,14 +2763,6 @@ document.getElementById('conFileIn').addEventListener('change',async function(e)
   };
   reader.readAsArrayBuffer(file);e.target.value='';
 });
-
-// Wire renderAll to include new tabs
-const _origRenderAll=renderAll;
-renderAll=function(){
-  _origRenderAll();
-  renderBot();
-  renderClientesPlus();
-};
 
 fetchWeeks();
 fetchMsgReports();
