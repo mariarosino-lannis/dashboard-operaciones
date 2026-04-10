@@ -407,10 +407,14 @@ body{font-family:'Inter',sans-serif;background:var(--paper);color:var(--ink);min
 
     <!-- LLAMADAS -->
     <div id="tab-llamadas" class="tab-c">
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-header" style="margin-bottom:8px"><div><div class="card-title">Período activo</div></div></div>
+        <div style="display:flex;flex-wrap:wrap;gap:7px" id="callsMonthSelector"></div>
+      </div>
       <div class="mc-grid" id="callsMcs"></div>
       <div class="g2">
-        <div class="card"><div class="card-header"><div><div class="card-title">Evolución mensual</div><div class="card-sub">Llamadas y minutos por mes</div></div></div><div class="ch" style="height:220px"><canvas id="cCallsEvol"></canvas></div></div>
-        <div class="card"><div class="card-header"><div><div class="card-title">Puntaje promedio por mes</div><div class="card-sub">Del feedback de typeform (escala 1-5)</div></div></div><div class="ch" style="height:220px"><canvas id="cCallsScore"></canvas></div></div>
+        <div class="card"><div class="card-header"><div><div class="card-title">Evolución mensual</div><div class="card-sub">Llamadas y clientes únicos</div></div></div><div class="ch" style="height:220px"><canvas id="cCallsEvol"></canvas></div></div>
+        <div class="card"><div class="card-header"><div><div class="card-title">Puntaje promedio por mes</div><div class="card-sub">Escala 1-5 — del typeform de feedback</div></div></div><div class="ch" style="height:220px"><canvas id="cCallsScore"></canvas></div></div>
       </div>
       <div class="card">
         <div class="card-header"><div><div class="card-title">Comparativa de períodos</div><div class="card-sub">Seleccioná hasta 3 para comparar con el activo</div></div></div>
@@ -418,8 +422,8 @@ body{font-family:'Inter',sans-serif;background:var(--paper);color:var(--ink);min
         <div id="callsCompContent"><div class="empty">Seleccioná períodos para comparar.</div></div>
       </div>
       <div class="g2">
-        <div class="card"><div class="card-header"><div><div class="card-title">Feedback — Qué valoraron</div><div class="card-sub">Comentarios del mes activo</div></div></div><div id="callsFeedbackPos"><div class="empty">Sin feedback</div></div></div>
-        <div class="card"><div class="card-header"><div><div class="card-title">Feedback — Qué mejorar</div><div class="card-sub">Comentarios del mes activo</div></div></div><div id="callsFeedbackMej"><div class="empty">Sin feedback</div></div></div>
+        <div class="card"><div class="card-header"><div><div class="card-title">Feedback — Qué valoraron</div><div class="card-sub">Mes activo</div></div></div><div id="callsFeedbackPos"><div class="empty">Sin feedback</div></div></div>
+        <div class="card"><div class="card-header"><div><div class="card-title">Feedback — Qué mejorar</div><div class="card-sub">Mes activo</div></div></div><div id="callsFeedbackMej"><div class="empty">Sin feedback</div></div></div>
       </div>
       <div class="card"><div class="card-header"><div><div class="card-title">Clientes con más llamadas</div><div class="card-sub">Período activo</div></div></div>
         <table class="tbl"><thead><tr><th>Cliente</th><th>Email</th><th class="r">Llamadas</th><th class="r">Minutos</th></tr></thead><tbody id="callsCliBody"></tbody></table>
@@ -428,30 +432,75 @@ body{font-family:'Inter',sans-serif;background:var(--paper);color:var(--ink);min
 
     <!-- SUSCRIPCIONES -->
     <div id="tab-suscripciones" class="tab-c">
-      <div class="mc-grid" style="grid-template-columns:repeat(3,1fr)" id="subsMcs"></div>
-      <div class="g2">
-        <div class="card"><div class="card-header"><div><div class="card-title">Motivos de baja</div><div class="card-sub">Del typeform de cancelación</div></div></div><div id="churnMotivos"><div class="empty">Sin datos de typeform</div></div></div>
-        <div class="card"><div class="card-header"><div><div class="card-title">NPS de cancelados</div><div class="card-sub">Escala 0-10 — del typeform</div></div></div><div class="ch" style="height:200px"><canvas id="cChurnNPS"></canvas></div></div>
+
+      <!-- Filtro por mes -->
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-header" style="margin-bottom:8px"><div><div class="card-title">Filtrar por mes</div></div></div>
+        <div style="display:flex;flex-wrap:wrap;gap:7px" id="churnMonthFilter"></div>
       </div>
-      <div class="card">
-        <div class="card-header">
-          <div><div class="card-title">Cancelados — desglose</div><div class="card-sub">Filtrar por mes de cancelación</div></div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap" id="churnMonthFilter"></div>
-        </div>
-        <div class="g3" style="margin-bottom:16px">
-          <div style="background:var(--redbg);border-radius:var(--rs);padding:14px;border:1px solid rgba(239,68,68,0.2)"><div style="font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--red);margin-bottom:6px">Baja voluntaria</div><div style="font-family:'Syne',sans-serif;font-size:24px;font-weight:700;color:var(--red)" id="churnVol">—</div><div style="font-size:11px;color:var(--ink3)">completaron typeform</div></div>
-          <div style="background:var(--amberbg);border-radius:var(--rs);padding:14px;border:1px solid rgba(245,158,11,0.2)"><div style="font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--amber);margin-bottom:6px">Baja conversada</div><div style="font-family:'Syne',sans-serif;font-size:24px;font-weight:700;color:var(--amber)" id="churnConv">—</div><div style="font-size:11px;color:var(--ink3)">conversación de baja</div></div>
-          <div style="background:var(--s2);border-radius:var(--rs);padding:14px;border:1px solid var(--border)"><div style="font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink3);margin-bottom:6px">Sin contacto</div><div style="font-family:'Syne',sans-serif;font-size:24px;font-weight:700;color:var(--ink)" id="churnSin">—</div><div style="font-size:11px;color:var(--ink3)">probable falta de pago</div></div>
-        </div>
-        <div class="g2">
-          <div>
-            <div style="font-size:11px;font-weight:600;color:var(--red);margin-bottom:8px;text-transform:uppercase;letter-spacing:.05em">Baja voluntaria (typeform)</div>
-            <table class="tbl"><thead><tr><th>Email</th><th class="r">NPS</th><th>Motivo</th></tr></thead><tbody id="churnVolBody"></tbody></table>
+
+      <!-- Métricas -->
+      <div class="mc-grid" id="subsMcs"></div>
+
+      <!-- Las 3 categorías -->
+      <div class="card" style="margin-bottom:16px">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px">
+          <div style="border-right:1px solid var(--border);padding-right:16px">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+              <div style="width:10px;height:10px;border-radius:50%;background:var(--red);flex-shrink:0"></div>
+              <div style="font-size:12px;font-weight:600;color:var(--red)">Pidió la baja activamente</div>
+            </div>
+            <div style="font-size:11px;color:var(--ink3);margin-bottom:12px">Completaron el typeform de cancelación</div>
+            <div style="font-family:'Syne',sans-serif;font-size:32px;font-weight:700;color:var(--red);margin-bottom:4px" id="churnVol">—</div>
           </div>
-          <div>
-            <div style="font-size:11px;font-weight:600;color:var(--ink3);margin-bottom:8px;text-transform:uppercase;letter-spacing:.05em">Sin contacto — posible falta de pago</div>
-            <table class="tbl"><thead><tr><th>Email</th><th>Lifecycle</th><th>Tags</th></tr></thead><tbody id="churnSinBody"></tbody></table>
+          <div style="border-right:1px solid var(--border);padding:0 16px">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+              <div style="width:10px;height:10px;border-radius:50%;background:var(--amber);flex-shrink:0"></div>
+              <div style="font-size:12px;font-weight:600;color:var(--amber)">Hablaron con el equipo</div>
+            </div>
+            <div style="font-size:11px;color:var(--ink3);margin-bottom:12px">Conversación categoría "Baja servicios Lannis"</div>
+            <div style="font-family:'Syne',sans-serif;font-size:32px;font-weight:700;color:var(--amber);margin-bottom:4px" id="churnConv">—</div>
           </div>
+          <div style="padding-left:16px">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+              <div style="width:10px;height:10px;border-radius:50%;background:var(--ink3);flex-shrink:0"></div>
+              <div style="font-size:12px;font-weight:600;color:var(--ink2)">Cancelado sin aviso</div>
+            </div>
+            <div style="font-size:11px;color:var(--ink3);margin-bottom:12px">Sin typeform, sin conversación de baja — posible falta de pago</div>
+            <div style="font-family:'Syne',sans-serif;font-size:32px;font-weight:700;color:var(--ink);margin-bottom:4px" id="churnSin">—</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- NPS como tabla + motivos -->
+      <div class="g2">
+        <div class="card">
+          <div class="card-header"><div><div class="card-title">NPS de cancelados</div><div class="card-sub">Escala 0-10 del typeform · filtrado por mes</div></div></div>
+          <table class="tbl">
+            <thead><tr><th>Email</th><th class="r">NPS</th><th>Segmento</th><th>Mes</th></tr></thead>
+            <tbody id="npsBody"></tbody>
+          </table>
+          <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);display:flex;gap:16px;font-size:11px">
+            <span style="color:var(--green)">● Promotores (9-10): <strong id="npsPromCount">—</strong></span>
+            <span style="color:var(--amber)">● Pasivos (7-8): <strong id="npsPasCount">—</strong></span>
+            <span style="color:var(--red)">● Detractores (0-6): <strong id="npsDetCount">—</strong></span>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><div><div class="card-title">Motivos de baja</div><div class="card-sub">Del typeform · filtrado por mes</div></div></div>
+          <div id="churnMotivos"><div class="empty">Sin datos de typeform</div></div>
+        </div>
+      </div>
+
+      <!-- Listas detalle -->
+      <div class="g2">
+        <div class="card">
+          <div style="font-size:11px;font-weight:600;color:var(--red);margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em">Pidió la baja activamente</div>
+          <table class="tbl"><thead><tr><th>Email</th><th class="r">NPS</th><th>Motivo</th></tr></thead><tbody id="churnVolBody"></tbody></table>
+        </div>
+        <div class="card">
+          <div style="font-size:11px;font-weight:600;color:var(--ink3);margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em">Cancelado sin aviso — posible falta de pago</div>
+          <table class="tbl"><thead><tr><th>Email</th><th>Lifecycle</th><th>Tags</th></tr></thead><tbody id="churnSinBody"></tbody></table>
         </div>
       </div>
     </div>
@@ -1402,16 +1451,20 @@ async function fetchChurn(){
 function renderCalls(){
   if(!callsReports.length){
     document.getElementById('callsMcs').innerHTML='<div class="empty" style="grid-column:span 4">Cargá el Excel de llamadas con el botón verde.</div>';
+    document.getElementById('callsMonthSelector').innerHTML='';
     return;
   }
-  const sorted=[...callsReports].sort((a,b)=>new Date(a.start)-new Date(b.start));
-  const cr=callsReports[activeCallsIdx]||callsReports[0];
 
-  // Feedback for this period
-  const periodFeedback=callsFeedback.filter(f=>{
-    if(!f.meeting_date)return false;
-    return f.meeting_date.substring(0,7)===cr.start.substring(0,7);
-  });
+  // Month selector
+  const sorted=[...callsReports].sort((a,b)=>new Date(a.start)-new Date(b.start));
+  document.getElementById('callsMonthSelector').innerHTML=sorted.map((r,i)=>{
+    const isActive=callsReports[activeCallsIdx]?.id===r.id;
+    const origIdx=callsReports.findIndex(x=>x.id===r.id);
+    return`<div class="comp-chip ${isActive?'on':''}" onclick="setCallsMonth(${origIdx})">${r.label}</div>`;
+  }).join('');
+
+  const cr=callsReports[activeCallsIdx]||callsReports[0];
+  const periodFeedback=callsFeedback.filter(f=>f.meeting_date&&f.meeting_date.substring(0,7)===cr.start.substring(0,7));
   const avgScore=periodFeedback.length?+(periodFeedback.reduce((s,f)=>s+(f.score||0),0)/periodFeedback.length).toFixed(1):0;
   const scoreStars=avgScore?'★'.repeat(Math.round(avgScore))+'☆'.repeat(5-Math.round(avgScore)):'—';
 
@@ -1421,44 +1474,23 @@ function renderCalls(){
     <div class="mc c-amber"><div class="mc-icon amber"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="8" cy="6" r="3"/><path d="M2 14c0-4 3-6 6-6s6 2 6 6"/></svg></div><div class="mc-label">Clientes únicos</div><div class="mc-val">${cr.uniqueClients}</div><div class="mc-sub">con llamada</div></div>
     <div class="mc c-purple"><div class="mc-icon purple"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 2l2 4h4l-3 3 1 4-4-2-4 2 1-4-3-3h4z"/></svg></div><div class="mc-label">Puntaje promedio</div><div class="mc-val">${avgScore||'—'}</div><div class="mc-sub">${periodFeedback.length} respuestas · ${scoreStars}</div></div>`;
 
-  // Evolution chart
-  mkChart('cCallsEvol','bar',{
-    labels:sorted.map(r=>r.label),
-    datasets:[
-      {label:'Llamadas',data:sorted.map(r=>r.total),backgroundColor:'#14b8a6',borderRadius:4,yAxisID:'y'},
-      {label:'Clientes únicos',data:sorted.map(r=>r.uniqueClients),backgroundColor:'rgba(99,102,241,0.6)',borderRadius:4,yAxisID:'y'}
-    ]
-  },{scales:{y:{beginAtZero:true,grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#8a8a96',font:{size:10}}},x:{grid:{display:false},ticks:{color:'#3a3a42',font:{size:10}}}},plugins:{legend:{display:true,position:'top',labels:{font:{size:10},boxWidth:10}}}});
+  // Evolution
+  mkChart('cCallsEvol','bar',{labels:sorted.map(r=>r.label),datasets:[{label:'Llamadas',data:sorted.map(r=>r.total),backgroundColor:'#14b8a6',borderRadius:4,yAxisID:'y'},{label:'Clientes únicos',data:sorted.map(r=>r.uniqueClients),backgroundColor:'rgba(99,102,241,0.6)',borderRadius:4,yAxisID:'y'}]},{scales:{y:{beginAtZero:true,grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#8a8a96',font:{size:10}}},x:{grid:{display:false},ticks:{color:'#3a3a42',font:{size:10}}}},plugins:{legend:{display:true,position:'top',labels:{font:{size:10},boxWidth:10}}}});
 
   // Score by month
-  const scoreByMonth=sorted.map(r=>{
-    const fb=callsFeedback.filter(f=>f.meeting_date&&f.meeting_date.substring(0,7)===r.start.substring(0,7));
-    return fb.length?+(fb.reduce((s,f)=>s+(f.score||0),0)/fb.length).toFixed(1):null;
-  });
-  mkChart('cCallsScore','line',{
-    labels:sorted.map(r=>r.label),
-    datasets:[{
-      label:'Puntaje',data:scoreByMonth,
-      borderColor:'#ec4899',backgroundColor:'rgba(236,72,153,0.08)',
-      tension:.3,fill:true,pointRadius:5,pointBackgroundColor:'#ec4899',pointBorderColor:'#fff',pointBorderWidth:2,
-      spanGaps:true
-    }]
-  },{scales:{y:{min:0,max:5,grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#8a8a96',font:{size:10}}},x:{grid:{display:false},ticks:{color:'#3a3a42',font:{size:10}}}},plugins:{legend:{display:false}}});
+  const scoreByMonth=sorted.map(r=>{const fb=callsFeedback.filter(f=>f.meeting_date&&f.meeting_date.substring(0,7)===r.start.substring(0,7));return fb.length?+(fb.reduce((s,f)=>s+(f.score||0),0)/fb.length).toFixed(1):null;});
+  mkChart('cCallsScore','line',{labels:sorted.map(r=>r.label),datasets:[{label:'Puntaje',data:scoreByMonth,borderColor:'#ec4899',backgroundColor:'rgba(236,72,153,0.08)',tension:.3,fill:true,pointRadius:5,pointBackgroundColor:'#ec4899',pointBorderColor:'#fff',pointBorderWidth:2,spanGaps:true}]},{scales:{y:{min:0,max:5,grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#8a8a96',font:{size:10}}},x:{grid:{display:false},ticks:{color:'#3a3a42',font:{size:10}}}},plugins:{legend:{display:false}}});
 
   // Feedback comments
-  const pos=periodFeedback.filter(f=>f.what_valued).map(f=>`<div style="padding:9px 12px;background:var(--greenbg);border-radius:var(--rs);margin-bottom:6px;font-size:12px;border-left:3px solid var(--green)"><div style="font-weight:500;margin-bottom:2px">★${f.score} — ${f.email||'—'}</div>${f.what_valued}</div>`).join('');
-  const mej=periodFeedback.filter(f=>f.what_improve&&f.what_improve.length>5).map(f=>`<div style="padding:9px 12px;background:var(--amberbg);border-radius:var(--rs);margin-bottom:6px;font-size:12px;border-left:3px solid var(--amber)"><div style="font-weight:500;margin-bottom:2px">★${f.score} — ${f.email||'—'}</div>${f.what_improve}</div>`).join('');
+  const pos=periodFeedback.filter(f=>f.what_valued&&f.what_valued.length>3).map(f=>`<div style="padding:9px 12px;background:var(--greenbg);border-radius:var(--rs);margin-bottom:6px;font-size:12px;border-left:3px solid var(--green)"><div style="font-weight:500;margin-bottom:3px">★${f.score||'—'} · ${f.email||'—'}</div>${f.what_valued}</div>`).join('');
+  const mej=periodFeedback.filter(f=>f.what_improve&&f.what_improve.length>5).map(f=>`<div style="padding:9px 12px;background:var(--amberbg);border-radius:var(--rs);margin-bottom:6px;font-size:12px;border-left:3px solid var(--amber)"><div style="font-weight:500;margin-bottom:3px">★${f.score||'—'} · ${f.email||'—'}</div>${f.what_improve}</div>`).join('');
   document.getElementById('callsFeedbackPos').innerHTML=pos||'<div class="empty">Sin feedback positivo este período</div>';
   document.getElementById('callsFeedbackMej').innerHTML=mej||'<div class="empty">Sin sugerencias este período</div>';
 
   // Top clients
   const detail=cr.detail||[];
   const clientMap={};
-  detail.forEach(c=>{
-    const k=c.email||c.cliente;
-    if(!clientMap[k])clientMap[k]={name:c.cliente,email:c.email,calls:0,minutes:0};
-    clientMap[k].calls++;clientMap[k].minutes+=(c.duracion||30);
-  });
+  detail.forEach(c=>{const k=c.email||c.cliente;if(!clientMap[k])clientMap[k]={name:c.cliente,email:c.email,calls:0,minutes:0};clientMap[k].calls++;clientMap[k].minutes+=(c.duracion||30);});
   const topCli=Object.values(clientMap).sort((a,b)=>b.calls-a.calls).slice(0,15);
   document.getElementById('callsCliBody').innerHTML=topCli.map(c=>`<tr><td style="font-weight:500">${c.name}</td><td style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ink3)">${c.email}</td><td class="r" style="font-weight:600">${c.calls}</td><td class="r">${c.minutes}m</td></tr>`).join('')||'<tr><td colspan="4" class="empty">Sin datos</td></tr>';
 
@@ -1471,20 +1503,19 @@ function renderCalls(){
   if(selCols.length>1){
     const getFb=(r)=>callsFeedback.filter(f=>f.meeting_date&&f.meeting_date.substring(0,7)===r.start.substring(0,7));
     const getAvg=(r)=>{const fb=getFb(r);return fb.length?+(fb.reduce((s,f)=>s+(f.score||0),0)/fb.length).toFixed(1):'—';};
-    document.getElementById('callsCompContent').innerHTML=`
-      <table class="tbl"><thead><tr><th>Métrica</th>${selCols.map((c,i)=>`<th class="r" style="${i===0?'color:var(--accent);font-weight:700':''}">${lbls[i]}</th>`).join('')}</tr></thead>
-      <tbody>
-        <tr><td>Llamadas totales</td>${selCols.map((c,i)=>`<td class="r"><span style="${i===0?'font-weight:600;color:var(--accent)':''}">${c.total}</span></td>`).join('')}</tr>
-        <tr><td>Minutos totales</td>${selCols.map((c,i)=>`<td class="r"><span style="${i===0?'font-weight:600;color:var(--accent)':''}">${c.minutes}</span></td>`).join('')}</tr>
-        <tr><td>Clientes únicos</td>${selCols.map((c,i)=>`<td class="r"><span style="${i===0?'font-weight:600;color:var(--accent)':''}">${c.uniqueClients}</span></td>`).join('')}</tr>
-        <tr><td>Duración promedio</td>${selCols.map((c,i)=>`<td class="r"><span style="${i===0?'font-weight:600;color:var(--accent)':''}">${c.avgDur}m</span></td>`).join('')}</tr>
-        <tr><td>Puntaje promedio</td>${selCols.map((c,i)=>`<td class="r"><span style="${i===0?'font-weight:600;color:var(--accent)':''}">${getAvg(c)}</span></td>`).join('')}</tr>
-        <tr><td>Respuestas feedback</td>${selCols.map((c,i)=>`<td class="r"><span style="${i===0?'font-weight:600;color:var(--accent)':''}">${getFb(c).length}</span></td>`).join('')}</tr>
-      </tbody></table>`;
+    document.getElementById('callsCompContent').innerHTML=`<table class="tbl"><thead><tr><th>Métrica</th>${selCols.map((c,i)=>`<th class="r" style="${i===0?'color:var(--accent);font-weight:700':''}">${lbls[i]}</th>`).join('')}</tr></thead><tbody>
+      <tr><td>Llamadas totales</td>${selCols.map((c,i)=>`<td class="r"><span style="${i===0?'font-weight:600;color:var(--accent)':''}">${c.total}</span></td>`).join('')}</tr>
+      <tr><td>Minutos totales</td>${selCols.map((c,i)=>`<td class="r"><span style="${i===0?'font-weight:600;color:var(--accent)':''}">${c.minutes}</span></td>`).join('')}</tr>
+      <tr><td>Clientes únicos</td>${selCols.map((c,i)=>`<td class="r"><span style="${i===0?'font-weight:600;color:var(--accent)':''}">${c.uniqueClients}</span></td>`).join('')}</tr>
+      <tr><td>Puntaje promedio</td>${selCols.map((c,i)=>`<td class="r"><span style="${i===0?'font-weight:600;color:var(--accent)':''}">${getAvg(c)}</span></td>`).join('')}</tr>
+      <tr><td>Feedbacks recibidos</td>${selCols.map((c,i)=>`<td class="r"><span style="${i===0?'font-weight:600;color:var(--accent)':''}">${getFb(c).length}</span></td>`).join('')}</tr>
+    </tbody></table>`;
   } else {
     document.getElementById('callsCompContent').innerHTML='<div class="empty">Seleccioná al menos un período para comparar.</div>';
   }
 }
+
+function setCallsMonth(i){activeCallsIdx=i;callsCompIds=[];renderCalls();}
 
 function toggleCallsComp(id){
   const idx=callsCompIds.indexOf(id);
@@ -1497,19 +1528,19 @@ function renderSuscripciones(){
   const contacts=Object.entries(contactsDB);
   const canceled=contacts.filter(([,c])=>c.sub==='canceled');
 
-  // Months for filter
+  // Month filter — based on last interaction date
   const months=[...new Set(canceled.map(([,c])=>c.lastInteraction?c.lastInteraction.substring(0,7):null).filter(Boolean))].sort().reverse();
   const allOn=churnSelectedMonth==='all'?'on':'';
   document.getElementById('churnMonthFilter').innerHTML=
-    `<div class="comp-chip ${allOn}" onclick="setChurnMonth('all')">Todos</div>`+
+    `<div class="comp-chip ${allOn}" onclick="setChurnMonth('all')">Todos los meses</div>`+
     months.map(m=>{const on=churnSelectedMonth===m?'on':'';return`<div class="comp-chip ${on}" onclick="setChurnMonth('${m}')">${m}</div>`;}).join('');
 
-  // Filter by month
+  // Apply filter
   const filtered=churnSelectedMonth==='all'?canceled:canceled.filter(([,c])=>c.lastInteraction&&c.lastInteraction.startsWith(churnSelectedMonth));
 
   // Cross with typeform (by email)
   const tfEmails=new Set(churnData.map(t=>t.email?.toLowerCase()).filter(Boolean));
-  // Cross with conversations (baja servicios) — use allWeeks topContacts as proxy
+  // Cross with conversations — contacts that had "Baja servicios Lannis"
   const bajaContacts=new Set();
   allWeeks.forEach(w=>{(w.topContacts||[]).forEach(c=>{if(c.topCat==='Baja servicios Lannis')bajaContacts.add(c.id);});});
 
@@ -1524,36 +1555,36 @@ function renderSuscripciones(){
 
   document.getElementById('subsMcs').innerHTML=`
     <div class="mc c-red"><div class="mc-icon red"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 4L4 12M4 4l8 8"/></svg></div><div class="mc-label">Total cancelados</div><div class="mc-val">${filtered.length}</div><div class="mc-sub">${churnSelectedMonth==='all'?'histórico':churnSelectedMonth}</div></div>
-    <div class="mc c-amber"><div class="mc-icon amber"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 2v4M8 10v4M2 8h4M10 8h4"/></svg></div><div class="mc-label">Con typeform</div><div class="mc-val">${voluntaria.length}</div><div class="mc-sub">${filtered.length>0?(voluntaria.length/filtered.length*100).toFixed(0)+'%':0} del total</div></div>
-    <div class="mc c-accent"><div class="mc-icon accent"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h12v8H9l-3 2v-2H2z"/></svg></div><div class="mc-label">Sin contacto</div><div class="mc-val">${sinContacto.length}</div><div class="mc-sub">posible falta de pago</div></div>`;
+    <div class="mc c-amber"><div class="mc-icon amber"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 2v4M8 10v4M2 8h4M10 8h4"/></svg></div><div class="mc-label">Pidieron la baja</div><div class="mc-val">${voluntaria.length}</div><div class="mc-sub">${filtered.length>0?(voluntaria.length/filtered.length*100).toFixed(0)+'%':0} del total</div></div>
+    <div class="mc c-accent"><div class="mc-icon accent"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h12v8H9l-3 2v-2H2z"/></svg></div><div class="mc-label">Sin aviso</div><div class="mc-val">${sinContacto.length}</div><div class="mc-sub">posible falta de pago</div></div>`;
 
-  // Motivos
-  if(churnData.length){
-    const motivos=churnData.map(t=>t.motivo_baja).filter(Boolean);
-    document.getElementById('churnMotivos').innerHTML=motivos.map(m=>`<div style="padding:8px 12px;background:var(--s2);border-radius:var(--rs);margin-bottom:6px;font-size:12px;border-left:3px solid var(--red)">${m}</div>`).join('')||'<div class="empty">Sin motivos</div>';
-  }
+  // NPS table — filter churnData by month
+  const churnFiltered=churnSelectedMonth==='all'?churnData:churnData.filter(t=>t.submit_date&&t.submit_date.startsWith(churnSelectedMonth));
+  const prom=churnFiltered.filter(t=>t.nps>=9).length;
+  const pas=churnFiltered.filter(t=>t.nps>=7&&t.nps<9).length;
+  const det=churnFiltered.filter(t=>t.nps<=6&&t.nps!=null).length;
+  document.getElementById('npsPromCount').textContent=prom;
+  document.getElementById('npsPasCount').textContent=pas;
+  document.getElementById('npsDetCount').textContent=det;
+  document.getElementById('npsBody').innerHTML=churnFiltered.sort((a,b)=>(a.nps||0)-(b.nps||0)).map(t=>{
+    const seg=t.nps>=9?'<span class="badge-ok">Promotor</span>':t.nps>=7?'<span class="badge-mid">Pasivo</span>':'<span class="badge-fail">Detractor</span>';
+    return`<tr><td style="font-family:'JetBrains Mono',monospace;font-size:11px">${t.email||'—'}</td><td class="r" style="font-weight:700;color:${t.nps>=9?'var(--green)':t.nps>=7?'var(--amber)':'var(--red)'}">${t.nps??'—'}</td><td>${seg}</td><td style="color:var(--ink3);font-size:11px">${t.submit_date?.substring(0,7)||'—'}</td></tr>`;
+  }).join('')||'<tr><td colspan="4" class="empty">Sin datos</td></tr>';
 
-  // NPS chart
-  if(churnData.length){
-    const npsData=churnData.map(t=>t.nps).filter(v=>v!=null);
-    const prom=npsData.filter(v=>v>=9).length;
-    const pas=npsData.filter(v=>v>=7&&v<9).length;
-    const det=npsData.filter(v=>v<=6).length;
-    mkChart('cChurnNPS','doughnut',{
-      labels:['Promotores (9-10)','Pasivos (7-8)','Detractores (0-6)'],
-      datasets:[{data:[prom,pas,det],backgroundColor:['#10b981','#f59e0b','#ef4444'],borderWidth:4,borderColor:'#fff'}]
-    },{cutout:'60%'});
-  }
+  // Motivos filtrados por mes
+  const motivos=churnFiltered.map(t=>t.motivo_baja).filter(Boolean);
+  document.getElementById('churnMotivos').innerHTML=motivos.length?motivos.map(m=>`<div style="padding:8px 12px;background:var(--s2);border-radius:var(--rs);margin-bottom:6px;font-size:12px;border-left:3px solid var(--red)">${m}</div>`).join(''):'<div class="empty">Sin motivos en este período</div>';
 
-  // Voluntaria table
+  // Detail tables
   document.getElementById('churnVolBody').innerHTML=voluntaria.slice(0,20).map(([id,c])=>{
     const tf=churnData.find(t=>t.email?.toLowerCase()===c.email?.toLowerCase());
-    return`<tr><td style="font-family:'JetBrains Mono',monospace;font-size:11px">${c.email||id}</td><td class="r">${tf?tf.nps:'—'}</td><td style="font-size:11px;color:var(--ink3)">${tf?tf.motivo_baja?.substring(0,60)+'..':'—'}</td></tr>`;
+    const motivo=tf?.motivo_baja||'—';
+    return`<tr><td style="font-family:'JetBrains Mono',monospace;font-size:11px">${c.email||id}</td><td class="r" style="font-weight:700;color:${tf?.nps>=9?'var(--green)':tf?.nps>=7?'var(--amber)':'var(--red)'}">${tf?.nps??'—'}</td><td style="font-size:11px;color:var(--ink3)">${motivo.substring(0,60)}${motivo.length>60?'...':''}</td></tr>`;
   }).join('')||'<tr><td colspan="3" class="empty">Sin datos</td></tr>';
 
-  // Sin contacto table
-  document.getElementById('churnSinBody').innerHTML=sinContacto.slice(0,20).map(([id,c])=>`
-    <tr><td style="font-family:'JetBrains Mono',monospace;font-size:11px">${c.email||id}</td><td><span class="badge-neu">${c.lifecycle||'—'}</span></td><td style="font-size:10px;color:var(--ink3)">${(c.tags||'').substring(0,40)}</td></tr>`).join('')||'<tr><td colspan="3" class="empty">Sin datos</td></tr>';
+  document.getElementById('churnSinBody').innerHTML=sinContacto.slice(0,20).map(([id,c])=>
+    `<tr><td style="font-family:'JetBrains Mono',monospace;font-size:11px">${c.email||id}</td><td><span class="badge-neu">${c.lifecycle||'—'}</span></td><td style="font-size:10px;color:var(--ink3)">${(c.tags||'').substring(0,40)}</td></tr>`
+  ).join('')||'<tr><td colspan="3" class="empty">Sin datos</td></tr>';
 }
 
 function setChurnMonth(m){
@@ -1577,10 +1608,23 @@ document.getElementById('fileCalls').addEventListener('change',async function(e)
       const detail=[];
       for(let i=2;i<rows.length;i++){
         const r=rows[i];
-        if(!r||!r[0]||String(r[4]||'').toLowerCase().includes('total'))continue;
-        const fecha=String(r[0]||'').substring(0,10);
-        if(!fecha.match(/^\d{4}-\d{2}-\d{2}/))continue;
-        detail.push({fecha,horaInicio:r[1],horaFin:r[2],duracion:parseInt(r[3])||30,cliente:String(r[4]||'').trim(),email:String(r[5]||'').trim(),titulo:String(r[6]||'').trim()});
+        if(!r||!r[0])continue;
+        const clienteStr=String(r[4]||'').trim();
+        if(clienteStr.toLowerCase().includes('total')||clienteStr==='')continue;
+        // Parse date — can be string "2026-03-02 00:00:00", "02/03/2026", or serial
+        let fecha='';
+        const raw=String(r[0]||'').trim();
+        const m1=raw.match(/(\d{4}-\d{2}-\d{2})/);
+        const m2=raw.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+        if(m1) fecha=m1[1];
+        else if(m2) fecha=m2[3]+'-'+m2[2]+'-'+m2[1];
+        else if(raw.length>=8&&!isNaN(raw)){
+          // Excel serial date
+          const d=XLSX.SSF.parse_date_code(parseInt(raw));
+          if(d) fecha=d.y+'-'+String(d.m).padStart(2,'0')+'-'+String(d.d).padStart(2,'0');
+        }
+        if(!fecha)continue;
+        detail.push({fecha,horaInicio:String(r[1]||'').trim(),horaFin:String(r[2]||'').trim(),duracion:parseInt(r[3])||30,cliente:clienteStr,email:String(r[5]||'').trim(),titulo:String(r[6]||'').trim()});
       }
       if(!detail.length)continue;
       const startDate=detail[0].fecha.substring(0,7)+'-01';
