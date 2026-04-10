@@ -241,6 +241,9 @@ body{font-family:'Inter',sans-serif;background:var(--paper);color:var(--ink);min
     <div class="nav-item" onclick="showTab('bot',this)"><svg class="ni" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="2" width="10" height="9" rx="2"/><path d="M6 11v2M10 11v2M4 13h8"/><circle cx="6" cy="6" r="1" fill="currentColor"/><circle cx="10" cy="6" r="1" fill="currentColor"/></svg>Bot & AI</div>
     <div class="nav-section-label" style="padding:10px 0 4px">Histórico</div>
     <div class="nav-item" onclick="showTab('comparativa',this)"><svg class="ni" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 2v12M14 2v12M2 7h12"/></svg>Comparativa</div>
+    <div class="nav-section-label" style="padding:10px 0 4px">Negocio</div>
+    <div class="nav-item" onclick="showTab('llamadas',this)"><svg class="ni" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 3h3l1.5 3.5-2 1.5a9 9 0 004.5 4.5l1.5-2L15 12v3a1 1 0 01-1 1C6 16 0 10 0 3a1 1 0 011-1h2z"/></svg>Llamadas</div>
+    <div class="nav-item" onclick="showTab('suscripciones',this)"><svg class="ni" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 2a6 6 0 100 12A6 6 0 008 2z"/><path d="M8 5v3l2 2"/><path d="M5 1l-3 3M11 1l3 3"/></svg>Suscripciones</div>
     <div class="nav-section-label" style="padding:10px 0 4px">Modelos</div>
     <div class="nav-item" onclick="showTab('capacidad-avanzada',this)"><svg class="ni" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 14l4-8 3 5 2-3 3 6"/></svg>Cap. Avanzada</div>
     <div class="nav-item" onclick="showTab('glosario',this)"><svg class="ni" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="1" width="12" height="14" rx="1"/><path d="M5 5h6M5 8h6M5 11h4"/></svg>Glosario</div>
@@ -262,6 +265,21 @@ body{font-family:'Inter',sans-serif;background:var(--paper);color:var(--ink);min
       Actualizar contactos
       <input type="file" id="fileCons" accept=".csv" style="display:none">
     </label>
+    <label class="upload-btn" style="cursor:pointer;background:rgba(20,184,166,0.15);border:1px solid rgba(20,184,166,0.3);color:#5eead4">
+      <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h3l1.5 3.5-2 1.5a9 9 0 004.5 4.5l1.5-2L15 12v3a1 1 0 01-1 1C6 16 0 10 0 3a1 1 0 011-1h2z"/></svg>
+      Cargar llamadas
+      <input type="file" id="fileCalls" accept=".xlsx,.csv" style="display:none">
+    </label>
+    <label class="upload-btn" style="cursor:pointer;background:rgba(236,72,153,0.15);border:1px solid rgba(236,72,153,0.3);color:#f9a8d4">
+      <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 2v4M8 10v4M2 8h4M10 8h4"/></svg>
+      Cargar feedback llamadas
+      <input type="file" id="fileFeedback" accept=".csv" style="display:none">
+    </label>
+    <label class="upload-btn" style="cursor:pointer;background:rgba(139,92,246,0.15);border:1px solid rgba(139,92,246,0.3);color:#c4b5fd">
+      <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 2a6 6 0 100 12A6 6 0 008 2z"/><path d="M5 1l-3 3M11 1l3 3"/></svg>
+      Cargar bajas (typeform)
+      <input type="file" id="fileChurn" accept=".csv" style="display:none">
+    </label>
   </div>
 </aside>
 
@@ -282,6 +300,8 @@ body{font-family:'Inter',sans-serif;background:var(--paper);color:var(--ink);min
     <div class="tab-btn" onclick="showTab('clientes',this)">Clientes</div>
     <div class="tab-btn" onclick="showTab('bot',this)">Bot & AI</div>
     <div class="tab-btn" onclick="showTab('comparativa',this)">Comparativa</div>
+    <div class="tab-btn" onclick="showTab('llamadas',this)">Llamadas</div>
+    <div class="tab-btn" onclick="showTab('suscripciones',this)">Suscripciones</div>
     <div class="tab-btn" onclick="showTab('capacidad-avanzada',this)">Cap. Avanzada</div>
     <div class="tab-btn" onclick="showTab('glosario',this)">Glosario</div>
   </div>
@@ -385,6 +405,57 @@ body{font-family:'Inter',sans-serif;background:var(--paper);color:var(--ink);min
       </div>
     </div>
 
+    <!-- LLAMADAS -->
+    <div id="tab-llamadas" class="tab-c">
+      <div class="mc-grid" id="callsMcs"></div>
+      <div class="g2">
+        <div class="card"><div class="card-header"><div><div class="card-title">Evolución mensual</div><div class="card-sub">Llamadas y minutos por mes</div></div></div><div class="ch" style="height:220px"><canvas id="cCallsEvol"></canvas></div></div>
+        <div class="card"><div class="card-header"><div><div class="card-title">Puntaje promedio por mes</div><div class="card-sub">Del feedback de typeform (escala 1-5)</div></div></div><div class="ch" style="height:220px"><canvas id="cCallsScore"></canvas></div></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div><div class="card-title">Comparativa de períodos</div><div class="card-sub">Seleccioná hasta 3 para comparar con el activo</div></div></div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px" id="callsCompSelector"></div>
+        <div id="callsCompContent"><div class="empty">Seleccioná períodos para comparar.</div></div>
+      </div>
+      <div class="g2">
+        <div class="card"><div class="card-header"><div><div class="card-title">Feedback — Qué valoraron</div><div class="card-sub">Comentarios del mes activo</div></div></div><div id="callsFeedbackPos"><div class="empty">Sin feedback</div></div></div>
+        <div class="card"><div class="card-header"><div><div class="card-title">Feedback — Qué mejorar</div><div class="card-sub">Comentarios del mes activo</div></div></div><div id="callsFeedbackMej"><div class="empty">Sin feedback</div></div></div>
+      </div>
+      <div class="card"><div class="card-header"><div><div class="card-title">Clientes con más llamadas</div><div class="card-sub">Período activo</div></div></div>
+        <table class="tbl"><thead><tr><th>Cliente</th><th>Email</th><th class="r">Llamadas</th><th class="r">Minutos</th></tr></thead><tbody id="callsCliBody"></tbody></table>
+      </div>
+    </div>
+
+    <!-- SUSCRIPCIONES -->
+    <div id="tab-suscripciones" class="tab-c">
+      <div class="mc-grid" style="grid-template-columns:repeat(3,1fr)" id="subsMcs"></div>
+      <div class="g2">
+        <div class="card"><div class="card-header"><div><div class="card-title">Motivos de baja</div><div class="card-sub">Del typeform de cancelación</div></div></div><div id="churnMotivos"><div class="empty">Sin datos de typeform</div></div></div>
+        <div class="card"><div class="card-header"><div><div class="card-title">NPS de cancelados</div><div class="card-sub">Escala 0-10 — del typeform</div></div></div><div class="ch" style="height:200px"><canvas id="cChurnNPS"></canvas></div></div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div><div class="card-title">Cancelados — desglose</div><div class="card-sub">Filtrar por mes de cancelación</div></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap" id="churnMonthFilter"></div>
+        </div>
+        <div class="g3" style="margin-bottom:16px">
+          <div style="background:var(--redbg);border-radius:var(--rs);padding:14px;border:1px solid rgba(239,68,68,0.2)"><div style="font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--red);margin-bottom:6px">Baja voluntaria</div><div style="font-family:'Syne',sans-serif;font-size:24px;font-weight:700;color:var(--red)" id="churnVol">—</div><div style="font-size:11px;color:var(--ink3)">completaron typeform</div></div>
+          <div style="background:var(--amberbg);border-radius:var(--rs);padding:14px;border:1px solid rgba(245,158,11,0.2)"><div style="font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--amber);margin-bottom:6px">Baja conversada</div><div style="font-family:'Syne',sans-serif;font-size:24px;font-weight:700;color:var(--amber)" id="churnConv">—</div><div style="font-size:11px;color:var(--ink3)">conversación de baja</div></div>
+          <div style="background:var(--s2);border-radius:var(--rs);padding:14px;border:1px solid var(--border)"><div style="font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink3);margin-bottom:6px">Sin contacto</div><div style="font-family:'Syne',sans-serif;font-size:24px;font-weight:700;color:var(--ink)" id="churnSin">—</div><div style="font-size:11px;color:var(--ink3)">probable falta de pago</div></div>
+        </div>
+        <div class="g2">
+          <div>
+            <div style="font-size:11px;font-weight:600;color:var(--red);margin-bottom:8px;text-transform:uppercase;letter-spacing:.05em">Baja voluntaria (typeform)</div>
+            <table class="tbl"><thead><tr><th>Email</th><th class="r">NPS</th><th>Motivo</th></tr></thead><tbody id="churnVolBody"></tbody></table>
+          </div>
+          <div>
+            <div style="font-size:11px;font-weight:600;color:var(--ink3);margin-bottom:8px;text-transform:uppercase;letter-spacing:.05em">Sin contacto — posible falta de pago</div>
+            <table class="tbl"><thead><tr><th>Email</th><th>Lifecycle</th><th>Tags</th></tr></thead><tbody id="churnSinBody"></tbody></table>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- CAPACIDAD AVANZADA -->
     <div id="tab-capacidad-avanzada" class="tab-c">
       <div class="card" style="background:linear-gradient(135deg,#1e1b4b,#312e81);border:none;color:#fff;margin-bottom:18px">
@@ -468,6 +539,8 @@ function exDH(raw){if(!raw||raw==='')return{f:'',h:-1};if(typeof raw==='number')
 let allWeeks=[],activeIdx=0,charts={},curTab='resumen';
 let pendingRows=null,pendingHols=new Set(),pendingAgents=new Set();
 let compIds=[],agentFilter='all',activeMsgIdx=0,msgCompIds=[];
+let callsReports=[],callsFeedback=[],activeCallsIdx=0,callsCompIds=[];
+let churnData=[],churnSelectedMonth='all';
 let msgReports=[],contactsDB={};
 
 // ── Supabase ──
@@ -1301,9 +1374,307 @@ document.getElementById('fileCons').addEventListener('change',function(e){
 
 // ── Init ──
 renderGlosario();
+// ── Calls & Feedback fetch ──
+async function fetchCalls(){
+  const{data,error}=await db.from('calls_reports').select('*').order('period_start',{ascending:false});
+  if(error)return;
+  callsReports=(data||[]).map(r=>({id:r.id,label:r.period_label,start:r.period_start,
+    total:r.calls_total||0,minutes:r.minutes_total||0,avgDur:r.avg_duration||0,
+    uniqueClients:r.unique_clients||0,detail:r.calls_detail||[]}));
+  await fetchCallsFeedback();
+  renderCalls();
+}
+
+async function fetchCallsFeedback(){
+  const{data,error}=await db.from('calls_feedback').select('*').order('meeting_date',{ascending:false});
+  if(error)return;
+  callsFeedback=data||[];
+}
+
+async function fetchChurn(){
+  const{data,error}=await db.from('typeform_responses').select('*').order('submit_date',{ascending:false});
+  if(error)return;
+  churnData=data||[];
+  renderSuscripciones();
+}
+
+// ── Render Llamadas ──
+function renderCalls(){
+  if(!callsReports.length){
+    document.getElementById('callsMcs').innerHTML='<div class="empty" style="grid-column:span 4">Cargá el Excel de llamadas con el botón verde.</div>';
+    return;
+  }
+  const sorted=[...callsReports].sort((a,b)=>new Date(a.start)-new Date(b.start));
+  const cr=callsReports[activeCallsIdx]||callsReports[0];
+
+  // Feedback for this period
+  const periodFeedback=callsFeedback.filter(f=>{
+    if(!f.meeting_date)return false;
+    return f.meeting_date.substring(0,7)===cr.start.substring(0,7);
+  });
+  const avgScore=periodFeedback.length?+(periodFeedback.reduce((s,f)=>s+(f.score||0),0)/periodFeedback.length).toFixed(1):0;
+  const scoreStars=avgScore?'★'.repeat(Math.round(avgScore))+'☆'.repeat(5-Math.round(avgScore)):'—';
+
+  document.getElementById('callsMcs').innerHTML=`
+    <div class="mc c-accent"><div class="mc-icon" style="background:rgba(20,184,166,0.15);color:#14b8a6"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h3l1.5 3.5-2 1.5a9 9 0 004.5 4.5l1.5-2L15 12v3a1 1 0 01-1 1C6 16 0 10 0 3a1 1 0 011-1h2z"/></svg></div><div class="mc-label">Llamadas</div><div class="mc-val">${cr.total}</div><div class="mc-sub">${cr.label}</div></div>
+    <div class="mc c-green"><div class="mc-icon green"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="8" cy="8" r="6"/><path d="M8 4v4l2 2"/></svg></div><div class="mc-label">Minutos totales</div><div class="mc-val">${cr.minutes}</div><div class="mc-sub">~${Math.round(cr.minutes/60)}hs</div></div>
+    <div class="mc c-amber"><div class="mc-icon amber"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="8" cy="6" r="3"/><path d="M2 14c0-4 3-6 6-6s6 2 6 6"/></svg></div><div class="mc-label">Clientes únicos</div><div class="mc-val">${cr.uniqueClients}</div><div class="mc-sub">con llamada</div></div>
+    <div class="mc c-purple"><div class="mc-icon purple"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 2l2 4h4l-3 3 1 4-4-2-4 2 1-4-3-3h4z"/></svg></div><div class="mc-label">Puntaje promedio</div><div class="mc-val">${avgScore||'—'}</div><div class="mc-sub">${periodFeedback.length} respuestas · ${scoreStars}</div></div>`;
+
+  // Evolution chart
+  mkChart('cCallsEvol','bar',{
+    labels:sorted.map(r=>r.label),
+    datasets:[
+      {label:'Llamadas',data:sorted.map(r=>r.total),backgroundColor:'#14b8a6',borderRadius:4,yAxisID:'y'},
+      {label:'Clientes únicos',data:sorted.map(r=>r.uniqueClients),backgroundColor:'rgba(99,102,241,0.6)',borderRadius:4,yAxisID:'y'}
+    ]
+  },{scales:{y:{beginAtZero:true,grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#8a8a96',font:{size:10}}},x:{grid:{display:false},ticks:{color:'#3a3a42',font:{size:10}}}},plugins:{legend:{display:true,position:'top',labels:{font:{size:10},boxWidth:10}}}});
+
+  // Score by month
+  const scoreByMonth=sorted.map(r=>{
+    const fb=callsFeedback.filter(f=>f.meeting_date&&f.meeting_date.substring(0,7)===r.start.substring(0,7));
+    return fb.length?+(fb.reduce((s,f)=>s+(f.score||0),0)/fb.length).toFixed(1):null;
+  });
+  mkChart('cCallsScore','line',{
+    labels:sorted.map(r=>r.label),
+    datasets:[{
+      label:'Puntaje',data:scoreByMonth,
+      borderColor:'#ec4899',backgroundColor:'rgba(236,72,153,0.08)',
+      tension:.3,fill:true,pointRadius:5,pointBackgroundColor:'#ec4899',pointBorderColor:'#fff',pointBorderWidth:2,
+      spanGaps:true
+    }]
+  },{scales:{y:{min:0,max:5,grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#8a8a96',font:{size:10}}},x:{grid:{display:false},ticks:{color:'#3a3a42',font:{size:10}}}},plugins:{legend:{display:false}}});
+
+  // Feedback comments
+  const pos=periodFeedback.filter(f=>f.what_valued).map(f=>`<div style="padding:9px 12px;background:var(--greenbg);border-radius:var(--rs);margin-bottom:6px;font-size:12px;border-left:3px solid var(--green)"><div style="font-weight:500;margin-bottom:2px">★${f.score} — ${f.email||'—'}</div>${f.what_valued}</div>`).join('');
+  const mej=periodFeedback.filter(f=>f.what_improve&&f.what_improve.length>5).map(f=>`<div style="padding:9px 12px;background:var(--amberbg);border-radius:var(--rs);margin-bottom:6px;font-size:12px;border-left:3px solid var(--amber)"><div style="font-weight:500;margin-bottom:2px">★${f.score} — ${f.email||'—'}</div>${f.what_improve}</div>`).join('');
+  document.getElementById('callsFeedbackPos').innerHTML=pos||'<div class="empty">Sin feedback positivo este período</div>';
+  document.getElementById('callsFeedbackMej').innerHTML=mej||'<div class="empty">Sin sugerencias este período</div>';
+
+  // Top clients
+  const detail=cr.detail||[];
+  const clientMap={};
+  detail.forEach(c=>{
+    const k=c.email||c.cliente;
+    if(!clientMap[k])clientMap[k]={name:c.cliente,email:c.email,calls:0,minutes:0};
+    clientMap[k].calls++;clientMap[k].minutes+=(c.duracion||30);
+  });
+  const topCli=Object.values(clientMap).sort((a,b)=>b.calls-a.calls).slice(0,15);
+  document.getElementById('callsCliBody').innerHTML=topCli.map(c=>`<tr><td style="font-weight:500">${c.name}</td><td style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ink3)">${c.email}</td><td class="r" style="font-weight:600">${c.calls}</td><td class="r">${c.minutes}m</td></tr>`).join('')||'<tr><td colspan="4" class="empty">Sin datos</td></tr>';
+
+  // Comparativa
+  const others=callsReports.filter((_,i)=>i!==activeCallsIdx);
+  if(!callsCompIds.length&&others.length)callsCompIds=others.slice(0,2).map(r=>r.id);
+  document.getElementById('callsCompSelector').innerHTML=others.map(r=>`<div class="comp-chip ${callsCompIds.includes(r.id)?'on':''}" onclick="toggleCallsComp('${r.id}')">${r.label}</div>`).join('');
+  const selCols=[cr,...callsCompIds.map(id=>callsReports.find(r=>r.id===id)).filter(Boolean)];
+  const lbls=selCols.map(r=>r.label);
+  if(selCols.length>1){
+    const getFb=(r)=>callsFeedback.filter(f=>f.meeting_date&&f.meeting_date.substring(0,7)===r.start.substring(0,7));
+    const getAvg=(r)=>{const fb=getFb(r);return fb.length?+(fb.reduce((s,f)=>s+(f.score||0),0)/fb.length).toFixed(1):'—';};
+    document.getElementById('callsCompContent').innerHTML=`
+      <table class="tbl"><thead><tr><th>Métrica</th>${selCols.map((c,i)=>`<th class="r" style="${i===0?'color:var(--accent);font-weight:700':''}">${lbls[i]}</th>`).join('')}</tr></thead>
+      <tbody>
+        <tr><td>Llamadas totales</td>${selCols.map((c,i)=>`<td class="r"><span style="${i===0?'font-weight:600;color:var(--accent)':''}">${c.total}</span></td>`).join('')}</tr>
+        <tr><td>Minutos totales</td>${selCols.map((c,i)=>`<td class="r"><span style="${i===0?'font-weight:600;color:var(--accent)':''}">${c.minutes}</span></td>`).join('')}</tr>
+        <tr><td>Clientes únicos</td>${selCols.map((c,i)=>`<td class="r"><span style="${i===0?'font-weight:600;color:var(--accent)':''}">${c.uniqueClients}</span></td>`).join('')}</tr>
+        <tr><td>Duración promedio</td>${selCols.map((c,i)=>`<td class="r"><span style="${i===0?'font-weight:600;color:var(--accent)':''}">${c.avgDur}m</span></td>`).join('')}</tr>
+        <tr><td>Puntaje promedio</td>${selCols.map((c,i)=>`<td class="r"><span style="${i===0?'font-weight:600;color:var(--accent)':''}">${getAvg(c)}</span></td>`).join('')}</tr>
+        <tr><td>Respuestas feedback</td>${selCols.map((c,i)=>`<td class="r"><span style="${i===0?'font-weight:600;color:var(--accent)':''}">${getFb(c).length}</span></td>`).join('')}</tr>
+      </tbody></table>`;
+  } else {
+    document.getElementById('callsCompContent').innerHTML='<div class="empty">Seleccioná al menos un período para comparar.</div>';
+  }
+}
+
+function toggleCallsComp(id){
+  const idx=callsCompIds.indexOf(id);
+  if(idx>=0)callsCompIds.splice(idx,1);else if(callsCompIds.length<3)callsCompIds.push(id);
+  renderCalls();
+}
+
+// ── Render Suscripciones ──
+function renderSuscripciones(){
+  const contacts=Object.entries(contactsDB);
+  const canceled=contacts.filter(([,c])=>c.sub==='canceled');
+
+  // Months for filter
+  const months=[...new Set(canceled.map(([,c])=>c.lastInteraction?c.lastInteraction.substring(0,7):null).filter(Boolean))].sort().reverse();
+  const allOn=churnSelectedMonth==='all'?'on':'';
+  document.getElementById('churnMonthFilter').innerHTML=
+    `<div class="comp-chip ${allOn}" onclick="setChurnMonth('all')">Todos</div>`+
+    months.map(m=>{const on=churnSelectedMonth===m?'on':'';return`<div class="comp-chip ${on}" onclick="setChurnMonth('${m}')">${m}</div>`;}).join('');
+
+  // Filter by month
+  const filtered=churnSelectedMonth==='all'?canceled:canceled.filter(([,c])=>c.lastInteraction&&c.lastInteraction.startsWith(churnSelectedMonth));
+
+  // Cross with typeform (by email)
+  const tfEmails=new Set(churnData.map(t=>t.email?.toLowerCase()).filter(Boolean));
+  // Cross with conversations (baja servicios) — use allWeeks topContacts as proxy
+  const bajaContacts=new Set();
+  allWeeks.forEach(w=>{(w.topContacts||[]).forEach(c=>{if(c.topCat==='Baja servicios Lannis')bajaContacts.add(c.id);});});
+
+  const voluntaria=filtered.filter(([id,c])=>c.email&&tfEmails.has(c.email.toLowerCase()));
+  const sinTypeform=filtered.filter(([id,c])=>!c.email||!tfEmails.has(c.email.toLowerCase()));
+  const conversada=sinTypeform.filter(([id])=>bajaContacts.has(id));
+  const sinContacto=sinTypeform.filter(([id])=>!bajaContacts.has(id));
+
+  document.getElementById('churnVol').textContent=voluntaria.length;
+  document.getElementById('churnConv').textContent=conversada.length;
+  document.getElementById('churnSin').textContent=sinContacto.length;
+
+  document.getElementById('subsMcs').innerHTML=`
+    <div class="mc c-red"><div class="mc-icon red"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 4L4 12M4 4l8 8"/></svg></div><div class="mc-label">Total cancelados</div><div class="mc-val">${filtered.length}</div><div class="mc-sub">${churnSelectedMonth==='all'?'histórico':churnSelectedMonth}</div></div>
+    <div class="mc c-amber"><div class="mc-icon amber"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 2v4M8 10v4M2 8h4M10 8h4"/></svg></div><div class="mc-label">Con typeform</div><div class="mc-val">${voluntaria.length}</div><div class="mc-sub">${filtered.length>0?(voluntaria.length/filtered.length*100).toFixed(0)+'%':0} del total</div></div>
+    <div class="mc c-accent"><div class="mc-icon accent"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h12v8H9l-3 2v-2H2z"/></svg></div><div class="mc-label">Sin contacto</div><div class="mc-val">${sinContacto.length}</div><div class="mc-sub">posible falta de pago</div></div>`;
+
+  // Motivos
+  if(churnData.length){
+    const motivos=churnData.map(t=>t.motivo_baja).filter(Boolean);
+    document.getElementById('churnMotivos').innerHTML=motivos.map(m=>`<div style="padding:8px 12px;background:var(--s2);border-radius:var(--rs);margin-bottom:6px;font-size:12px;border-left:3px solid var(--red)">${m}</div>`).join('')||'<div class="empty">Sin motivos</div>';
+  }
+
+  // NPS chart
+  if(churnData.length){
+    const npsData=churnData.map(t=>t.nps).filter(v=>v!=null);
+    const prom=npsData.filter(v=>v>=9).length;
+    const pas=npsData.filter(v=>v>=7&&v<9).length;
+    const det=npsData.filter(v=>v<=6).length;
+    mkChart('cChurnNPS','doughnut',{
+      labels:['Promotores (9-10)','Pasivos (7-8)','Detractores (0-6)'],
+      datasets:[{data:[prom,pas,det],backgroundColor:['#10b981','#f59e0b','#ef4444'],borderWidth:4,borderColor:'#fff'}]
+    },{cutout:'60%'});
+  }
+
+  // Voluntaria table
+  document.getElementById('churnVolBody').innerHTML=voluntaria.slice(0,20).map(([id,c])=>{
+    const tf=churnData.find(t=>t.email?.toLowerCase()===c.email?.toLowerCase());
+    return`<tr><td style="font-family:'JetBrains Mono',monospace;font-size:11px">${c.email||id}</td><td class="r">${tf?tf.nps:'—'}</td><td style="font-size:11px;color:var(--ink3)">${tf?tf.motivo_baja?.substring(0,60)+'..':'—'}</td></tr>`;
+  }).join('')||'<tr><td colspan="3" class="empty">Sin datos</td></tr>';
+
+  // Sin contacto table
+  document.getElementById('churnSinBody').innerHTML=sinContacto.slice(0,20).map(([id,c])=>`
+    <tr><td style="font-family:'JetBrains Mono',monospace;font-size:11px">${c.email||id}</td><td><span class="badge-neu">${c.lifecycle||'—'}</span></td><td style="font-size:10px;color:var(--ink3)">${(c.tags||'').substring(0,40)}</td></tr>`).join('')||'<tr><td colspan="3" class="empty">Sin datos</td></tr>';
+}
+
+function setChurnMonth(m){
+  churnSelectedMonth=m;renderSuscripciones();
+}
+
+// ── Calls file handlers ──
+document.getElementById('fileCalls').addEventListener('change',async function(e){
+  const file=e.target.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=async ev=>{
+    let wb;
+    try{wb=XLSX.read(new Uint8Array(ev.target.result),{type:'array',raw:false,dateNF:'yyyy-mm-dd'});}
+    catch(err){toast('Error: '+err.message,true);return;}
+    const months=wb.SheetNames.filter(s=>s!=='Resumen');
+    let saved=0;
+    for(const sheetName of months){
+      const ws=wb.Sheets[sheetName];
+      const rows=XLSX.utils.sheet_to_json(ws,{header:1,raw:false,dateNF:'yyyy-mm-dd'});
+      if(!rows||rows.length<3)continue;
+      const detail=[];
+      for(let i=2;i<rows.length;i++){
+        const r=rows[i];
+        if(!r||!r[0]||String(r[4]||'').toLowerCase().includes('total'))continue;
+        const fecha=String(r[0]||'').substring(0,10);
+        if(!fecha.match(/^\d{4}-\d{2}-\d{2}/))continue;
+        detail.push({fecha,horaInicio:r[1],horaFin:r[2],duracion:parseInt(r[3])||30,cliente:String(r[4]||'').trim(),email:String(r[5]||'').trim(),titulo:String(r[6]||'').trim()});
+      }
+      if(!detail.length)continue;
+      const startDate=detail[0].fecha.substring(0,7)+'-01';
+      const monMap={'Sep':'09','Oct':'10','Nov':'11','Dic':'12','Ene':'01','Feb':'02','Mar':'03','Abr':'04','May':'05','Jun':'06','Jul':'07','Ago':'08'};
+      const parts=sheetName.split(' ');
+      const year=parts[1]||'2026';const monNum=monMap[parts[0]]||'01';
+      const periodStart=year+'-'+monNum+'-01';
+      const clientMap={};
+      detail.forEach(d=>{const k=d.email||d.cliente;if(!clientMap[k])clientMap[k]=0;clientMap[k]++;});
+      const p={
+        period_label:sheetName,period_start:periodStart,
+        calls_total:detail.length,minutes_total:detail.reduce((s,d)=>s+(d.duracion||30),0),
+        avg_duration:30,unique_clients:Object.keys(clientMap).length,calls_detail:detail
+      };
+      try{await db.from('calls_reports').upsert(p,{onConflict:'period_label'});saved++;}
+      catch(err){console.error(err);}
+    }
+    toast('✓ '+saved+' meses guardados');await fetchCalls();
+  };
+  reader.readAsArrayBuffer(file);e.target.value='';
+});
+
+document.getElementById('fileFeedback').addEventListener('change',async function(e){
+  const file=e.target.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=async ev=>{
+    let rows;
+    try{
+      const txt=new TextDecoder('utf-8').decode(ev.target.result);
+      const wb=XLSX.read(txt,{type:'string',raw:false});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      rows=XLSX.utils.sheet_to_json(ws,{header:1,raw:false});
+    }catch(err){toast('Error: '+err.message,true);return;}
+    if(!rows||rows.length<2){toast('Archivo inválido.',true);return;}
+    const hdrs=rows[0].map(h=>String(h||'').trim());
+    const col=n=>hdrs.findIndex(h=>h.toLowerCase().includes(n.toLowerCase()));
+    const iScore=col('calificarías'),iValued=col('valoraste'),iImprove=col('mejorar');
+    const iEmail=col('email'),iMeet=col('meeting_date'),iID=col('#');
+    const records=rows.slice(1).filter(r=>r&&r[iID]).map(r=>({
+      response_id:String(r[iID]||'').trim(),
+      email:String(r[iEmail]||'').trim().toLowerCase(),
+      score:parseInt(r[iScore])||null,
+      what_valued:String(r[iValued]||'').trim(),
+      what_improve:String(r[iImprove]||'').trim(),
+      meeting_date:r[iMeet]?String(r[iMeet]).substring(0,10):null,
+      submit_date:null
+    })).filter(r=>r.response_id);
+    try{
+      for(let i=0;i<records.length;i+=50){
+        await db.from('calls_feedback').upsert(records.slice(i,i+50),{onConflict:'response_id'});
+      }
+      toast('✓ '+records.length+' feedbacks guardados');await fetchCalls();
+    }catch(err){toast('Error: '+err.message,true);}
+  };
+  reader.readAsArrayBuffer(file);e.target.value='';
+});
+
+document.getElementById('fileChurn').addEventListener('change',async function(e){
+  const file=e.target.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=async ev=>{
+    let rows;
+    try{
+      const txt=new TextDecoder('utf-8').decode(ev.target.result);
+      const wb=XLSX.read(txt,{type:'string',raw:false});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      rows=XLSX.utils.sheet_to_json(ws,{header:1,raw:false});
+    }catch(err){toast('Error: '+err.message,true);return;}
+    if(!rows||rows.length<2){toast('Archivo inválido.',true);return;}
+    const hdrs=rows[0].map(h=>String(h||'').trim());
+    const col=n=>hdrs.findIndex(h=>h.toLowerCase().includes(n.toLowerCase()));
+    const iEmail=col('email'),iNPS=col('escala'),iMotivo=col('dejar'),iSubmit=col('Submit Date'),iID=col('#');
+    const records=rows.slice(1).filter(r=>r&&r[iID]).map(r=>({
+      response_id:String(r[iID]||'').trim(),
+      email:String(r[iEmail]||'').trim().toLowerCase(),
+      nps:parseInt(r[iNPS])||null,
+      motivo_baja:String(r[iMotivo]||'').trim(),
+      submit_date:r[iSubmit]?String(r[iSubmit]).substring(0,10):null
+    })).filter(r=>r.response_id&&r.email);
+    try{
+      for(let i=0;i<records.length;i+=50){
+        await db.from('typeform_responses').upsert(records.slice(i,i+50),{onConflict:'response_id'});
+      }
+      toast('✓ '+records.length+' respuestas de baja guardadas');await fetchChurn();
+    }catch(err){toast('Error: '+err.message,true);}
+  };
+  reader.readAsArrayBuffer(file);e.target.value='';
+});
+
 fetchWeeks();
 fetchMsgReports();
 fetchContacts();
+fetchCalls();
+fetchChurn();
 renderGlosario();
 </script>
 </body>
