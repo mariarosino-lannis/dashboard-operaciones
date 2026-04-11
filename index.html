@@ -682,7 +682,7 @@ function computeWeek(rows,hols,actAgents){
     const totalMsgs=(parseInt(r[iMO])||0)+(parseInt(r[iMI])||0);
     const aiClosed=String(r[iCBS]||'').trim()==='ai_agent';
     const contactId=String(r[iCID]||'').trim();
-    const channelId=String(r[iOpenedByChannel]||'').trim();
+    const channelId=String(r[iOpenedByChannel]||'').trim().replace('.0','');
     return{f,h,ds:DN[dow],dow,isInt,agent,habTime,catN:normCat(r[iCat]),
       frt:pm(r[iFRT]),art:pm(r[iART]),ttr:pm(r[iTTR]),tta:pm(r[iTTA]),
       src,hasBot,reassigned:numA>1,sameDay,totalMsgs,aiClosed,contactId};
