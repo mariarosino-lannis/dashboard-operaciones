@@ -682,7 +682,8 @@ function computeWeek(rows,hols,actAgents){
     const totalMsgs=(parseInt(r[iMO])||0)+(parseInt(r[iMI])||0);
     const aiClosed=String(r[iCBS]||'').trim()==='ai_agent';
     const contactId=String(r[iCID]||'').trim();
-    const channelId=String(r[iOpenedByChannel]||'').trim().replace('.0','');
+    const rawCh=r[iOpenedByChannel];
+    const channelId=rawCh?String(parseFloat(rawCh)||0).replace('.0','').replace('NaN',''):'';
     return{f,h,ds:DN[dow],dow,isInt,agent,habTime,catN:normCat(r[iCat]),
       frt:pm(r[iFRT]),art:pm(r[iART]),ttr:pm(r[iTTR]),tta:pm(r[iTTA]),
       src,hasBot,reassigned:numA>1,sameDay,totalMsgs,aiClosed,contactId};
@@ -714,7 +715,7 @@ function computeWeek(rows,hols,actAgents){
       contactMap[r.contactId].count++;
       contactMap[r.contactId].cats[r.catN]=(contactMap[r.contactId].cats[r.catN]||0)+1;
       if(r.f>contactMap[r.contactId].last)contactMap[r.contactId].last=r.f;
-      if(r.channelId==='416252')contactMap[r.contactId].hasWA=true;
+      if(r.channelId==='416252'||r.channelId===416252||r.channelId==='416252.0')contactMap[r.contactId].hasWA=true;
     }
   });
 
@@ -998,26 +999,55 @@ function renderConversaciones(w){
 // ── Clientes ──
 function renderClientes(w){
   if(!w)w=getW();if(!w)return;
-  const freq=w.contactFreq||{};const total=Object.values(freq).reduce((a,b)=>a+b,0)||1;
+  const freq=w.contactFreq||{};
+  const total=Object.values(freq).reduce((a,b)=>a+b,0)||1;
   const recurr=(freq['2-5']||0)+(freq['6-10']||0)+(freq['10+']||0);
-  const top=w.topContacts?.[0];
+
+  // topContacts — ensure it's always an array
+  let topC=[];
+  try{
+    const raw=w.topContacts;
+    if(Array.isArray(raw)) topC=raw;
+    else if(raw && typeof raw==='object') topC=Object.values(raw);
+  }catch(e){topC=[];}
+
+  const topFirst=topC[0];
   document.getElementById('cliMcs').innerHTML=`
     <div class="mc c-accent"><div class="mc-icon accent"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="8" cy="6" r="3"/><path d="M2 14c0-4 3-6 6-6s6 2 6 6"/></svg></div><div class="mc-label">Contactos únicos</div><div class="mc-val">${total.toLocaleString('es')}</div></div>
     <div class="mc c-green"><div class="mc-icon green"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 2v12M2 8h12"/></svg></div><div class="mc-label">Recurrentes (+1)</div><div class="mc-val">${recurr}</div><div class="mc-sub">${(recurr/total*100).toFixed(0)}%</div></div>
     <div class="mc c-amber"><div class="mc-icon amber"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12h3V6H2zM6 12h3V3H6zM10 12h3V8h-3z"/></svg></div><div class="mc-label">Alta frecuencia (+10)</div><div class="mc-val">${freq['10+']||0}</div></div>
-    <div class="mc c-red"><div class="mc-icon red"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 2l2 4h4l-3 3 1 4-4-2-4 2 1-4-3-3h4z"/></svg></div><div class="mc-label">Más activo</div><div class="mc-val">${top?top.count:'—'}</div><div class="mc-sub">consultas</div></div>`;
-  mkChart('cCliFreq','doughnut',{labels:['1 consulta','2-5','6-10','10+'],datasets:[{data:[freq['1']||0,freq['2-5']||0,freq['6-10']||0,freq['10+']||0],backgroundColor:['#6366f1','#10b981','#f59e0b','#ef4444'],borderWidth:4,borderColor:'#fff'}]},{cutout:'60%'});
-  // Lifecycle from contacts
+    <div class="mc c-red"><div class="mc-icon red"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 2l2 4h4l-3 3 1 4-4-2-4 2 1-4-3-3h4z"/></svg></div><div class="mc-label">Más activo</div><div class="mc-val">${topFirst?topFirst.count:'—'}</div><div class="mc-sub">consultas</div></div>`;
+
+  // Lifecycle chart
   const lcs={};
-  (w.topContacts||[]).forEach(c=>{const info=contactsDB[c.id];if(info?.lifecycle){const l=info.lifecycle;lcs[l]=(lcs[l]||0)+c.count;}});
+  topC.forEach(c=>{
+    try{
+      const info=contactsDB[String(parseInt(c.id))]||contactsDB[String(c.id)]||contactsDB[c.id];
+      if(info&&info.lifecycle){const l=info.lifecycle;lcs[l]=(lcs[l]||0)+(c.count||1);}
+    }catch(e){}
+  });
   const lcSorted=Object.entries(lcs).sort((a,b)=>b[1]-a[1]);
-  if(lcSorted.length){mkChart('cLifecycle','bar',{labels:lcSorted.map(([l])=>l),datasets:[{data:lcSorted.map(([,v])=>v),backgroundColor:PAL,borderRadius:4}]},{indexAxis:'y',scales:{x:{beginAtZero:true,grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#8a8a96',font:{size:10}}},y:{grid:{display:false},ticks:{color:'#3a3a42',font:{size:10}}}}});}
+  if(lcSorted.length){
+    mkChart('cLifecycle','bar',{labels:lcSorted.map(([l])=>l),datasets:[{data:lcSorted.map(([,v])=>v),backgroundColor:PAL,borderRadius:4}]},{indexAxis:'y',scales:{x:{beginAtZero:true,grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#8a8a96',font:{size:10}}},y:{grid:{display:false},ticks:{color:'#3a3a42',font:{size:10}}}}});
+  }
+
+  mkChart('cCliFreq','doughnut',{labels:['1 consulta','2-5','6-10','10+'],datasets:[{data:[freq['1']||0,freq['2-5']||0,freq['6-10']||0,freq['10+']||0],backgroundColor:['#6366f1','#10b981','#f59e0b','#ef4444'],borderWidth:4,borderColor:'#fff'}]},{cutout:'60%'});
+
   const subCol={'active':'var(--green)','canceled':'var(--red)','past_due':'var(--amber)','trialing':'var(--accent)'};
-  document.getElementById('cliBody').innerHTML=(w.topContacts||[]).slice(0,20).map((c,i)=>{
-    const info=contactsDB[c.id]||contactsDB[String(c.id)];
-    const name=info?.name||'—';const lc=info?.lifecycle||'—';const sub=info?.sub||'—';const cat=info?.cat||'—';const debt=info?.debt;
-    return`<tr><td style="color:var(--ink3);font-weight:500">#${i+1}</td><td><div style="font-weight:500">${name}</div><div style="font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--ink3)">${c.id}</div></td><td class="r" style="font-weight:600">${c.count}</td><td><span class="badge-neu">${lc}</span></td><td><span style="font-size:11px;font-weight:500;color:${subCol[sub]||'var(--ink3)'}">${sub}</span></td><td class="r">${cat}</td><td class="r">${debt===true?'<span class="badge-fail">Deuda</span>':debt===false?'<span class="badge-ok">OK</span>':'—'}</td></tr>`;
-  }).join('');
+  document.getElementById('cliBody').innerHTML=topC.slice(0,20).map((c,i)=>{
+    let info={};
+    try{info=contactsDB[String(parseInt(c.id))]||contactsDB[String(c.id)]||contactsDB[c.id]||{};}catch(e){}
+    const name=info.name||'—';const lc=info.lifecycle||'—';const sub=info.sub||'—';const cat=info.cat||'—';const debt=info.debt;
+    return`<tr>
+      <td style="color:var(--ink3);font-weight:500">#${i+1}</td>
+      <td><div style="font-weight:500">${name}</div><div style="font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--ink3)">${c.id}</div></td>
+      <td class="r" style="font-weight:600">${c.count}</td>
+      <td><span class="badge-neu">${lc}</span></td>
+      <td><span style="font-size:11px;font-weight:500;color:${subCol[sub]||'var(--ink3)'}">${sub}</span></td>
+      <td class="r">${cat}</td>
+      <td class="r">${debt===true?'<span class="badge-fail">Deuda</span>':debt===false?'<span class="badge-ok">OK</span>':'—'}</td>
+    </tr>`;
+  }).join('')||'<tr><td colspan="7" class="empty">Sin datos</td></tr>';
 }
 
 // ── Bot & AI ──
