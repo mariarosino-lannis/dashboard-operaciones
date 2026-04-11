@@ -836,6 +836,14 @@ function renderMsgPills(){
 
 function selMsg(i){activeMsgIdx=i;msgCompIds=[];renderMsgPills();renderBot();}
 
+async function delMsg(id,label){
+  if(!confirm('¿Eliminar "'+label+'"?'))return;
+  const{error}=await db.from('message_reports').delete().eq('id',id);
+  if(error){toast('Error: '+error.message,true);return;}
+  toast('Eliminado');
+  await fetchMsgReports();
+}
+
 function selPeriod(i){activeIdx=i;compIds=[];renderPills();buildAgentChips();renderAll();}
 
 async function delPeriod(i,wl){
