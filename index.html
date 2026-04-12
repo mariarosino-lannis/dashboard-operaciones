@@ -1412,7 +1412,12 @@ document.getElementById('fileMsgs').addEventListener('change',function(e){
     const parsed=data.map(r=>{const ts=new Date(r[iTS]);return{ts,sender:String(r[iSender]||'').trim(),cid:String(r[iCont]||''),msgType:String(r[iMsgType]||'').trim(),subType:String(r[iSubType]||'').trim(),hora:ts.getHours()};}).filter(r=>!isNaN(r.ts));
     const dates=parsed.map(r=>r.ts);
     const start=new Date(Math.min(...dates));const end=new Date(Math.max(...dates));
-    const label=start.toISOString().substring(0,7)+' mensajes';
+    const startStr=start.toISOString().substring(5,10).replace('-','/');
+    const endStr=end.toISOString().substring(5,10).replace('-','/');
+    const diffDays=Math.round((end-start)/(1000*60*60*24))+1;
+    const label=diffDays>10?
+      (MONTHS[start.getMonth()]+' '+start.getFullYear()+' mensajes'):
+      ('Sem. '+startStr+' – '+endStr+' mensajes');
     const totalMsgs=parsed.length;
     const humanMsgs=parsed.filter(r=>r.sender==='user').length;
     const botMsgs=parsed.filter(r=>r.sender==='ai_agent').length;
