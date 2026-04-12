@@ -568,6 +568,7 @@ const SLA={frt:10,art:20,ttr:120};
 const MAX_CPH=4;
 const AV=['a0','a1','a2','a3'];
 const EQ_INT=new Set([318356816,315475410,295606873,340645465,318432393,318432542,318434168,331566697,316942904,318426014,343325858]);
+const EXCLUDE_CONTACTS=new Set(['338590743','326485789','415320204','405053937','395503910','411238335','389076205','324881294','395227721','411989881','330931132','387753916','332109842','411340452','321809883','332384170','318794941','354666100','354839550','321951367','332005827','341076424','351182784']);
 const CLOSED_BY={906585:'Mateo Lopez',906580:'Pablo Moreno',906560:'María Rosino',949998:'Camila Fernandez'};
 const CHLBL={'contact':'Cliente inició','user':'Equipo inició','ctc_ads':'Anuncio','':'Desconocido'};
 
@@ -710,7 +711,7 @@ function computeWeek(rows,hols,actAgents){
     if(!sdCat[r.catN])sdCat[r.catN]={total:0,sd:0,msgs:[]};
     sdCat[r.catN].total++;if(r.sameDay)sdCat[r.catN].sd++;sdCat[r.catN].msgs.push(r.totalMsgs);
     if(r.tta!=null)ttaVals.push(r.tta);
-    if(r.contactId&&r.contactId!=='NaN'){
+    if(r.contactId&&r.contactId!=='NaN'&&!EXCLUDE_CONTACTS.has(r.contactId)){
       if(!contactMap[r.contactId])contactMap[r.contactId]={count:0,cats:{},last:'',hasWA:false};
       contactMap[r.contactId].count++;
       contactMap[r.contactId].cats[r.catN]=(contactMap[r.contactId].cats[r.catN]||0)+1;
@@ -1139,7 +1140,7 @@ function toggleMsgComp(id){
 
 // ── Comparativa ──
 function renderComparativa(w){
-  const others=allWeeks.filter(x=>x.id!==w.id);
+  const others=allWeeks.filter(x=>x.id!==w.id&&x.isM===w.isM);
   if(!compIds.length&&others.length)compIds=others.slice(0,2).map(x=>x.id);
   document.getElementById('compSelector').innerHTML=others.length?others.map(x=>`<div class="comp-chip ${compIds.includes(x.id)?'on':''}" onclick="toggleComp('${x.id}')">${x.fl||x.week.substring(0,10)}</div>`).join(''):'<span style="font-size:12px;color:var(--ink3)">No hay otros reportes.</span>';
   const sel=compIds.map(id=>allWeeks.find(x=>x.id===id)).filter(Boolean);
@@ -1185,7 +1186,8 @@ function renderComparativa(w){
 
   // ── Category history chart ──
   // Collect all categories across all weeks
-  const allCatNames=[...new Set(allWeeks.flatMap(w=>Object.keys(w.cats||{})))].sort();
+  const sameType=allWeeks.filter(x=>x.isM===w.isM);
+  const allCatNames=[...new Set(sameType.flatMap(w=>Object.keys(w.cats||{})))].sort();
   // Build selector
   const currentCat=window._selectedHistCat||allCatNames[0]||'';
   document.getElementById('catHistSelector').innerHTML=allCatNames.map(cat=>`
@@ -1205,7 +1207,7 @@ function selHistCat(cat){
 function renderCatHist(cat){
   if(!cat||!allWeeks.length)return;
   // Sort all weeks chronologically
-  const sorted=[...allWeeks].sort((a,b)=>new Date(a.ws)-new Date(b.ws));
+  const sorted=[...sameType].sort((a,b)=>new Date(a.ws)-new Date(b.ws));
   const labels=sorted.map(w=>w.fl||w.ws);
   const data=sorted.map(w=>(w.cats||{})[cat]||0);
   mkChart('cCatHist','line',{
