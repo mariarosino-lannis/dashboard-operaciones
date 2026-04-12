@@ -1238,21 +1238,54 @@ function toggleComp(id){
 // ── Cap. Avanzada ──
 function renderCapAvanzada(w){
   if(!w)return;
-  const aH=w.availHrs||0;const wd=w.workDays||0;const agents=Object.keys(w.agents||{}).filter(n=>n&&n!=='Sin agente').length||3;
+  const aH=w.availHrs||0;const wd=w.workDays||0;
+  const agentKeys=Object.keys(w.agents||{}).filter(n=>n&&n!=='Sin agente');
+  const agents=agentKeys.length||3;
   const lambda=aH>0?+(w.totalH/aH).toFixed(2):0;
   const artAvg=w.artAvg||0;const mu=artAvg>0?+(60/artAvg).toFixed(2):0;
   const rho=agents>0&&mu>0?+((lambda/mu)/agents).toFixed(2):0;
+
   document.getElementById('capAvMcs').innerHTML=`
     <div class="mc c-accent"><div class="mc-icon accent"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 2v4l3 2"/><circle cx="8" cy="8" r="6"/></svg></div><div class="mc-label">λ — Tasa de llegada</div><div class="mc-val">${lambda}</div><div class="mc-sub">consultas/hora hábil</div></div>
     <div class="mc c-green"><div class="mc-icon green"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12h3V6H2zM6 12h3V3H6zM10 12h3V8h-3z"/></svg></div><div class="mc-label">μ — Tasa de servicio</div><div class="mc-val">${mu}</div><div class="mc-sub">conv/hora por agente (ART)</div></div>
     <div class="mc c-${rho>0.85?'red':rho>0.7?'amber':'green'}"><div class="mc-icon ${rho>0.85?'red':rho>0.7?'amber':'green'}"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="8" cy="8" r="6"/><path d="M8 5v3l2 1"/></svg></div><div class="mc-label">ρ — Utilización</div><div class="mc-val">${(rho*100).toFixed(0)}%</div><div class="mc-sub">${rho>=1?'Sobrecargado':rho>0.85?'Alta carga':'Dentro de capacidad'}</div></div>
     <div class="mc c-accent"><div class="mc-icon accent"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="5" r="3"/><path d="M1 14c0-3 2-5 5-5s5 2 5 5M13 7v6M10 10h6"/></svg></div><div class="mc-label">Agentes activos</div><div class="mc-val">${agents}</div><div class="mc-sub">en el período</div></div>`;
-  let cats=[];try{cats=Object.entries(w.catTimes||{}).filter(([,v])=>v&&v.count>=5).sort((a,b)=>b[1].count-a[1].count);}catch(e){cats=[];}
-  const catCv=cats.map(([cat,info])=>({cat:cat.length>20?cat.substring(0,18)+'..':cat,fullCat:cat,cv2:info.frtAvg>0?+(Math.pow(info.frtAvg/60,2)).toFixed(2):0.1,count:info.count,ttrAvg:info.ttrAvg}));
-  mkChart('cCvCat','bar',{labels:catCv.map(x=>x.cat),datasets:[{data:catCv.map(x=>x.cv2),backgroundColor:catCv.map(x=>x.cv2>2?'#ef4444':x.cv2>1?'#f59e0b':'#10b981'),borderRadius:4,borderSkipped:false}]},{indexAxis:'y',scales:{x:{beginAtZero:true,grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#8a8a96',font:{size:10}}},y:{grid:{display:false},ticks:{color:'#3a3a42',font:{size:10}}}}});
-  document.getElementById('simSelector').innerHTML=catCv.map(x=>`<div class="comp-chip" onclick="simAuto('${x.fullCat}',${x.count},${w.totalH},${wd},${agents},${artAvg})">${x.fullCat} (${x.count})</div>`).join('');
-  document.getElementById('autoBody').innerHTML=catCv.map(([cat,info],i)=>{
-    const x=catCv[i];
+
+  // Safe cats extraction
+  let cats=[];
+  try{
+    const ctRaw=w.catTimes;
+    if(ctRaw&&typeof ctRaw==='object'&&!Array.isArray(ctRaw)){
+      cats=Object.entries(ctRaw)
+        .filter(([,v])=>v&&typeof v==='object'&&(v.count||0)>=5)
+        .sort((a,b)=>(b[1].count||0)-(a[1].count||0));
+    }
+  }catch(e){cats=[];}
+
+  if(!cats.length){
+    document.getElementById('cCvCat').parentElement.innerHTML='<div class="empty">Sin datos de categorías</div>';
+    document.getElementById('simSelector').innerHTML='';
+    document.getElementById('autoBody').innerHTML='';
+    return;
+  }
+
+  const catCv=cats.map(([cat,info])=>({
+    cat:cat.length>20?cat.substring(0,18)+'..':cat,
+    fullCat:cat,
+    cv2:+(Math.pow((info.frtAvg||0)/60,2)).toFixed(2),
+    count:info.count||0,
+    ttrAvg:info.ttrAvg||0
+  }));
+
+  mkChart('cCvCat','bar',
+    {labels:catCv.map(x=>x.cat),datasets:[{data:catCv.map(x=>x.cv2),backgroundColor:catCv.map(x=>x.cv2>2?'#ef4444':x.cv2>1?'#f59e0b':'#10b981'),borderRadius:4,borderSkipped:false}]},
+    {indexAxis:'y',scales:{x:{beginAtZero:true,grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#8a8a96',font:{size:10}}},y:{grid:{display:false},ticks:{color:'#3a3a42',font:{size:10}}}}});
+
+  document.getElementById('simSelector').innerHTML=catCv.map(x=>
+    `<div class="comp-chip" onclick="simAuto('${x.fullCat.replace(/'/g,"\'")}',${x.count},${w.totalH},${wd},${agents},${artAvg})">${x.fullCat} (${x.count})</div>`
+  ).join('');
+
+  document.getElementById('autoBody').innerHTML=catCv.map(x=>{
     const pred=x.cv2<0.5?'<span class="badge-ok">Alta</span>':x.cv2<1.5?'<span class="badge-mid">Media</span>':'<span class="badge-fail">Baja</span>';
     const reco=x.cv2<0.5&&x.count>30?'<span class="badge-ok">✓ Automatizar</span>':x.cv2<1.5?'<span class="badge-mid">Analizar</span>':'<span class="badge-fail">Mantener humano</span>';
     return`<tr><td style="font-weight:500">${x.fullCat}</td><td class="r">${x.count}</td><td class="r">${hms(x.ttrAvg)}</td><td class="r" style="font-family:'JetBrains Mono',monospace">${x.cv2}</td><td class="r">${pred}</td><td class="r">${reco}</td></tr>`;
