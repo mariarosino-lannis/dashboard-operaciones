@@ -325,6 +325,11 @@ body{font-family:'Inter',sans-serif;background:var(--paper);color:var(--ink);min
     <div id="tab-categorias" class="tab-c">
       <div class="card"><div class="card-header"><div><div class="card-title">Todas las categorías</div><div class="card-sub">Cantidad · % · Tiempos · Mensajes · Resolución mismo día</div></div></div>
         <table class="tbl"><thead><tr><th>Categoría</th><th class="r">Consultas</th><th class="r">%</th><th class="r">FRT prom</th><th class="r">TTR prom</th><th class="r">Msgs avg</th><th class="r">Same-day</th></tr></thead><tbody id="catBody"></tbody></table>
+        <div id="catFooterNotes" style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border);font-size:11px;color:var(--ink3);line-height:1.9"></div>
+      </div>
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-header" style="margin-bottom:12px"><div><div class="card-title">Apertura de categoría "Otros"</div><div class="card-sub">Desglose de las subcategorías agrupadas</div></div></div>
+        <div id="otrosBreakdown"><div class="empty">Sin datos</div></div>
       </div>
       <div class="card"><div class="card-header"><div><div class="card-title">Complejidad por categoría</div><div class="card-sub">Eje X = mensajes promedio · Eje Y = % same-day · Tamaño = volumen</div></div></div><div class="ch" style="height:280px"><canvas id="cBubble"></canvas></div></div>
     </div>
@@ -546,6 +551,8 @@ body{font-family:'Inter',sans-serif;background:var(--paper);color:var(--ink);min
     <div class="day-grid" id="dayGrid"></div>
     <div class="modal-sec">Agentes a incluir</div>
     <div class="agent-grid" id="agentSel"></div>
+    <div class="modal-sec">Nombre del reporte (opcional)</div>
+    <input type="text" id="reportName" class="inp" placeholder="Ej: Semana 6-12 abril...">
     <div class="modal-sec">Subido por (opcional)</div>
     <input type="text" id="uploadedBy" class="inp" placeholder="Tu nombre...">
     <div class="modal-actions">
@@ -606,7 +613,7 @@ async function fetchWeeks(){
     return{id:r.id,week:r.week_label,fl,isM,ws:r.week_start,we:r.week_end,
       total:r.total||0,totalH:r.total_habil||0,workDays:r.working_days||0,availHrs:r.available_hours||0,
       frtMed:r.frt_med||0,frtAvg:r.frt_avg||0,artMed:r.art_med||0,artAvg:r.art_avg||0,ttrMed:r.ttr_med||0,ttrAvg:r.ttr_avg||0,
-      days:r.days||{},hours:r.hours||{},cats:r.cats||{},catTimes:r.cat_times||{},
+      days:r.days||{},hours:r.hours||{},cats:r.cats||{},catTimes:r.cat_times||{},otrosDetail:r.otros_detail||{},internalCount:r.internal_count||0,
       channels:r.channels||{},botCount:r.bot_count||0,reassigned:r.reassigned_count||0,
       sdTotal:r.same_day_total||0,sdBycat:r.same_day_by_cat||{},msgsByCat:r.msgs_by_cat||{},
       ttaMed:r.tta_med||0,ttaAvg:r.tta_avg||0,aiClosed:r.ai_closed||0,
@@ -690,6 +697,18 @@ function computeWeek(rows,hols,actAgents){
       src,hasBot,reassigned:numA>1,sameDay,totalMsgs,aiClosed,contactId};
   });
 
+  // Track raw Otros subcategories
+  const otrosRaw={};
+  const OTROS_SUBS=['Otros - gestión de asesorías','Otros - notificaciones domicilio fiscal electrónico','Otros - otras notificaciones al mail','Otros - test','Otra'];
+  data.forEach(r=>{
+    const raw=String(r[iCat]||'').trim();
+    if(OTROS_SUBS.includes(raw)||raw.startsWith('Otros')){
+      const label=raw==='Otra'?'Otra':raw;
+      otrosRaw[label]=(otrosRaw[label]||0)+1;
+    }
+  });
+
+  const internalCount=processed.filter(r=>r.isInt).length;
   const allR=processed.filter(r=>!r.isInt&&r.f);
   const habR=processed.filter(r=>r.habTime&&!r.isInt&&(actAgents.size===0||actAgents.has(r.agent)));
 
@@ -755,7 +774,7 @@ function computeWeek(rows,hols,actAgents){
     frtMed:+med(allFRT).toFixed(1),frtAvg:+avg(allFRT).toFixed(1),
     artMed:+med(allART).toFixed(1),artAvg:+avg(allART).toFixed(1),
     ttrMed:+med(allTTR).toFixed(1),ttrAvg:+avg(allTTR).toFixed(1),
-    days:ordD,hours,cats,catTimes,channels,botCount:botC,reassigned:reassC,
+    days:ordD,hours,cats,catTimes,otrosDetail:otrosRaw,internalCount,channels,botCount:botC,reassigned:reassC,
     sdTotal,sdBycat,msgsByCat,ttaMed:+ttaMed.toFixed(1),ttaAvg:+ttaAvgV.toFixed(1),aiClosed:aiCl,
     topContacts,contactFreq:freq,agents};
 }
@@ -791,14 +810,15 @@ async function confirmUpload(){
   document.getElementById('modalOv').classList.remove('show');
   if(!pendingRows){btn.disabled=false;btn.innerHTML='Procesar y guardar';return;}
   const result=computeWeek(pendingRows,pendingHols,pendingAgents);
+  const reportName=document.getElementById('reportName').value.trim();
   const by=document.getElementById('uploadedBy').value.trim();
   pendingRows=null;
   if(!result){toast('No se encontraron datos válidos.',true);btn.disabled=false;btn.innerHTML='Procesar y guardar';return;}
   const p={
-    week_label:result.week,week_start:result.ws,week_end:result.we,
+    week_label:reportName||result.week,week_start:result.ws,week_end:result.we,
     total:result.total,total_habil:result.totalH,working_days:result.workDays,available_hours:result.availHrs,
     frt_med:result.frtMed,frt_avg:result.frtAvg,art_med:result.artMed,art_avg:result.artAvg,ttr_med:result.ttrMed,ttr_avg:result.ttrAvg,
-    days:result.days,hours:result.hours,cats:result.cats,cat_times:result.catTimes,
+    days:result.days,hours:result.hours,cats:result.cats,cat_times:result.catTimes,otros_detail:result.otrosDetail,internal_count:result.internalCount,
     channels:result.channels,bot_count:result.botCount,reassigned_count:result.reassigned,
     same_day_total:result.sdTotal,same_day_by_cat:result.sdBycat,msgs_by_cat:result.msgsByCat,
     tta_avg:result.ttaAvg,tta_med:result.ttaMed,ai_closed:result.aiClosed,
@@ -931,7 +951,11 @@ function renderHours(w,cid){
 
 // ── Categorías ──
 function renderCategorias(w){
-  const sorted=Object.entries(w.cats).sort((a,b)=>b[1]-a[1]);
+  const sorted=Object.entries(w.cats).sort((a,b)=>{
+    if(a[0]==='Otros')return 1;
+    if(b[0]==='Otros')return -1;
+    return b[1]-a[1];
+  });
   const total=sorted.reduce((s,[,v])=>s+v,0)||1;const mx=sorted[0]?.[1]||1;
   document.getElementById('catBody').innerHTML=sorted.map(([name,count],i)=>{
     const ct=w.catTimes?.[name];const sd=w.sdBycat?.[name];const ms=w.msgsByCat?.[name];
@@ -946,6 +970,29 @@ function renderCategorias(w){
       <td class="r">${sdBadge}</td>
     </tr>`;
   }).join('');
+  // ── PUNTO 4: Otros breakdown ──
+  const otrosSubcats=w.otrosDetail||{};
+  const otrosSorted=Object.entries(otrosSubcats).sort((a,b)=>b[1]-a[1]);
+  const otrosEl=document.getElementById('otrosBreakdown');
+  if(otrosSorted.length){
+    const otrosTotal=otrosSorted.reduce((s,[,v])=>s+v,0)||1;
+    otrosEl.innerHTML=`<table class="tbl"><thead><tr><th>Subcategoría</th><th class="r">Consultas</th><th class="r">%</th></tr></thead><tbody>
+      ${otrosSorted.map(([name,count])=>`<tr><td>${name}</td><td class="r">${count}</td><td class="r">${(count/otrosTotal*100).toFixed(1)}%</td></tr>`).join('')}
+    </tbody></table>`;
+  } else {
+    otrosEl.innerHTML='<div class="empty">Sin datos de subcategorías — recargá el reporte para obtener este desglose</div>';
+  }
+
+  // ── PUNTO 5: Footer notes ──
+  const internalCount=w.internalCount||0;
+  const otrosDesc=otrosSorted.length?
+    'Otros: '+otrosSorted.map(([n,v])=>`${v} de ${n.replace('Otros - ','').replace('Otra','otras')}`).join(', ')+'.':
+    '';
+  document.getElementById('catFooterNotes').innerHTML=
+    (internalCount>0?`<div>(*) No contempla <strong>${internalCount}</strong> conversaciones del equipo interno.</div>`:'')
+    +(otrosDesc?`<div>${otrosDesc}</div>`:'');
+
+  // ── Bubble chart ──
   const bubData=sorted.map(([cat,count],i)=>{const ms=w.msgsByCat?.[cat];const sd=w.sdBycat?.[cat];if(!ms||!sd)return null;return{x:ms.avg,y:sd.pct,r:Math.max(5,Math.min(22,Math.sqrt(count)*1.8)),label:cat,color:PAL[i%PAL.length]};}).filter(Boolean);
   dch('cBubble');const ctx=document.getElementById('cBubble');
   if(ctx&&bubData.length){charts['cBubble']=new Chart(ctx,{type:'bubble',data:{datasets:bubData.map(d=>({label:d.label,data:[{x:d.x,y:d.y,r:d.r}],backgroundColor:d.color+'aa',borderColor:d.color,borderWidth:1.5}))},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${c.raw.x}msg · ${c.raw.y}% same-day`}}},scales:{x:{title:{display:true,text:'Mensajes promedio',color:'#8a8a96',font:{size:10}},grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#8a8a96'}},y:{title:{display:true,text:'% mismo día',color:'#8a8a96',font:{size:10}},grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#8a8a96'},min:0,max:110}}}});}
