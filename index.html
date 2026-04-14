@@ -378,6 +378,13 @@ body{font-family:'Inter',sans-serif;background:var(--paper);color:var(--ink);min
 
     <!-- BOT & AI -->
     <div id="tab-bot" class="tab-c">
+      <div class="sub-tabs" style="display:flex;gap:4px;margin-bottom:20px;border-bottom:1px solid var(--border);padding-bottom:0">
+        <div class="sub-tab-btn on" id="stb-bot" onclick="showSubTab('bot','bot')" style="padding:8px 16px;font-size:13px;font-weight:500;cursor:pointer;border-bottom:2px solid var(--accent);color:var(--accent);margin-bottom:-1px">Bot & AI</div>
+        <div class="sub-tab-btn" id="stb-templates" onclick="showSubTab('bot','templates')" style="padding:8px 16px;font-size:13px;font-weight:500;cursor:pointer;border-bottom:2px solid transparent;color:var(--ink2);margin-bottom:-1px">Templates</div>
+        <div class="sub-tab-btn" id="stb-escalacion" onclick="showSubTab('bot','escalacion')" style="padding:8px 16px;font-size:13px;font-weight:500;cursor:pointer;border-bottom:2px solid transparent;color:var(--ink2);margin-bottom:-1px">Gap de escalamiento</div>
+        <div class="sub-tab-btn" id="stb-broadcast-corr" onclick="showSubTab('bot','broadcast-corr')" style="padding:8px 16px;font-size:13px;font-weight:500;cursor:pointer;border-bottom:2px solid transparent;color:var(--ink2);margin-bottom:-1px">Broadcasts & demanda</div>
+      </div>
+      <div id="sub-bot">
       <div class="mc-grid" id="botMcs"></div>
       <div class="g2">
         <div class="card"><div class="card-header"><div><div class="card-title">Flujo de conversaciones</div><div class="card-sub">Cómo interactúan bot y humano</div></div></div><div class="ch" style="height:220px"><canvas id="cBotFlow"></canvas></div></div>
@@ -393,6 +400,58 @@ body{font-family:'Inter',sans-serif;background:var(--paper);color:var(--ink);min
         <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px" id="msgCompSelector"></div>
         <div id="msgCompContent"><div class="empty">Seleccioná al menos un período para comparar.</div></div>
       </div>
+      </div><!-- end sub-bot -->
+
+      <!-- TEMPLATES -->
+      <div id="sub-templates" style="display:none">
+        <div class="mc-grid" id="tmplMcs"></div>
+        <div class="card">
+          <div class="card-header"><div><div class="card-title">Templates enviados</div><div class="card-sub">Mensajes de workflow y AI agent con template identificado — período activo</div></div></div>
+          <table class="tbl"><thead><tr><th>Template</th><th class="r">Envíos</th><th class="r">%</th></tr></thead><tbody id="tmplBody"></tbody></table>
+        </div>
+        <div class="card" style="margin-top:16px">
+          <div class="card-header"><div><div class="card-title">Evolución de templates</div><div class="card-sub">Top templates a lo largo del tiempo</div></div></div>
+          <div class="ch" style="height:260px"><canvas id="cTmplEvol"></canvas></div>
+        </div>
+      </div>
+
+      <!-- GAP DE ESCALAMIENTO -->
+      <div id="sub-escalacion" style="display:none">
+        <div class="mc-grid" id="escMcs"></div>
+        <div class="g2">
+          <div class="card">
+            <div class="card-header"><div><div class="card-title">Distribución del gap</div><div class="card-sub">Tiempo en minutos entre último mensaje bot y primera respuesta humana</div></div></div>
+            <div class="ch" style="height:240px"><canvas id="cEscDist"></canvas></div>
+          </div>
+          <div class="card">
+            <div class="card-header"><div><div class="card-title">Evolución del gap</div><div class="card-sub">Mediana por período</div></div></div>
+            <div class="ch" style="height:240px"><canvas id="cEscEvol"></canvas></div>
+          </div>
+        </div>
+        <div class="card" style="margin-top:16px">
+          <div class="card-header"><div><div class="card-title">¿Qué significa este gap?</div></div></div>
+          <div id="escInterpret" style="font-size:13px;color:var(--ink2);line-height:1.8"></div>
+        </div>
+      </div>
+
+      <!-- BROADCASTS & DEMANDA -->
+      <div id="sub-broadcast-corr" style="display:none">
+        <div class="card" style="margin-bottom:16px">
+          <div class="card-header"><div><div class="card-title">Mensajes entrantes por día</div><div class="card-sub">Picos de demanda — marcadores en días con broadcast</div></div></div>
+          <div class="ch" style="height:280px"><canvas id="cBroadcastCorr"></canvas></div>
+        </div>
+        <div class="g2">
+          <div class="card">
+            <div class="card-header"><div><div class="card-title">Broadcasts del período</div><div class="card-sub">Campañas enviadas</div></div></div>
+            <div id="bcorrList"><div class="empty">Sin datos</div></div>
+          </div>
+          <div class="card">
+            <div class="card-header"><div><div class="card-title">Análisis de correlación</div><div class="card-sub">Consultas en las 48hs post-broadcast vs días normales</div></div></div>
+            <div id="bcorrAnalysis"><div class="empty">Sin datos</div></div>
+          </div>
+        </div>
+      </div>
+
     </div>
 
     <!-- COMPARATIVA -->
@@ -635,7 +694,8 @@ async function fetchMsgReports(){
     humanRtMed:r.human_rt_med||0,humanRtAvg:r.human_rt_avg||0,
     aiRtMed:r.ai_rt_med||0,aiRtAvg:r.ai_rt_avg||0,
     broadcasts:r.broadcasts||{},hourlyHuman:r.hourly_human_rt||{},hourlyAi:r.hourly_ai_rt||{},
-    flowStats:r.flow_stats||{},by:r.uploaded_by
+    flowStats:r.flow_stats||{},by:r.uploaded_by,
+    templates:r.templates||{},escGapMed:r.escalation_gap_med||0,escGapAvg:r.escalation_gap_avg||0,escGapsDist:r.escalation_gaps_dist||[],msgsByDay:r.msgs_by_day||{}
   }));
   renderMsgPills();
   renderBot();
@@ -1234,7 +1294,7 @@ function renderComparativa(w){
   // ── Category history chart ──
   // Collect all categories across all weeks
   const sameType=allWeeks.filter(x=>x.isM===w.isM);
-  const allCatNames=[...new Set(sameType.flatMap(w=>Object.keys(w.cats||{})))].sort();
+  const allCatNames=[...new Set(sameType.flatMap(x=>Object.keys(x.cats||{})))].sort();
   // Build selector
   const currentCat=window._selectedHistCat||allCatNames[0]||'';
   document.getElementById('catHistSelector').innerHTML=allCatNames.map(cat=>`
@@ -1253,7 +1313,8 @@ function selHistCat(cat){
 
 function renderCatHist(cat){
   if(!cat||!allWeeks.length)return;
-  // Sort all weeks chronologically
+  const w=allWeeks[activeIdx];
+  const sameType=allWeeks.filter(x=>x.isM===(w?w.isM:true));
   const sorted=[...sameType].sort((a,b)=>new Date(a.ws)-new Date(b.ws));
   const labels=sorted.map(w=>w.fl||w.ws);
   const data=sorted.map(w=>(w.cats||{})[cat]||0);
@@ -1504,6 +1565,49 @@ document.getElementById('fileMsgs').addEventListener('change',function(e){
       ai_rt_med:+medRT(aiRTs.map(x=>x.rt)).toFixed(1),ai_rt_avg:+avgRT(aiRTs.map(x=>x.rt)).toFixed(1),
       broadcasts,hourly_human_rt:hourlyH,hourly_ai_rt:hourlyA,
       flow_stats:{total:totalConvs,aiOnly,botHuman,humanOnly:totalConvs-aiOnly-botHuman}};
+
+    // ── Templates ──
+    const templates={};
+    parsed.filter(r=>r.sender==='workflow'||r.sender==='ai_agent').forEach(r=>{
+      if(r.subType&&r.subType.length>2&&r.subType!=='undefined'){
+        const k=r.subType.replace(' (es_AR) (MARKETING)','').replace(' (es_AR) (UTILITY)','').trim();
+        templates[k]=(templates[k]||0)+1;
+      }
+    });
+
+    // ── Escalation gap: time from last bot msg to first human response ──
+    const escalationGaps=[];
+    Object.values(byContact).forEach(msgs=>{
+      const sorted=msgs.sort((a,b)=>a.ts-b.ts);
+      const senders=new Set(sorted.map(m=>m.sender));
+      if(!senders.has('workflow')&&!senders.has('ai_agent'))return;
+      if(!senders.has('user'))return;
+      // Find last bot/workflow msg before first human msg
+      let lastBotTs=null,firstHumanTs=null;
+      for(const m of sorted){
+        if(m.sender==='workflow'||m.sender==='ai_agent')lastBotTs=m.ts;
+        if(m.sender==='user'&&lastBotTs&&!firstHumanTs){firstHumanTs=m.ts;break;}
+      }
+      if(lastBotTs&&firstHumanTs){
+        const gap=(firstHumanTs-lastBotTs)/60000;
+        if(gap>0&&gap<120)escalationGaps.push(+gap.toFixed(1));
+      }
+    });
+    const escGapMed=escalationGaps.length?+[...escalationGaps].sort((a,b)=>a-b)[Math.floor(escalationGaps.length/2)].toFixed(1):0;
+    const escGapAvg=escalationGaps.length?+(escalationGaps.reduce((s,v)=>s+v,0)/escalationGaps.length).toFixed(1):0;
+
+    // ── Broadcast correlation: count convs by day ──
+    const msgsByDay={};
+    parsed.filter(r=>r.sender==='contact'||r.msgType==='incoming').forEach(r=>{
+      const d=r.ts.toISOString().substring(0,10);
+      msgsByDay[d]=(msgsByDay[d]||0)+1;
+    });
+
+    p.templates=templates;
+    p.escalation_gap_med=escGapMed;
+    p.escalation_gap_avg=escGapAvg;
+    p.escalation_gaps_dist=escalationGaps.slice(0,200);
+    p.msgs_by_day=msgsByDay;
     try{
       await db.from('message_reports').upsert(p,{onConflict:'period_label'});
       toast('✓ Mensajes guardados');await fetchMsgReports();
@@ -1842,6 +1946,172 @@ document.getElementById('fileChurn').addEventListener('change',async function(e)
   };
   reader.readAsArrayBuffer(file);e.target.value='';
 });
+
+// ── Sub-tab navigation ──
+function showSubTab(tab, sub){
+  ['bot','templates','escalacion','broadcast-corr'].forEach(s=>{
+    const el=document.getElementById('sub-'+s);
+    const btn=document.getElementById('stb-'+s);
+    if(el){el.style.display=s===sub?'':'none';}
+    if(btn){
+      btn.style.borderBottomColor=s===sub?'var(--accent)':'transparent';
+      btn.style.color=s===sub?'var(--accent)':'var(--ink2)';
+    }
+  });
+  if(sub==='templates')renderTemplates();
+  if(sub==='escalacion')renderEscalacion();
+  if(sub==='broadcast-corr')renderBroadcastCorr();
+}
+
+// ── Render Templates ──
+function renderTemplates(){
+  const mr=msgReports[activeMsgIdx];
+  if(!mr){document.getElementById('tmplMcs').innerHTML='<div class="empty" style="grid-column:span 3">Sin datos de mensajes.</div>';return;}
+  const tmpl=mr.templates||{};
+  const sorted=Object.entries(tmpl).sort((a,b)=>b[1]-a[1]);
+  const total=sorted.reduce((s,[,v])=>s+v,0)||1;
+  const topTmpl=sorted[0];
+
+  document.getElementById('tmplMcs').innerHTML=`
+    <div class="mc c-accent"><div class="mc-icon accent"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="12" height="10" rx="2"/><path d="M5 7h6M5 10h4"/></svg></div><div class="mc-label">Templates únicos</div><div class="mc-val">${sorted.length}</div><div class="mc-sub">identificados</div></div>
+    <div class="mc c-green"><div class="mc-icon green"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12h3V6H2zM6 12h3V3H6zM10 12h3V8h-3z"/></svg></div><div class="mc-label">Total envíos</div><div class="mc-val">${total}</div><div class="mc-sub">mensajes con template</div></div>
+    <div class="mc c-amber"><div class="mc-icon amber"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 2l2 4h4l-3 3 1 4-4-2-4 2 1-4-3-3h4z"/></svg></div><div class="mc-label">Más enviado</div><div class="mc-val">${topTmpl?topTmpl[1]:'—'}</div><div class="mc-sub">${topTmpl?topTmpl[0].substring(0,25):'—'}</div></div>`;
+
+  const max=sorted[0]?.[1]||1;
+  document.getElementById('tmplBody').innerHTML=sorted.length?sorted.map(([name,count])=>`
+    <tr>
+      <td><div style="font-family:'JetBrains Mono',monospace;font-size:11px">${name}</div>
+          <div style="margin-top:4px;height:4px;background:var(--s2);border-radius:2px"><div style="width:${Math.round(count/max*100)}%;height:4px;background:var(--accent);border-radius:2px"></div></div></td>
+      <td class="r" style="font-weight:600">${count}</td>
+      <td class="r" style="color:var(--ink3)">${(count/total*100).toFixed(1)}%</td>
+    </tr>`).join(''):'<tr><td colspan="3" class="empty">Sin templates identificados</td></tr>';
+
+  // Evolution chart — top 5 templates across all periods
+  const allPeriods=[...msgReports].sort((a,b)=>new Date(a.start)-new Date(b.start));
+  const allTmplNames=[...new Set(allPeriods.flatMap(r=>Object.keys(r.templates||{})))];
+  const top5=allTmplNames.sort((a,b)=>{
+    const ta=allPeriods.reduce((s,r)=>s+(r.templates?.[a]||0),0);
+    const tb=allPeriods.reduce((s,r)=>s+(r.templates?.[b]||0),0);
+    return tb-ta;
+  }).slice(0,5);
+  if(allPeriods.length>1&&top5.length){
+    mkChart('cTmplEvol','line',{
+      labels:allPeriods.map(r=>r.label),
+      datasets:top5.map((name,i)=>({
+        label:name.length>30?name.substring(0,28)+'..':name,
+        data:allPeriods.map(r=>(r.templates||{})[name]||0),
+        borderColor:PAL[i%PAL.length],backgroundColor:'transparent',
+        tension:.3,pointRadius:4,pointBorderColor:'#fff',pointBorderWidth:2
+      }))
+    },{plugins:{legend:{display:true,position:'top',labels:{font:{size:10},boxWidth:10}}},
+       scales:{y:{beginAtZero:true,grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#8a8a96',font:{size:10}}},
+               x:{grid:{display:false},ticks:{color:'#3a3a42',font:{size:10}}}}});
+  }
+}
+
+// ── Render Escalación ──
+function renderEscalacion(){
+  const mr=msgReports[activeMsgIdx];
+  if(!mr){document.getElementById('escMcs').innerHTML='<div class="empty" style="grid-column:span 3">Sin datos.</div>';return;}
+  const gapMed=mr.escGapMed||0;
+  const gapAvg=mr.escGapAvg||0;
+  const gaps=mr.escGapsDist||[];
+
+  document.getElementById('escMcs').innerHTML=`
+    <div class="mc c-${gapMed>15?'red':gapMed>8?'amber':'green'}"><div class="mc-icon ${gapMed>15?'red':gapMed>8?'amber':'green'}"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="8" cy="8" r="6"/><path d="M8 4v4l3 2"/></svg></div><div class="mc-label">Gap mediano</div><div class="mc-val">${gapMed}m</div><div class="mc-sub">bot → primer humano</div></div>
+    <div class="mc c-amber"><div class="mc-icon amber"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 8h12M8 2l6 6-6 6"/></svg></div><div class="mc-label">Gap promedio</div><div class="mc-val">${gapAvg}m</div><div class="mc-sub">incluye outliers</div></div>
+    <div class="mc c-accent"><div class="mc-icon accent"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12h3V6H2zM6 12h3V3H6zM10 12h3V8h-3z"/></svg></div><div class="mc-label">Escalamientos medidos</div><div class="mc-val">${gaps.length}</div><div class="mc-sub">conversaciones</div></div>`;
+
+  // Distribution histogram
+  const buckets=[0,2,5,10,15,20,30,60];
+  const labels=buckets.map((b,i)=>i<buckets.length-1?b+'-'+buckets[i+1]+'m':'>30m');
+  const counts=buckets.map((b,i)=>{
+    const next=buckets[i+1]||Infinity;
+    return gaps.filter(g=>g>=b&&g<next).length;
+  });
+  mkChart('cEscDist','bar',{labels,datasets:[{data:counts,backgroundColor:counts.map((_,i)=>i<2?'#10b981':i<4?'#f59e0b':'#ef4444'),borderRadius:4}]},{scales:{y:{beginAtZero:true,grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#8a8a96',font:{size:10}}},x:{grid:{display:false},ticks:{color:'#3a3a42',font:{size:10}}}},plugins:{legend:{display:false}}});
+
+  // Evolution
+  const allPeriods=[...msgReports].sort((a,b)=>new Date(a.start)-new Date(b.start));
+  if(allPeriods.length>1){
+    mkChart('cEscEvol','line',{
+      labels:allPeriods.map(r=>r.label),
+      datasets:[{label:'Gap mediano (min)',data:allPeriods.map(r=>r.escGapMed||null),
+        borderColor:'#6366f1',backgroundColor:'rgba(99,102,241,0.08)',tension:.3,fill:true,
+        pointRadius:5,pointBackgroundColor:'#6366f1',pointBorderColor:'#fff',pointBorderWidth:2,spanGaps:true}]
+    },{scales:{y:{beginAtZero:true,grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#8a8a96',font:{size:10}}},
+               x:{grid:{display:false},ticks:{color:'#3a3a42',font:{size:10}}}},plugins:{legend:{display:false}}});
+  }
+
+  // Interpretation
+  const rating=gapMed<5?'Excelente — el equipo responde casi inmediatamente después del bot.':
+    gapMed<10?'Bueno — el gap es razonable para operación normal.':
+    gapMed<20?'Atención — hay una demora notable entre que el bot escala y el humano toma la conversación.':
+    'Crítico — los clientes esperan demasiado después de ser escalados. Revisar disponibilidad del equipo.';
+  document.getElementById('escInterpret').innerHTML=`<strong>${gapMed} minutos de mediana.</strong> ${rating}`;
+}
+
+// ── Render Broadcast Correlación ──
+function renderBroadcastCorr(){
+  const mr=msgReports[activeMsgIdx];
+  if(!mr){return;}
+  const msgsByDay=mr.msgsByDay||{};
+  const broadcasts=mr.broadcasts||{};
+  const days=Object.keys(msgsByDay).sort();
+  if(!days.length){document.getElementById('cBroadcastCorr').parentElement.innerHTML='<div class="empty">Sin datos de mensajes por día.</div>';return;}
+
+  // Broadcast days — use weekly_reports same_day_by_cat or just mark known broadcast days
+  const bcDays=new Set();
+  // Mark days that had high volume compared to average (proxy for broadcast impact)
+  const vals=days.map(d=>msgsByDay[d]);
+  const avg=vals.reduce((s,v)=>s+v,0)/vals.length;
+  const std=Math.sqrt(vals.map(v=>Math.pow(v-avg,2)).reduce((s,v)=>s+v,0)/vals.length);
+
+  mkChart('cBroadcastCorr','bar',{
+    labels:days.map(d=>d.substring(5)),
+    datasets:[{
+      label:'Mensajes entrantes',
+      data:days.map(d=>msgsByDay[d]),
+      backgroundColor:days.map(d=>msgsByDay[d]>avg+std?'#ef4444':'#6366f1'),
+      borderRadius:3
+    },{
+      label:'Promedio',
+      data:days.map(()=>Math.round(avg)),
+      type:'line',borderColor:'#f59e0b',borderWidth:2,borderDash:[4,4],
+      pointRadius:0,backgroundColor:'transparent'
+    }]
+  },{scales:{y:{beginAtZero:true,grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#8a8a96',font:{size:10}}},
+             x:{grid:{display:false},ticks:{color:'#3a3a42',font:{size:10},maxRotation:45}}},
+     plugins:{legend:{display:true,position:'top',labels:{font:{size:10},boxWidth:10}}}});
+
+  // Broadcast list
+  const bcSorted=Object.entries(broadcasts).sort((a,b)=>b[1]-a[1]);
+  const bcMax=bcSorted[0]?.[1]||1;
+  document.getElementById('bcorrList').innerHTML=bcSorted.length?
+    bcSorted.map(([name,count])=>`<div class="sla-row"><div class="sla-label" style="font-size:11px;font-family:'JetBrains Mono',monospace">${name}</div><div class="sla-bar"><div class="sla-bar-fill" style="width:${Math.round(count/bcMax*100)}%;background:var(--accent)"></div></div><div class="sla-val">${count}</div></div>`).join(''):
+    '<div class="empty">Sin broadcasts</div>';
+
+  // Correlation analysis
+  const highDays=days.filter(d=>msgsByDay[d]>avg+std);
+  const normalAvg=Math.round(avg);
+  const highAvg=highDays.length?Math.round(highDays.reduce((s,d)=>s+msgsByDay[d],0)/highDays.length):0;
+  document.getElementById('bcorrAnalysis').innerHTML=`
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+      <div style="text-align:center;padding:16px;background:var(--s2);border-radius:var(--rs)">
+        <div style="font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink3);margin-bottom:6px">Días normales</div>
+        <div style="font-family:'Syne',sans-serif;font-size:28px;font-weight:700">${normalAvg}</div>
+        <div style="font-size:11px;color:var(--ink3)">msgs/día promedio</div>
+      </div>
+      <div style="text-align:center;padding:16px;background:var(--redbg);border-radius:var(--rs);border:1px solid rgba(239,68,68,0.2)">
+        <div style="font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--red);margin-bottom:6px">Días de pico</div>
+        <div style="font-family:'Syne',sans-serif;font-size:28px;font-weight:700;color:var(--red)">${highAvg}</div>
+        <div style="font-size:11px;color:var(--ink3)">${highDays.length} días — ${highAvg>0?Math.round((highAvg-normalAvg)/normalAvg*100)+'% más':'similar'}</div>
+      </div>
+    </div>
+    <div style="font-size:12px;color:var(--ink2);line-height:1.7">
+      Las barras en rojo superan 1 desvío estándar por encima del promedio diario — son candidatos a días post-broadcast o fechas de vencimiento impositivo.
+    </div>`;
+}
 
 fetchWeeks();
 fetchMsgReports();
