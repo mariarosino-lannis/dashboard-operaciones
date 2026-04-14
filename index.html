@@ -1417,46 +1417,199 @@ function simAuto(cat,nCat,totalH,wd,agents,artAvg){
 // ── Glosario ──
 function renderGlosario(){
   const sections=[
-    {title:'Volumen',items:[
-      {term:'Consultas totales',formula:'COUNT(filas externas)',desc:'Total de conversaciones, excluyendo contactos del equipo interno identificados por Contact ID.'},
-      {term:'Consultas hábiles',formula:'COUNT(lun-vie, 9-18hs, sin feriados)',desc:'Consultas en horario laboral. Base para calcular tiempos y capacidad. Feriados se configuran al subir cada reporte.'},
-    ]},
-    {title:'Tiempos SLA',items:[
-      {term:'FRT — First Response Time',formula:'DateTime First Response − DateTime Started',desc:'Tiempo hasta la primera respuesta humana. Objetivo: < 10 minutos. Solo consultas hábiles.'},
-      {term:'ART — Average Response Time',formula:'Promedio entre pares de mensajes del agente',desc:'Tiempo cognitivo activo real del agente por mensaje. Objetivo: < 20 minutos.'},
-      {term:'TTR — Time to Resolution',formula:'DateTime Resolved − DateTime Started',desc:'Tiempo total desde apertura hasta cierre. Incluye espera del cliente entre mensajes. Objetivo: < 2 horas.'},
-      {term:'TTA — Time to First Assignment',formula:'First Assignment Timestamp − DateTime Started',desc:'Tiempo hasta que la consulta se asigna a un agente.'},
-      {term:'Mediana vs Promedio',formula:'Mediana = valor central / Promedio = suma÷n',desc:'La mediana es más representativa — el promedio se infla con outliers (conversaciones overnight).'},
-    ]},
-    {title:'Capacidad',items:[
-      {term:'Consultas/hora (CPH)',formula:'Consultas hábiles ÷ (días hábiles × 9hs)',desc:'Tasa promedio de consultas por hora disponible. Referencia máxima sostenible: 4 consultas/hora.'},
-      {term:'Carga %',formula:'(cph_agente / MAX_CPH) × 100',desc:'% de capacidad máxima utilizada. Verde < 70%, naranja 70-90%, rojo > 90%. MAX_CPH = 4.'},
-    ]},
-    {title:'Modelado G/G/c — Kingman',items:[
-      {term:'λ — Tasa de llegada',formula:'consultas_hábiles ÷ (días × 9hs)',desc:'Consultas que llegan por hora en promedio.'},
-      {term:'μ — Tasa de servicio',formula:'1 ÷ (ART_promedio en horas)',desc:'Conv/hora que puede manejar un agente. Se usa ART (no TTR) porque TTR incluye espera del cliente.'},
-      {term:'ρ — Utilización',formula:'λ ÷ (μ × agentes)',desc:'Fracción del tiempo ocupados. ρ ≥ 1 = sobrecargado. Óptimo: ρ < 0.80.'},
-      {term:'CV² — Coef. variación²',formula:'(desv. estándar ÷ media)²',desc:'Predecibilidad. CV² = 1 → exponencial. CV² > 1 → alta variabilidad. CV² < 1 → muy predecible.'},
-      {term:'Switching cost',formula:'CV²_categoría ÷ CV²_hora',desc:'Si ratio > 1.3, cambiar de categoría tiene costo cognitivo real. Si ≈ 1, variabilidad es intrínseca.'},
-    ]},
-    {title:'Conversaciones',items:[
-      {term:'Resolución mismo día',formula:'fecha_inicio = fecha_cierre',desc:'% resuelto el mismo día que se abrió. Outliers overnight distorsionan el TTR.'},
-      {term:'Mensajes promedio',formula:'AVG(msgs_salientes + msgs_entrantes)',desc:'Proxy de complejidad. Facturación ≈ 17 msgs, Sueldos ≈ 2. Más mensajes = más carga cognitiva.'},
-      {term:'Bot/Workflow',formula:'Closing Note CONTAINS "workflow"',desc:'Proxy de automatización. No 100% exacto — requiere nota de cierre.'},
-      {term:'Reasignación',formula:'First Assignee ≠ Closed By',desc:'Conversaciones donde quien cerró ≠ primer asignado. Indica escalamiento o transferencia.'},
-    ]},
-    {title:'Bot & Mensajes',items:[
-      {term:'RT real humano',formula:'Timestamp(respuesta_humana) − Timestamp(msg_cliente)',desc:'Tiempo real de respuesta calculado mensaje a mensaje del CSV de mensajes. Más preciso que ART.'},
-      {term:'Evolución RT',formula:'humanRtMed por período ordenado cronológicamente',desc:'Gráfico de línea que muestra cómo evoluciona el tiempo de respuesta humano y del AI mes a mes o semana a semana. Permite detectar si el equipo está mejorando o empeorando.'},
-      {term:'Comparativa de mensajes',formula:'Cols = [período activo, ...períodos seleccionados]',desc:'Compara cualquier combinación de períodos de mensajes: RT humano, RT AI, escalamiento, AI solo, broadcasts. Funciona tanto para comparar meses como semanas.'},
-      {term:'Escalamiento',formula:'convs(workflow + user) ÷ total_convs',desc:'% de conversaciones que pasaron por bot Y luego requirieron intervención humana.'},
-      {term:'AI only',formula:'convs(ai_agent) AND NOT(user)',desc:'Conversaciones donde el AI agent respondió sin que ningún humano interviniera.'},
-      {term:'Broadcast',formula:'Sender Type = "broadcast"',desc:'Mensajes de campañas masivas. No son consultas orgánicas — se muestran separados.'},
-    ]},
+    {
+      title:'📁 Fuentes de datos',
+      desc:'El dashboard se alimenta de 4 archivos exportados desde Respond.io y 2 archivos propios.',
+      items:[
+        {term:'CSV de conversaciones',formula:'Exportar desde Respond.io → Conversations',desc:'Una fila por conversación. Contiene: quién la abrió, categoría, agente, tiempos, cantidad de mensajes. Es la fuente principal del dashboard — alimenta Resumen, Categorías, Tiempos, Capacidad, Conversaciones y Clientes.'},
+        {term:'CSV de mensajes',formula:'Exportar desde Respond.io → Messages',desc:'Una fila por mensaje. Contiene: timestamp exacto, tipo de sender (user/ai_agent/workflow/broadcast), tipo de mensaje y template. Alimenta la tab Bot & AI con análisis más granular que el CSV de conversaciones.'},
+        {term:'CSV de contactos',formula:'Exportar desde Respond.io → Contacts',desc:'Una fila por contacto. Contiene: nombre, email, lifecycle, subscription_status, categoría de monotributo, deuda, tags y canales. Se cruza con los demás datos para mostrar nombres y estado de suscripción.'},
+        {term:'Excel de llamadas',formula:'Archivo asesorias_impositivas.xlsx',desc:'Una hoja por mes, con fecha, cliente, email y duración de cada llamada. Alimenta la tab Llamadas.'},
+        {term:'Typeform feedback llamadas',formula:'Export CSV del typeform de asesorías',desc:'Respuestas con score (1-5), qué valoraron, qué mejorar, email y fecha de la llamada. Se cruza con el Excel de llamadas por mes.'},
+        {term:'Typeform bajas',formula:'Export CSV del typeform de cancelación',desc:'Respuestas de clientes que se dieron de baja voluntariamente. Contiene NPS (0-10) y motivo de baja. Se cruza con contactos cancelados para clasificar el tipo de baja.'},
+      ]
+    },
+    {
+      title:'🔧 Configuración del sistema',
+      desc:'Valores hardcodeados en el código que definen cómo se procesan los datos.',
+      items:[
+        {term:'Equipo interno',formula:'Contact IDs: 318356816, 315475410, 295606873, 340645465, 318432393, 318432542, 318434168, 331566697, 316942904, 318426014, 343325858',desc:'Conversaciones de estos Contact IDs se excluyen de todas las métricas. La leyenda al pie de la tabla de categorías muestra cuántas se excluyeron en cada período.'},
+        {term:'Contactos excluidos del Top 20',formula:'Lista de IDs hardcodeada en EXCLUDE_CONTACTS',desc:'Contactos institucionales (ARCA, ERREPAR, etc.) y contactos sin WhatsApp que distorsionan el ranking. Se excluyen del top 20 de clientes y del cómputo de contactMap.'},
+        {term:'Canal WhatsApp',formula:'Opened By Channel = 416252',desc:'Solo los contactos que abrieron conversaciones por este canal se incluyen en el Top 20. Los canales email (418941), website chat (442429) e Instagram (395708) se excluyen del ranking.'},
+        {term:'Horario hábil',formula:'Lunes a viernes, 9:00 a 18:00hs',desc:'Consultas fuera de este horario no se cuentan como hábiles. Los feriados se marcan manualmente al subir cada reporte.'},
+        {term:'SLA objetivos',formula:'FRT < 10min / ART < 20min / TTR < 2hs',desc:'Umbrales para semáforo de colores en la tab Tiempos. Verde = cumple, rojo = no cumple.'},
+        {term:'MAX_CPH',formula:'4 consultas/hora por agente',desc:'Capacidad máxima sostenible definida por el equipo. Se usa para calcular % de carga en la tab Capacidad.'},
+        {term:'Normalización de categorías',formula:'Impuestos + Impuestos provinciales + Deudas → Impuestos/Deuda. Otros-* + Otra → Otros.',desc:'Categorías similares se agrupan para simplificar el análisis. El desglose original de Otros se puede ver en la card "Apertura de categoría Otros" dentro de la tab Categorías.'},
+      ]
+    },
+    {
+      title:'📊 Tab: Resumen',
+      desc:'Vista general del período activo. Primer lugar donde mirar al abrir el dashboard.',
+      items:[
+        {term:'Consultas totales',formula:'COUNT(conversaciones externas)',desc:'Total de conversaciones del período, excluyendo equipo interno. El número principal del período.'},
+        {term:'Consultas hábiles',formula:'COUNT(conv donde DateTime Started cae en lun-vie 9-18hs sin feriados)',desc:'Base para todos los cálculos de tiempos y capacidad. Es menor que el total porque excluye fines de semana y horario fuera de atención.'},
+        {term:'FRT mediana',formula:'MEDIANA(DateTime First Response − DateTime Started) solo para consultas hábiles',desc:'La mitad de las consultas reciben primera respuesta en menos de este tiempo. Objetivo: < 10 minutos. Se muestra con flecha vs período anterior.'},
+        {term:'ART mediana',formula:'MEDIANA(Average Response Time del CSV)',desc:'Tiempo cognitivo activo del agente por mensaje. Objetivo: < 20 minutos.'},
+        {term:'TTR mediana',formula:'MEDIANA(DateTime Resolved − DateTime Started) solo consultas hábiles',desc:'Tiempo total de resolución. Objetivo: < 2 horas. Se excluyen conversaciones abiertas fuera de horario para evitar distorsión.'},
+        {term:'Consultas por día',formula:'COUNT(conv) agrupado por día de semana',desc:'Muestra qué días son más demandantes. Sin filtro de horario — incluye todas las consultas que se abrieron ese día.'},
+        {term:'Distribución horaria',formula:'COUNT(conv hábiles) agrupado por hora de inicio',desc:'Picos de demanda durante el día hábil. Útil para planificar disponibilidad del equipo. Rojo = hora de mayor demanda.'},
+        {term:'Top categorías',formula:'COUNT por Conversation Category normalizada',desc:'Las 5 categorías más frecuentes del período. Permite detectar tendencias rápidamente.'},
+        {term:'Por agente',formula:'COUNT(conv hábiles) filtrado por First Assignee o Assignee',desc:'Distribución de carga entre los agentes activos en el período. % = proporción del total hábil.'},
+      ]
+    },
+    {
+      title:'🏷️ Tab: Categorías',
+      desc:'Análisis detallado de los motivos de consulta. Permite entender qué está consultando el cliente.',
+      items:[
+        {term:'Tabla de categorías',formula:'GROUP BY cat_normalizada ORDER BY count DESC (Otros siempre al final)',desc:'Todas las categorías del período con: cantidad de consultas, %, FRT promedio, TTR promedio, mensajes promedio por conversación, y % de resolución same-day.'},
+        {term:'Apertura de Otros',formula:'GROUP BY Conversation Category WHERE cat LIKE "Otros%" OR cat = "Otra"',desc:'Desglose de las subcategorías que se agrupan bajo "Otros". Permite ver qué hay detrás de ese bucket. Ordenado de más a menos consultas.'},
+        {term:'Leyenda equipo interno',formula:'COUNT(conv donde Contact ID IN equipo_interno)',desc:'Cuántas conversaciones se excluyeron del análisis por ser del equipo interno. Aparece al pie de la tabla de categorías.'},
+        {term:'Leyenda Otros',formula:'Descripción textual del desglose de Otros',desc:'Al pie de la tabla se muestra cómo se compone Otros en ese período: "X de notificaciones al mail, Y de gestión de asesorías..."'},
+        {term:'Burbuja de complejidad',formula:'X = TTR promedio / Y = FRT promedio / Tamaño = cantidad de mensajes',desc:'Cada burbuja es una categoría. Las más grandes y a la derecha son más complejas y lentas. Útil para priorizar automatización.'},
+        {term:'Histórico por categoría',formula:'Filtrado por isM (mismo tipo de período: mensual o semanal)',desc:'Gráfico de línea con la evolución de una categoría a lo largo de todos los períodos del mismo tipo. Se selecciona la categoría con los chips. No necesitás seleccionar períodos manualmente.'},
+      ]
+    },
+    {
+      title:'⏱️ Tab: Tiempos & SLA',
+      desc:'Cumplimiento de objetivos de tiempo. Muestra si el equipo está dentro de los SLAs acordados.',
+      items:[
+        {term:'FRT — First Response Time',formula:'DateTime First Response − DateTime Started (solo hábiles)',desc:'Tiempo hasta la primera respuesta. Objetivo < 10min. El CSV de conversaciones reporta el valor promedio; el dashboard calcula la mediana para mayor representatividad.'},
+        {term:'ART — Average Response Time',formula:'Columna Average Response Time del CSV',desc:'Tiempo promedio entre mensajes del agente. Objetivo < 20min. Refleja cuánto tarda el agente en responder cada mensaje dentro de una conversación activa.'},
+        {term:'TTR — Time to Resolution',formula:'DateTime Resolved − DateTime Started (solo hábiles)',desc:'Tiempo total de principio a fin. Objetivo < 2hs. Incluye tiempo de espera del cliente entre mensajes — por eso es mayor que el ART.'},
+        {term:'TTA — Time to First Assignment',formula:'First Assignment Timestamp − DateTime Started',desc:'Tiempo hasta que la conversación se asigna a un agente. Útil para detectar cuellos de botella en la cola de entrada.'},
+        {term:'Semáforo SLA',formula:'Verde = cumple objetivo / Rojo = no cumple',desc:'Para FRT: verde si mediana < 10min. Para ART: verde si < 20min. Para TTR: verde si < 2hs.'},
+        {term:'SLA por agente',formula:'Mediana y promedio de FRT, ART, TTR filtrado por Assignee',desc:'Mismos cálculos que el equipo pero desglosados por agente. Permite comparar rendimiento individual. Se muestra con barra de progreso vs objetivo.'},
+        {term:'Mediana vs Promedio',formula:'Mediana = valor del percentil 50 / Promedio = suma ÷ n',desc:'El dashboard prioriza la mediana porque el promedio se infla con conversaciones overnight o de fines de semana que quedan abiertas muchas horas.'},
+      ]
+    },
+    {
+      title:'⚡ Tab: Capacidad',
+      desc:'Análisis de carga de trabajo del equipo. Muestra si el equipo tiene capacidad o está al límite.',
+      items:[
+        {term:'CPH — Consultas por hora',formula:'Consultas hábiles ÷ (días hábiles × 9hs)',desc:'Tasa de llegada promedio por hora. Referencia máxima sostenible: 4 consultas/hora por agente (MAX_CPH).'},
+        {term:'Carga %',formula:'(CPH_agente ÷ MAX_CPH) × 100',desc:'Verde < 70% = cómodo. Naranja 70-90% = atención. Rojo > 90% = riesgo de saturación.'},
+        {term:'Origen de consultas',formula:'GROUP BY Opened By Source (contact / agent / workflow / etc.)',desc:'Muestra qué porcentaje de conversaciones las abrió el cliente vs el equipo vs automatizaciones.'},
+        {term:'Bot/Workflow',formula:'Closing Note CONTAINS "workflow" (proxy)',desc:'Estimación de conversaciones cerradas por automatización. No es 100% exacto — depende de que el agente complete la nota de cierre.'},
+        {term:'Reasignaciones',formula:'COUNT(conv donde First Assignee ≠ Closed By)',desc:'Conversaciones que cambiaron de manos. Alto número puede indicar distribución de carga o escalamientos internos.'},
+        {term:'Heatmap horario',formula:'COUNT(conv hábiles) por día × hora',desc:'Grilla que muestra los picos de demanda combinando día de semana y hora. Las celdas más oscuras son los momentos de mayor carga.'},
+      ]
+    },
+    {
+      title:'💬 Tab: Conversaciones',
+      desc:'Análisis de la calidad y profundidad de las conversaciones. Complementa los tiempos con contexto.',
+      items:[
+        {term:'Resolución mismo día',formula:'COUNT(conv donde fecha(inicio) = fecha(cierre)) ÷ total',desc:'% de consultas que se resuelven el mismo día. Las que no se resuelven el mismo día inflan el TTR artificialmente.'},
+        {term:'TTA mediana',formula:'MEDIANA(First Assignment Timestamp − DateTime Started)',desc:'Tiempo hasta la primera asignación. Refleja la velocidad de la cola de entrada antes de que un agente tome la conversación.'},
+        {term:'AI cerradas',formula:'COUNT(conv donde Closed By Source = "ai_agent")',desc:'Conversaciones cerradas directamente por el AI agent sin intervención humana.'},
+        {term:'Mensajes por categoría',formula:'AVG(Number of Outgoing + Number of Incoming) GROUP BY categoría',desc:'Proxy de complejidad por tipo de consulta. Más mensajes = conversación más larga = más carga cognitiva. Facturación suele tener ~17 mensajes, Sueldos ~2.'},
+        {term:'Same-day por categoría',formula:'COUNT(same-day) ÷ COUNT(total) por categoría',desc:'Qué categorías se resuelven rápido (mismo día) vs cuáles quedan abiertas. Impuestos/Deuda suele tener menor same-day por su complejidad.'},
+      ]
+    },
+    {
+      title:'👥 Tab: Clientes',
+      desc:'Análisis de los contactos más activos. Permite identificar clientes que más usan el servicio.',
+      items:[
+        {term:'Contactos únicos',formula:'COUNT DISTINCT(Contact ID externos y no excluidos)',desc:'Total de contactos diferentes que abrieron al menos una conversación en el período.'},
+        {term:'Recurrentes (+1)',formula:'COUNT(contactos con 2 o más consultas)',desc:'Clientes que consultaron más de una vez. Alta recurrencia puede indicar problemas no resueltos o alta dependencia del soporte.'},
+        {term:'Alta frecuencia (+10)',formula:'COUNT(contactos con 10+ consultas)',desc:'Clientes con más de 10 consultas en el período. Son los que más consumen capacidad del equipo.'},
+        {term:'Top 20 contactos',formula:'Filtrado por hasWA = true (canal 416252), excluye EXCLUDE_CONTACTS, ORDER BY count DESC',desc:'Solo contactos de WhatsApp Business. Se excluyen contactos institucionales, emails corporativos y el equipo interno. Muestra nombre (si está en el CSV de contactos), lifecycle, suscripción, categoría de monotributo y estado de deuda.'},
+        {term:'Lifecycle',formula:'Campo Lifecycle del CSV de contactos',desc:'Estado del cliente en el embudo: New Lead → Customer → Customer-RI / SAS → Churned User. Se calcula cruzando el Contact ID con el CSV de contactos.'},
+        {term:'Distribución de frecuencia',formula:'GROUP BY: 1 consulta / 2-5 / 6-10 / 10+',desc:'Cómo se distribuyen los contactos por cantidad de consultas. Permite ver si hay muchos clientes ocasionales o pocos que consultan mucho.'},
+      ]
+    },
+    {
+      title:'🤖 Tab: Bot & AI — Subtab principal',
+      desc:'Análisis del comportamiento del agente AI y los workflows. Requiere CSV de mensajes.',
+      items:[
+        {term:'RT real humano',formula:'MEDIANA(timestamp_respuesta_humana − timestamp_msg_cliente) donde rt > 0 y < 60min',desc:'Calculado mensaje a mensaje desde el CSV de mensajes. Más preciso que el ART del CSV de conversaciones porque mide el tiempo real entre cada mensaje entrante y la siguiente respuesta saliente.'},
+        {term:'RT AI agent',formula:'MEDIANA(timestamp_respuesta_ai − timestamp_msg_cliente)',desc:'Tiempo de respuesta del agente AI. Típicamente < 2 minutos. Se compara con el humano para ver el diferencial.'},
+        {term:'Escalamiento bot→humano',formula:'COUNT(convs con workflow/ai_agent Y user) ÷ total_convs',desc:'% de conversaciones donde el bot participó Y luego intervino un humano. Alto % puede indicar que el bot no está resolviendo bien o que los clientes prefieren hablar con personas.'},
+        {term:'AI solo',formula:'COUNT(convs con ai_agent) AND NOT COUNT(convs con user sender)',desc:'Conversaciones donde el AI agent respondió sin que ningún humano interviniera. Son las verdaderamente automatizadas.'},
+        {term:'Flujo de conversaciones',formula:'Donut: botHuman / aiOnly / humanOnly',desc:'Distribución de los 3 tipos de flujo: bot→humano, AI solo, humano directo. Muestra el mix de atención.'},
+        {term:'RT por hora',formula:'MEDIANA(rt) filtrado por hora del día (9-17hs)',desc:'Cómo varía el tiempo de respuesta a lo largo del día. Permite detectar horas de colapso.'},
+        {term:'Broadcasts',formula:'GROUP BY Sub Type WHERE Sender Type = "broadcast"',desc:'Campañas masivas enviadas en el período. Se separan de las consultas orgánicas porque distorsionan el volumen.'},
+      ]
+    },
+    {
+      title:'📋 Tab: Bot & AI — Templates',
+      desc:'Qué templates de WhatsApp se usan y con qué frecuencia. Requiere CSV de mensajes.',
+      items:[
+        {term:'Templates identificados',formula:'GROUP BY Sub Type WHERE sender IN (workflow, ai_agent) AND subType.length > 2',desc:'Templates de WhatsApp Business enviados por el workflow o el AI agent. El nombre viene del campo Sub Type del CSV de mensajes.'},
+        {term:'Evolución de templates',formula:'Top 5 templates más usados a lo largo del tiempo',desc:'Gráfico de líneas mostrando cómo cambia el uso de cada template período a período. Permite ver si hay templates nuevos o si alguno dejó de usarse.'},
+      ]
+    },
+    {
+      title:'⏳ Tab: Bot & AI — Gap de escalamiento',
+      desc:'Tiempo entre que el bot escala y el humano toma la conversación. Requiere CSV de mensajes.',
+      items:[
+        {term:'Gap de escalamiento',formula:'MEDIANA(timestamp(primera respuesta humana) − timestamp(último mensaje bot/workflow))',desc:'Mide cuánto tarda el equipo en tomar una conversación después de que el bot la deriva. Es diferente al FRT — este mide la demora interna una vez que ya está en la cola humana.'},
+        {term:'Histograma de distribución',formula:'Buckets: 0-2min / 2-5 / 5-10 / 10-15 / 15-20 / 20-30 / >30',desc:'Verde (0-5min) = respuesta inmediata. Amarillo (5-15min) = normal. Rojo (>15min) = demora preocupante. La forma del histograma muestra si hay una cola de espera estructural.'},
+        {term:'Interpretación automática',formula:'Texto generado según la mediana del período',desc:'< 5min = Excelente. 5-10min = Bueno. 10-20min = Atención. > 20min = Crítico.'},
+      ]
+    },
+    {
+      title:'📡 Tab: Bot & AI — Broadcasts & demanda',
+      desc:'Correlación entre campañas broadcast y picos de consultas. Requiere CSV de mensajes.',
+      items:[
+        {term:'Mensajes entrantes por día',formula:'COUNT(msgs donde sender = "contact" o msgType = "incoming") GROUP BY fecha',desc:'Volumen de mensajes que llegan cada día. Las barras rojas superan 1 desvío estándar sobre el promedio — son días de pico candidatos a post-broadcast o fechas de vencimiento impositivo.'},
+        {term:'Días pico',formula:'días donde count > promedio + 1σ (un desvío estándar)',desc:'Días con actividad inusualmente alta. En el contexto de Lannis, suelen coincidir con vencimientos de IVA, IIGG, o envío de campañas.'},
+        {term:'Correlación broadcast',formula:'Promedio días pico ÷ Promedio días normales − 1 = % de incremento',desc:'Cuánto más actividad hay en días de pico vs días normales. Un 50% de incremento significa que esos días el equipo recibe 50% más consultas.'},
+      ]
+    },
+    {
+      title:'🔄 Tab: Comparativa',
+      desc:'Comparación lado a lado entre períodos del mismo tipo (meses vs meses, semanas vs semanas).',
+      items:[
+        {term:'Selector de períodos',formula:'allWeeks.filter(x => x.isM === w.isM)',desc:'Solo se puede comparar mensual con mensual o semanal con semanal. Seleccionás hasta 3 períodos para comparar con el activo.'},
+        {term:'Tabla comparativa',formula:'Cols = [período activo, ...períodos seleccionados]',desc:'Muestra en columnas: volumen, SLA, por agente y por categoría. El período activo se destaca en azul.'},
+        {term:'Histórico por categoría',formula:'COUNT(cat) por período, filtrado por isM, ordenado cronológicamente',desc:'Gráfico de línea de una categoría a lo largo del tiempo. Se selecciona con los chips. No necesitás elegir períodos — muestra todos automáticamente.'},
+      ]
+    },
+    {
+      title:'📞 Tab: Llamadas',
+      desc:'Análisis de las asesorías impositivas telefónicas. Fuente: Excel de llamadas + typeform de feedback.',
+      items:[
+        {term:'Llamadas totales',formula:'COUNT(filas en la hoja del mes del Excel)',desc:'Total de llamadas realizadas en el período seleccionado.'},
+        {term:'Minutos totales',formula:'SUM(Duración en minutos)',desc:'Carga total en minutos. La mayoría de las llamadas son de 30 minutos fijos.'},
+        {term:'Clientes únicos',formula:'COUNT DISTINCT(Email cliente)',desc:'Cantidad de clientes diferentes que tuvieron llamada en el período. Un cliente puede tener múltiples llamadas.'},
+        {term:'Puntaje promedio',formula:'PROMEDIO(score del typeform) filtrado por meeting_date del mismo mes',desc:'Score del typeform de feedback (escala 1-5). Se cruza por email y mes con el Excel de llamadas.'},
+        {term:'Evolución mensual',formula:'Gráfico de barras: llamadas y clientes únicos por mes cronológicamente',desc:'Tendencia de crecimiento de las asesorías. Permite ver si el volumen está aumentando mes a mes.'},
+        {term:'Comparativa de períodos',formula:'Mismo esquema que Comparativa de conversaciones',desc:'Compara hasta 3 meses lado a lado: llamadas, minutos, clientes, puntaje y feedbacks recibidos.'},
+        {term:'Feedback — qué valoraron / qué mejorar',formula:'Campos "¿Qué valoraste?" y "¿Qué podríamos mejorar?" del typeform, filtrados por mes activo',desc:'Comentarios literales de los clientes ordenados por puntaje. Verde = lo positivo. Amarillo = sugerencias de mejora.'},
+        {term:'Top clientes por llamadas',formula:'GROUP BY email, ORDER BY count DESC, para el período activo',desc:'Clientes que más llamadas tuvieron en el mes. Útil para identificar casos que requieren seguimiento especial.'},
+      ]
+    },
+    {
+      title:'❌ Tab: Suscripciones',
+      desc:'Análisis de cancelaciones. Cruza contactos cancelados con typeform de bajas y conversaciones.',
+      items:[
+        {term:'Total cancelados',formula:'COUNT(contacts WHERE subscription_status = "canceled")',desc:'Total de contactos con suscripción cancelada en el CSV de contactos. Se puede filtrar por mes.'},
+        {term:'Pidió la baja activamente',formula:'contactos cancelados cuyo email aparece en typeform_responses',desc:'Clientes que completaron el typeform de cancelación. Baja voluntaria y consciente.'},
+        {term:'Hablaron con el equipo',formula:'contactos cancelados cuyo Contact ID tiene conversación con categoría "Baja servicios Lannis"',desc:'Clientes que se dieron de baja pero a través de una conversación con el equipo, sin completar el typeform.'},
+        {term:'Cancelado sin aviso',formula:'cancelados que NO están en typeform NI tienen conversación de baja',desc:'Clientes que se cancelaron sin ningún contacto previo. Probable falta de pago o cancelación administrativa.'},
+        {term:'NPS de cancelados',formula:'Campo "¿Qué tan probable es que recomiendes Lannis?" del typeform (escala 0-10)',desc:'Promotores: 9-10 / Pasivos: 7-8 / Detractores: 0-6. Tabla filtrable por mes con email, score y segmento.'},
+        {term:'Motivos de baja',formula:'Campo "¿Por qué decidiste dejar de usar Lannis?" del typeform',desc:'Respuestas literales de los clientes que completaron el typeform. Filtradas por mes seleccionado.'},
+      ]
+    },
+    {
+      title:'🧮 Tab: Cap. Avanzada — Modelo G/G/c Kingman',
+      desc:'Modelo matemático de teoría de colas para analizar la capacidad del equipo con más rigor.',
+      items:[
+        {term:'λ — Tasa de llegada',formula:'consultas_hábiles ÷ (días_hábiles × 9hs)',desc:'Consultas que llegan por hora en promedio durante el período. Es la demanda real.'},
+        {term:'μ — Tasa de servicio',formula:'1 ÷ (ART_promedio_en_horas)',desc:'Cuántas conversaciones puede manejar un agente por hora. Se usa ART (no TTR) porque TTR incluye tiempo de espera del cliente.'},
+        {term:'ρ — Utilización',formula:'λ ÷ (μ × c) donde c = número de agentes',desc:'Fracción del tiempo que los agentes están ocupados. ρ ≥ 1 = sistema saturado. Óptimo operativo: ρ < 0.80.'},
+        {term:'CV² — Coeficiente de variación al cuadrado',formula:'(desviación estándar ÷ media)²',desc:'Mide la predecibilidad de los tiempos. CV² = 1 → llegadas exponenciales (aleatorias). CV² > 1 → alta variabilidad (picos). CV² < 1 → muy predecible (uniforme).'},
+        {term:'Switching cost',formula:'CV²_por_categoría ÷ CV²_horario',desc:'Si ratio > 1.3, la variabilidad viene de la categoría en sí (complejidad intrínseca). Si ≈ 1, la variabilidad es simplemente temporal. Útil para decidir si especializar agentes.'},
+        {term:'Predicibilidad por categoría',formula:'CV² < 0.5 = Alta / CV² < 1.5 = Media / CV² ≥ 1.5 = Baja',desc:'Qué tan consistente es el tiempo de atención de cada categoría. Alta predicibilidad = buen candidato para automatización.'},
+        {term:'Recomendación de automatización',formula:'CV² < 0.5 AND count > 30 → Automatizar / CV² < 1.5 → Analizar / resto → Mantener humano',desc:'Sugerencia basada en el modelo. Las categorías predecibles y de alto volumen son las mejores candidatas para automatizar.'},
+      ]
+    },
   ];
+
   document.getElementById('glosarioContent').innerHTML=sections.map(s=>`
     <div class="glos-section">
       <div class="glos-title">${s.title}</div>
+      ${s.desc?`<div style="font-size:12px;color:var(--ink3);margin-bottom:14px;line-height:1.6">${s.desc}</div>`:''}
       ${s.items.map(item=>`<div class="glos-item"><div class="glos-term">${item.term}</div><div class="glos-formula">${item.formula}</div><div class="glos-desc">${item.desc}</div></div>`).join('')}
     </div>`).join('');
 }
