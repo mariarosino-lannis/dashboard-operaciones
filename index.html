@@ -757,18 +757,15 @@ function computeWeek(rows,hols,actAgents){
       src,hasBot,reassigned:numA>1,sameDay,totalMsgs,aiClosed,contactId};
   });
 
-  // Track raw Otros subcategories
+  // Track raw Otros subcategories — only external (non-internal) contacts
   const otrosRaw={};
-  const OTROS_SUBS=['Otros - gestión de asesorías','Otros - notificaciones domicilio fiscal electrónico','Otros - otras notificaciones al mail','Otros - test','Otra'];
-  data.forEach(r=>{
+  const internalCount=processed.filter(r=>r.isInt).length;
+  processed.filter(r=>!r.isInt).forEach(r=>{
     const raw=String(r[iCat]||'').trim();
-    if(OTROS_SUBS.includes(raw)||raw.startsWith('Otros')){
-      const label=raw==='Otra'?'Otra':raw;
-      otrosRaw[label]=(otrosRaw[label]||0)+1;
+    if(raw==='Otra'||raw.startsWith('Otros')){
+      otrosRaw[raw]=(otrosRaw[raw]||0)+1;
     }
   });
-
-  const internalCount=processed.filter(r=>r.isInt).length;
   const allR=processed.filter(r=>!r.isInt&&r.f);
   const habR=processed.filter(r=>r.habTime&&!r.isInt&&(actAgents.size===0||actAgents.has(r.agent)));
 
