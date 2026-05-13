@@ -1008,12 +1008,32 @@ function renderHours(w,cid){
 
 // ── Categorías ──
 function renderCategorias(w){
-  const sorted=Object.entries(w.cats).sort((a,b)=>{
+  const rawCats=Object.entries(w.cats);
+  const total=rawCats.reduce((s,[,v])=>s+v,0)||1;
+  // Auto-group categories < 1% into Otros
+  const ALWAYS_VISIBLE=new Set(['Facturación','Facturas AI','Impuestos','Impuestos provinciales','Deudas','Deudas AI','SAS / RI','Sueldos','Baja servicios Lannis']);
+  const mainCats=[],smallCats=[];
+  rawCats.forEach(([cat,cnt])=>{
+    const pct=cnt/total*100;
+    if(cat==='Otros'||pct>=1||ALWAYS_VISIBLE.has(cat)) mainCats.push([cat,cnt]);
+    else smallCats.push([cat,cnt]);
+  });
+  // Merge small cats into Otros
+  if(smallCats.length){
+    const otrosExtra=smallCats.reduce((s,[,v])=>s+v,0);
+    const otrosIdx=mainCats.findIndex(([c])=>c==='Otros');
+    if(otrosIdx>=0) mainCats[otrosIdx][1]+=otrosExtra;
+    else mainCats.push(['Otros',otrosExtra]);
+    // Add small cats to otrosDetail for breakdown
+    if(!w.otrosDetailAuto) w.otrosDetailAuto={};
+    smallCats.forEach(([cat,cnt])=>{w.otrosDetailAuto[cat]=(w.otrosDetailAuto[cat]||0)+cnt;});
+  }
+  const sorted=mainCats.sort((a,b)=>{
     if(a[0]==='Otros')return 1;
     if(b[0]==='Otros')return -1;
     return b[1]-a[1];
   });
-  const total=sorted.reduce((s,[,v])=>s+v,0)||1;const mx=sorted[0]?.[1]||1;
+  const mx=sorted[0]?.[1]||1;
   document.getElementById('catBody').innerHTML=sorted.map(([name,count],i)=>{
     const ct=w.catTimes?.[name];const sd=w.sdBycat?.[name];const ms=w.msgsByCat?.[name];
     const sdBadge=sd?(sd.pct>=90?'<span class="badge-ok">'+sd.pct+'%</span>':sd.pct>=70?'<span class="badge-mid">'+sd.pct+'%</span>':'<span class="badge-fail">'+sd.pct+'%</span>'):'—';
@@ -1028,7 +1048,8 @@ function renderCategorias(w){
     </tr>`;
   }).join('');
   // ── PUNTO 4: Otros breakdown ──
-  const otrosSubcats=w.otrosDetail||{};
+  // Merge auto-grouped small cats into Otros breakdown
+  const otrosSubcats=Object.assign({},w.otrosDetail||{},w.otrosDetailAuto||{});
   const otrosSorted=Object.entries(otrosSubcats).sort((a,b)=>b[1]-a[1]);
   const otrosEl=document.getElementById('otrosBreakdown');
   if(otrosSorted.length){
@@ -1291,7 +1312,7 @@ function renderComparativa(w){
   // ── Category history chart ──
   // Collect all categories across all weeks
   const sameType=allWeeks.filter(x=>x.isM===w.isM);
-  const allCatNames=[...new Set(sameType.flatMap(x=>Object.keys(x.cats||{})))].sort();
+  const allCatNames=[...new Set(sameType.flatMap(x=>Object.keys(x.cats||{})))].filter(c=>c&&c!=='Sin categoría').sort();
   // Build selector
   const currentCat=window._selectedHistCat||allCatNames[0]||'';
   document.getElementById('catHistSelector').innerHTML=allCatNames.map(cat=>`
@@ -1310,8 +1331,9 @@ function selHistCat(cat){
 
 function renderCatHist(cat){
   if(!cat||!allWeeks.length)return;
-  const w=allWeeks[activeIdx];
+  const w=allWeeks[activeIdx]||allWeeks[0];
   const sameType=allWeeks.filter(x=>x.isM===(w?w.isM:true));
+  if(!sameType.length)return;
   const sorted=[...sameType].sort((a,b)=>new Date(a.ws)-new Date(b.ws));
   const labels=sorted.map(w=>w.fl||w.ws);
   const data=sorted.map(w=>(w.cats||{})[cat]||0);
@@ -1436,7 +1458,7 @@ function renderGlosario(){
         {term:'Horario hábil',formula:'Lunes a viernes, 9:00 a 18:00hs',desc:'Consultas fuera de este horario no se cuentan como hábiles. Los feriados se marcan manualmente al subir cada reporte.'},
         {term:'SLA objetivos',formula:'FRT < 10min / ART < 20min / TTR < 2hs',desc:'Umbrales para semáforo de colores en la tab Tiempos. Verde = cumple, rojo = no cumple.'},
         {term:'MAX_CPH',formula:'4 consultas/hora por agente',desc:'Capacidad máxima sostenible definida por el equipo. Se usa para calcular % de carga en la tab Capacidad.'},
-        {term:'Normalización de categorías',formula:'Impuestos + Impuestos provinciales + Deudas → Impuestos/Deuda. Otros-* + Otra → Otros.',desc:'Categorías similares se agrupan para simplificar el análisis. El desglose original de Otros se puede ver en la card "Apertura de categoría Otros" dentro de la tab Categorías.'},
+        {term:'Normalización de categorías',formula:'Otros-* + Otra → Otros. Categorías < 1% del período → se agrupan automáticamente en Otros.',desc:'Categorías similares se agrupan para simplificar el análisis. El desglose original de Otros se puede ver en la card "Apertura de categoría Otros" dentro de la tab Categorías.'},
       ]
     },
     {
