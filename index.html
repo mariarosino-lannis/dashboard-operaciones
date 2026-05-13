@@ -758,29 +758,25 @@ function computeWeek(rows,hols,actAgents){
   });
 
     const internalCount=processed.filter(r=>r.isInt).length;
-  // Build otrosRaw AFTER cats is known, so we can include <1% cats too
+  const allR=processed.filter(r=>!r.isInt&&r.f);
+  const habR=processed.filter(r=>r.habTime&&!r.isInt&&(actAgents.size===0||actAgents.has(r.agent)));
+
+  const cats={},days={},hours={};
+  allR.forEach(r=>{cats[r.catN]=(cats[r.catN]||0)+1;if(['lunes','martes','miércoles','jueves','viernes'].includes(r.ds))days[r.ds]=(days[r.ds]||0)+1;if(r.h>=0&&r.h<=23)hours[r.h]=(hours[r.h]||0)+1;});
+  // Build otrosRaw AFTER cats — includes explicit Otros-* AND <1% cats
   const ALWAYS_VIS=new Set(['Facturación','Facturas AI','Impuestos','Impuestos provinciales','Deudas','Deudas AI','SAS / RI','Sueldos','Baja servicios Lannis']);
   const catsTotal=Object.values(cats).reduce((s,v)=>s+v,0)||1;
   const otrosRaw={};
-  // 1. Explicit Otros-* subcats
   processed.filter(r=>!r.isInt).forEach(r=>{
     const raw=String(r[iCat]||'').trim();
-    if(raw==='Otra'||raw.startsWith('Otros')){
-      otrosRaw[raw]=(otrosRaw[raw]||0)+1;
-    }
+    if(raw==='Otra'||raw.startsWith('Otros')){otrosRaw[raw]=(otrosRaw[raw]||0)+1;}
   });
-  // 2. Any cat < 1% that isn't always-visible also goes into Otros breakdown
   Object.entries(cats).forEach(([cat,cnt])=>{
     const pct=cnt/catsTotal*100;
     if(pct<1&&!ALWAYS_VIS.has(cat)&&cat!=='Otros'&&!cat.startsWith('Otros')&&cat!=='Otra'){
       otrosRaw[cat]=(otrosRaw[cat]||0)+cnt;
     }
   });
-  const allR=processed.filter(r=>!r.isInt&&r.f);
-  const habR=processed.filter(r=>r.habTime&&!r.isInt&&(actAgents.size===0||actAgents.has(r.agent)));
-
-  const cats={},days={},hours={};
-  allR.forEach(r=>{cats[r.catN]=(cats[r.catN]||0)+1;if(['lunes','martes','miércoles','jueves','viernes'].includes(r.ds))days[r.ds]=(days[r.ds]||0)+1;if(r.h>=0&&r.h<=23)hours[r.h]=(hours[r.h]||0)+1;});
   const ordD={};DO.forEach(d=>{if(days[d])ordD[d]=days[d];});
 
   const ctMap={};
