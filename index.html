@@ -757,13 +757,23 @@ function computeWeek(rows,hols,actAgents){
       src,hasBot,reassigned:numA>1,sameDay,totalMsgs,aiClosed,contactId};
   });
 
-  // Track raw Otros subcategories — only external (non-internal) contacts
+    const internalCount=processed.filter(r=>r.isInt).length;
+  // Build otrosRaw AFTER cats is known, so we can include <1% cats too
+  const ALWAYS_VIS=new Set(['Facturación','Facturas AI','Impuestos','Impuestos provinciales','Deudas','Deudas AI','SAS / RI','Sueldos','Baja servicios Lannis']);
+  const catsTotal=Object.values(cats).reduce((s,v)=>s+v,0)||1;
   const otrosRaw={};
-  const internalCount=processed.filter(r=>r.isInt).length;
+  // 1. Explicit Otros-* subcats
   processed.filter(r=>!r.isInt).forEach(r=>{
     const raw=String(r[iCat]||'').trim();
     if(raw==='Otra'||raw.startsWith('Otros')){
       otrosRaw[raw]=(otrosRaw[raw]||0)+1;
+    }
+  });
+  // 2. Any cat < 1% that isn't always-visible also goes into Otros breakdown
+  Object.entries(cats).forEach(([cat,cnt])=>{
+    const pct=cnt/catsTotal*100;
+    if(pct<1&&!ALWAYS_VIS.has(cat)&&cat!=='Otros'&&!cat.startsWith('Otros')&&cat!=='Otra'){
+      otrosRaw[cat]=(otrosRaw[cat]||0)+cnt;
     }
   });
   const allR=processed.filter(r=>!r.isInt&&r.f);
@@ -1024,9 +1034,7 @@ function renderCategorias(w){
     const otrosIdx=mainCats.findIndex(([c])=>c==='Otros');
     if(otrosIdx>=0) mainCats[otrosIdx][1]+=otrosExtra;
     else mainCats.push(['Otros',otrosExtra]);
-    // Add small cats to otrosDetail for breakdown
-    if(!w.otrosDetailAuto) w.otrosDetailAuto={};
-    smallCats.forEach(([cat,cnt])=>{w.otrosDetailAuto[cat]=(w.otrosDetailAuto[cat]||0)+cnt;});
+    // small cats already captured in otrosDetail at upload time
   }
   const sorted=mainCats.sort((a,b)=>{
     if(a[0]==='Otros')return 1;
@@ -1049,7 +1057,7 @@ function renderCategorias(w){
   }).join('');
   // ── PUNTO 4: Otros breakdown ──
   // Merge auto-grouped small cats into Otros breakdown
-  const otrosSubcats=Object.assign({},w.otrosDetail||{},w.otrosDetailAuto||{});
+  const otrosSubcats=w.otrosDetail||{};
   const otrosSorted=Object.entries(otrosSubcats).sort((a,b)=>b[1]-a[1]);
   const otrosEl=document.getElementById('otrosBreakdown');
   if(otrosSorted.length){
