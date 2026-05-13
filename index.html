@@ -767,7 +767,10 @@ function computeWeek(rows,hols,actAgents){
   const ALWAYS_VIS=new Set(['Facturación','Facturas AI','Impuestos','Impuestos provinciales','Deudas','Deudas AI','SAS / RI','Sueldos','Baja servicios Lannis']);
   const catsTotal=Object.values(cats).reduce((s,v)=>s+v,0)||1;
   const otrosRaw={};
-  processed.filter(r=>!r.isInt).forEach(r=>{
+  // Iterate raw data rows (not processed) to get original category names
+  rows.slice(1).forEach(r=>{
+    const cid=parseInt(String(r[iCID]||'').trim())||0;
+    if(EQ_INT.has(cid))return;
     const raw=String(r[iCat]||'').trim();
     if(raw==='Otra'||raw.startsWith('Otros')){otrosRaw[raw]=(otrosRaw[raw]||0)+1;}
   });
