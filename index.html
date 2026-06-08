@@ -1044,22 +1044,30 @@ function renderCategorias(w){
       {display:'Facturación manual',keys:['Facturación','Facturacion']},
     ]},
     {label:'Impuestos',color:'#10b981',subcats:[
+      {display:'Impuestos mensuales',keys:['Impuestos','Impuestos provinciales','Impuestos/Deuda']},
       {display:'Impuestos anuales',keys:['Impuestos anuales']},
-      {display:'Impuestos mensuales',keys:['Impuestos/Deuda','Impuestos','Impuestos provinciales','Deudas']},
-      {display:'Certificación de ingresos',keys:['Certificación de ingresos']},
+      {display:'Certificación de ingresos',keys:['Certificación de ingresos','Certificación de ingre...']},
     ]},
-    {label:'MCP Lannis',color:'#8b5cf6',subcats:[]},
-    {label:'Bienvenida',color:'#ec4899',subcats:[]},
+    {label:'Deuda / Pagos',color:'#f59e0b',subcats:[
+      {display:'Deuda',keys:['Deuda','Deudas']},
+      {display:'Deuda AI',keys:['Deuda AI']},
+      {display:'Pago mensual',keys:['Pago mensual']},
+    ]},
+    {label:'Ventas',color:'#f97316',subcats:[
+      {display:'Ventas - Monotributistas',keys:['Ventas - Monotributistas','Ventas - Monotributis...']},
+      {display:'Ventas - RI',keys:['Ventas - RI']},
+      {display:'Ventas - SAS',keys:['Ventas - SAS']},
+      {display:'Ventas - contador',keys:['Ventas - contador']},
+      {display:'Referidos',keys:['Referidos']},
+      {display:'Consulta sobre Lannis',keys:['Consulta sobre Lannis']},
+    ]},
     {label:'RI y SAS',color:'#14b8a6',subcats:[
       {display:'RI',keys:['RI']},
       {display:'SAS',keys:['SAS']},
       {display:'SAS / RI',keys:['SAS / RI']},
     ]},
   ];
-  const GROUP_KEYS_DIRECT={
-    'MCP Lannis':['MCP Lannis'],
-    'Bienvenida':['Bienvenida'],
-  };
+  const GROUP_KEYS_DIRECT={};
 
   // Collect all keys claimed by groups
   const claimedKeys=new Set();
@@ -1089,13 +1097,15 @@ function renderCategorias(w){
     return{avg:+(totM/totC).toFixed(1)};
   }
 
-  // Remaining (unclaimed) cats — any ≤1% go into Otros
+  // Remaining (unclaimed) cats — >1% appear as standalone rows, ≤1% go into Otros
   const otrosSubs={};
   let otrosTotal=rawCats['Otros']||0;
+  const standaloneCats=[];
   Object.entries(rawCats).forEach(([cat,cnt])=>{
     if(claimedKeys.has(cat)||cat==='Otros'||cat==='Otra')return;
     const pct=cnt/total*100;
     if(pct<=1){otrosSubs[cat]=(otrosSubs[cat]||0)+cnt;otrosTotal+=cnt;}
+    else{standaloneCats.push([cat,cnt]);}
   });
   // Also absorb "Otros" original sub-detail
   Object.entries(w.otrosDetail||{}).forEach(([k,v])=>{otrosSubs[k]=(otrosSubs[k]||0)+v;});
@@ -1110,11 +1120,19 @@ function renderCategorias(w){
     const ct=mergedTimes(allGroupKeys);const sd=mergedSD(allGroupKeys);const ms=mergedMsgs(allGroupKeys);
     rows.push({type:'group',label:g.label,count:groupTotal,color:g.color,ct,sd,ms,subcats:g.subcats,gi});
   });
+  // Add standalone cats (unclaimed, >1%) as individual rows
+  standaloneCats.forEach(([cat,cnt],si)=>{
+    const ct=w.catTimes?.[cat]||null;const sd=w.sdBycat?.[cat]||null;const ms=w.msgsByCat?.[cat]||null;
+    const ctN=ct?{frtAvg:ct.frtAvg||0,ttrAvg:ct.ttrAvg||0}:null;
+    const sdN=sd?{pct:sd.pct}:null;
+    const msN=ms?{avg:ms.avg}:null;
+    rows.push({type:'standalone',label:cat,count:cnt,color:PAL[(GROUPS.length+si)%PAL.length],ct:ctN,sd:sdN,ms:msN,subcats:[]});
+  });
   // Add Otros as group
   if(otrosTotal>0){
     rows.push({type:'group',label:'Otros',count:otrosTotal,color:'#94a3b8',ct:null,sd:null,ms:null,subcats:[],gi:GROUPS.length,otrosSubs});
   }
-  // Sort groups by count desc, Otros always last
+  // Sort: groups+standalones by count desc, Otros always last
   rows.sort((a,b)=>{if(a.label==='Otros')return 1;if(b.label==='Otros')return -1;return b.count-a.count;});
   const mx=rows[0]?.count||1;
 
