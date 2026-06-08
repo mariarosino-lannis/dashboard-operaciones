@@ -213,8 +213,13 @@ body{font-family:'Inter',sans-serif;background:var(--paper);color:var(--ink);min
   </div>
 
   <div class="sb-section">
-    <div class="sb-label">Períodos guardados</div>
-    <div class="period-pills" id="periodPills"><div class="empty" style="padding:8px 0;font-size:11px;text-align:left;color:rgba(255,255,255,0.25)">Sin datos</div></div>
+    <div class="sb-label">Semanas guardadas</div>
+    <div class="period-pills" id="periodPillsWeeks"><div class="empty" style="padding:8px 0;font-size:11px;text-align:left;color:rgba(255,255,255,0.25)">Sin datos</div></div>
+  </div>
+
+  <div class="sb-section">
+    <div class="sb-label">Meses guardados</div>
+    <div class="period-pills" id="periodPillsMonths"><div class="empty" style="padding:8px 0;font-size:11px;text-align:left;color:rgba(255,255,255,0.25)">Sin datos</div></div>
   </div>
 
   <div class="sb-section">
@@ -901,16 +906,26 @@ async function confirmUpload(){
 
 // ── Pills ──
 function renderPills(){
-  const el=document.getElementById('periodPills');
-  if(!allWeeks.length){el.innerHTML='<div style="font-size:11px;color:rgba(255,255,255,0.25);padding:4px 0">Sin datos</div>';return;}
-  el.innerHTML=allWeeks.map((w,i)=>`
-    <div class="period-pill ${i===activeIdx?'on':''}" onclick="selPeriod(${i})">
+  const elW=document.getElementById('periodPillsWeeks');
+  const elM=document.getElementById('periodPillsMonths');
+  if(!allWeeks.length){
+    elW.innerHTML='<div style="font-size:11px;color:rgba(255,255,255,0.25);padding:4px 0">Sin datos</div>';
+    elM.innerHTML='<div style="font-size:11px;color:rgba(255,255,255,0.25);padding:4px 0">Sin datos</div>';
+    return;
+  }
+  function pillHtml(w,i){
+    return`<div class="period-pill ${i===activeIdx?'on':''}" onclick="selPeriod(${i})">
       <div class="period-pill-info">
         <div class="period-pill-name">${w.fl||w.week.substring(0,10)}</div>
         <div class="period-pill-sub">${w.total} consultas${w.by?' · '+w.by:''}</div>
       </div>
       <div class="period-pill-del" onclick="event.stopPropagation();delPeriod(${i},'${w.week}')">✕</div>
-    </div>`).join('');
+    </div>`;
+  }
+  const weekPills=allWeeks.map((w,i)=>w.isM?null:pillHtml(w,i)).filter(Boolean).join('');
+  const monthPills=allWeeks.map((w,i)=>w.isM?pillHtml(w,i):null).filter(Boolean).join('');
+  elW.innerHTML=weekPills||'<div style="font-size:11px;color:rgba(255,255,255,0.25);padding:4px 0">Sin semanas</div>';
+  elM.innerHTML=monthPills||'<div style="font-size:11px;color:rgba(255,255,255,0.25);padding:4px 0">Sin meses</div>';
 }
 
 function renderMsgPills(){
@@ -1017,68 +1032,166 @@ function renderHours(w,cid){
 
 // ── Categorías ──
 function renderCategorias(w){
-  const rawCats=Object.entries(w.cats);
-  const total=rawCats.reduce((s,[,v])=>s+v,0)||1;
-  // Auto-group categories < 1% into Otros
-  const ALWAYS_VISIBLE=new Set(['Facturación','Facturas AI','Impuestos','Impuestos provinciales','Deudas','Deudas AI','SAS / RI','Sueldos','Baja servicios Lannis']);
-  const mainCats=[],smallCats=[];
-  rawCats.forEach(([cat,cnt])=>{
-    const pct=cnt/total*100;
-    if(cat==='Otros'||pct>=1||ALWAYS_VISIBLE.has(cat)) mainCats.push([cat,cnt]);
-    else smallCats.push([cat,cnt]);
+  const rawCats=w.cats||{};
+  const total=Object.values(rawCats).reduce((s,v)=>s+v,0)||1;
+
+  // ── Group definitions ──
+  // Each group: { label, color, subcats: [{display, keys[]}] }
+  // keys[] = raw category names that map to this sub-item
+  const GROUPS=[
+    {label:'Facturación',color:'#6366f1',subcats:[
+      {display:'Facturas AI',keys:['Facturas AI']},
+      {display:'Facturación manual',keys:['Facturación','Facturacion']},
+    ]},
+    {label:'Impuestos',color:'#10b981',subcats:[
+      {display:'Impuestos anuales',keys:['Impuestos anuales']},
+      {display:'Impuestos mensuales',keys:['Impuestos/Deuda','Impuestos','Impuestos provinciales','Deudas']},
+      {display:'Certificación de ingresos',keys:['Certificación de ingresos']},
+    ]},
+    {label:'MCP Lannis',color:'#8b5cf6',subcats:[]},
+    {label:'Bienvenida',color:'#ec4899',subcats:[]},
+    {label:'RI y SAS',color:'#14b8a6',subcats:[
+      {display:'RI',keys:['RI']},
+      {display:'SAS',keys:['SAS']},
+      {display:'SAS / RI',keys:['SAS / RI']},
+    ]},
+  ];
+  const GROUP_KEYS_DIRECT={
+    'MCP Lannis':['MCP Lannis'],
+    'Bienvenida':['Bienvenida'],
+  };
+
+  // Collect all keys claimed by groups
+  const claimedKeys=new Set();
+  GROUPS.forEach(g=>{
+    g.subcats.forEach(s=>s.keys.forEach(k=>claimedKeys.add(k)));
+    (GROUP_KEYS_DIRECT[g.label]||[g.label]).forEach(k=>claimedKeys.add(k));
   });
-  // Merge small cats into Otros
-  if(smallCats.length){
-    const otrosExtra=smallCats.reduce((s,[,v])=>s+v,0);
-    const otrosIdx=mainCats.findIndex(([c])=>c==='Otros');
-    if(otrosIdx>=0) mainCats[otrosIdx][1]+=otrosExtra;
-    else mainCats.push(['Otros',otrosExtra]);
-    // small cats already captured in otrosDetail at upload time
+
+  // Build group totals
+  function sumKeys(keys){return keys.reduce((s,k)=>s+(rawCats[k]||0),0);}
+  function mergedTimes(keys){
+    const frts=[],ttrs=[];
+    keys.forEach(k=>{const ct=w.catTimes?.[k];if(ct){if(ct.frtAvg)frts.push(ct.frtAvg);if(ct.ttrAvg)ttrs.push(ct.ttrAvg);}});
+    if(!frts.length&&!ttrs.length)return null;
+    return{frtAvg:frts.length?frts.reduce((a,b)=>a+b,0)/frts.length:0,ttrAvg:ttrs.length?ttrs.reduce((a,b)=>a+b,0)/ttrs.length:0};
   }
-  const sorted=mainCats.sort((a,b)=>{
-    if(a[0]==='Otros')return 1;
-    if(b[0]==='Otros')return -1;
-    return b[1]-a[1];
+  function mergedSD(keys){
+    let tot=0,sd=0;
+    keys.forEach(k=>{const s=w.sdBycat?.[k];if(s){tot+=s.total;sd+=s.sd;}});
+    if(!tot)return null;
+    return{pct:+((sd/tot)*100).toFixed(1)};
+  }
+  function mergedMsgs(keys){
+    let totC=0,totM=0;
+    keys.forEach(k=>{const m=w.msgsByCat?.[k];if(m){totC+=m.count;totM+=m.count*m.avg;}});
+    if(!totC)return null;
+    return{avg:+(totM/totC).toFixed(1)};
+  }
+
+  // Remaining (unclaimed) cats — any ≤1% go into Otros
+  const otrosSubs={};
+  let otrosTotal=rawCats['Otros']||0;
+  Object.entries(rawCats).forEach(([cat,cnt])=>{
+    if(claimedKeys.has(cat)||cat==='Otros'||cat==='Otra')return;
+    const pct=cnt/total*100;
+    if(pct<=1){otrosSubs[cat]=(otrosSubs[cat]||0)+cnt;otrosTotal+=cnt;}
   });
-  const mx=sorted[0]?.[1]||1;
-  document.getElementById('catBody').innerHTML=sorted.map(([name,count],i)=>{
-    const ct=w.catTimes?.[name];const sd=w.sdBycat?.[name];const ms=w.msgsByCat?.[name];
-    const sdBadge=sd?(sd.pct>=90?'<span class="badge-ok">'+sd.pct+'%</span>':sd.pct>=70?'<span class="badge-mid">'+sd.pct+'%</span>':'<span class="badge-fail">'+sd.pct+'%</span>'):'—';
-    return`<tr>
-      <td><span class="cat-dot" style="background:${PAL[i%PAL.length]}"></span><span style="font-weight:500">${name}</span></td>
-      <td class="r"><div style="display:flex;align-items:center;justify-content:flex-end;gap:6px"><div style="width:60px;height:4px;background:var(--s3);border-radius:2px;overflow:hidden"><div style="width:${Math.round(count/mx*100)}%;height:100%;background:${PAL[i%PAL.length]};border-radius:2px"></div></div>${count}</div></td>
-      <td class="r">${(count/total*100).toFixed(1)}%</td>
-      <td class="r" style="color:${ct?(ct.frtAvg<=SLA.frt?'var(--green)':'var(--red)'):'var(--ink3)'}">${ct?hms(ct.frtAvg):'—'}</td>
-      <td class="r" style="color:${ct?(ct.ttrAvg<=SLA.ttr?'var(--green)':'var(--red)'):'var(--ink3)'}">${ct?hms(ct.ttrAvg):'—'}</td>
-      <td class="r">${ms?ms.avg+'msg':'—'}</td>
-      <td class="r">${sdBadge}</td>
+  // Also absorb "Otros" original sub-detail
+  Object.entries(w.otrosDetail||{}).forEach(([k,v])=>{otrosSubs[k]=(otrosSubs[k]||0)+v;});
+
+  // Build rows
+  const rows=[];
+  GROUPS.forEach((g,gi)=>{
+    const directKeys=GROUP_KEYS_DIRECT[g.label]||[g.label];
+    const allGroupKeys=[...directKeys,...g.subcats.flatMap(s=>s.keys)];
+    const groupTotal=sumKeys(allGroupKeys);
+    if(!groupTotal)return;
+    const ct=mergedTimes(allGroupKeys);const sd=mergedSD(allGroupKeys);const ms=mergedMsgs(allGroupKeys);
+    rows.push({type:'group',label:g.label,count:groupTotal,color:g.color,ct,sd,ms,subcats:g.subcats,gi});
+  });
+  // Add Otros as group
+  if(otrosTotal>0){
+    rows.push({type:'group',label:'Otros',count:otrosTotal,color:'#94a3b8',ct:null,sd:null,ms:null,subcats:[],gi:GROUPS.length,otrosSubs});
+  }
+  // Sort groups by count desc, Otros always last
+  rows.sort((a,b)=>{if(a.label==='Otros')return 1;if(b.label==='Otros')return -1;return b.count-a.count;});
+  const mx=rows[0]?.count||1;
+
+  function sdBadge(sd){
+    if(!sd)return'—';
+    return sd.pct>=90?`<span class="badge-ok">${sd.pct}%</span>`:sd.pct>=70?`<span class="badge-mid">${sd.pct}%</span>`:`<span class="badge-fail">${sd.pct}%</span>`;
+  }
+  function barCell(count,color){
+    return`<div style="display:flex;align-items:center;justify-content:flex-end;gap:6px"><div style="width:60px;height:4px;background:var(--s3);border-radius:2px;overflow:hidden"><div style="width:${Math.round(count/mx*100)}%;height:100%;background:${color};border-radius:2px"></div></div>${count}</div>`;
+  }
+
+  let html='';
+  rows.forEach(r=>{
+    // Group header row
+    html+=`<tr>
+      <td><span class="cat-dot" style="background:${r.color}"></span><span style="font-weight:600">${r.label}</span></td>
+      <td class="r">${barCell(r.count,r.color)}</td>
+      <td class="r"><strong>${(r.count/total*100).toFixed(1)}%</strong></td>
+      <td class="r" style="color:${r.ct?(r.ct.frtAvg<=SLA.frt?'var(--green)':'var(--red)'):'var(--ink3)'}">${r.ct&&r.ct.frtAvg?hms(r.ct.frtAvg):'—'}</td>
+      <td class="r" style="color:${r.ct?(r.ct.ttrAvg<=SLA.ttr?'var(--green)':'var(--red)'):'var(--ink3)'}">${r.ct&&r.ct.ttrAvg?hms(r.ct.ttrAvg):'—'}</td>
+      <td class="r">${r.ms?r.ms.avg+'msg':'—'}</td>
+      <td class="r">${sdBadge(r.sd)}</td>
     </tr>`;
-  }).join('');
-  // ── PUNTO 4: Otros breakdown ──
-  // Merge auto-grouped small cats into Otros breakdown
-  const otrosSubcats=w.otrosDetail||{};
-  const otrosSorted=Object.entries(otrosSubcats).sort((a,b)=>b[1]-a[1]);
+    // Sub-rows
+    if(r.subcats&&r.subcats.length){
+      r.subcats.forEach(sub=>{
+        const subCount=sumKeys(sub.keys);
+        if(!subCount)return;
+        const subCt=mergedTimes(sub.keys);const subSd=mergedSD(sub.keys);const subMs=mergedMsgs(sub.keys);
+        html+=`<tr style="background:var(--s2)">
+          <td style="padding-left:28px;color:var(--ink3);font-size:11px">· ${sub.display}</td>
+          <td class="r" style="font-size:11px">${barCell(subCount,r.color+'99')}</td>
+          <td class="r" style="font-size:11px;color:var(--ink3)">${(subCount/total*100).toFixed(1)}%</td>
+          <td class="r" style="color:${subCt?(subCt.frtAvg<=SLA.frt?'var(--green)':'var(--red)'):'var(--ink3)'};font-size:11px">${subCt&&subCt.frtAvg?hms(subCt.frtAvg):'—'}</td>
+          <td class="r" style="color:${subCt?(subCt.ttrAvg<=SLA.ttr?'var(--green)':'var(--red)'):'var(--ink3)'};font-size:11px">${subCt&&subCt.ttrAvg?hms(subCt.ttrAvg):'—'}</td>
+          <td class="r" style="font-size:11px">${subMs?subMs.avg+'msg':'—'}</td>
+          <td class="r" style="font-size:11px">${sdBadge(subSd)}</td>
+        </tr>`;
+      });
+    }
+    // Otros sub-breakdown inline
+    if(r.label==='Otros'&&r.otrosSubs){
+      Object.entries(r.otrosSubs).sort((a,b)=>b[1]-a[1]).forEach(([name,cnt])=>{
+        if(!cnt)return;
+        html+=`<tr style="background:var(--s2)">
+          <td style="padding-left:28px;color:var(--ink3);font-size:11px">· ${name.replace('Otros - ','').replace('Otros-','')}</td>
+          <td class="r" style="font-size:11px">${barCell(cnt,'#94a3b899')}</td>
+          <td class="r" style="font-size:11px;color:var(--ink3)">${(cnt/total*100).toFixed(1)}%</td>
+          <td class="r" style="color:var(--ink3);font-size:11px">—</td>
+          <td class="r" style="color:var(--ink3);font-size:11px">—</td>
+          <td class="r" style="font-size:11px">—</td>
+          <td class="r" style="font-size:11px">—</td>
+        </tr>`;
+      });
+    }
+  });
+  document.getElementById('catBody').innerHTML=html;
+
+  // ── Otros breakdown card (kept for compatibility) ──
+  const otrosSorted=Object.entries(otrosSubs).sort((a,b)=>b[1]-a[1]);
   const otrosEl=document.getElementById('otrosBreakdown');
   if(otrosSorted.length){
-    const otrosTotal=otrosSorted.reduce((s,[,v])=>s+v,0)||1;
+    const otrosTot=otrosSorted.reduce((s,[,v])=>s+v,0)||1;
     otrosEl.innerHTML=`<table class="tbl"><thead><tr><th>Subcategoría</th><th class="r">Consultas</th><th class="r">%</th></tr></thead><tbody>
-      ${otrosSorted.map(([name,count])=>`<tr><td>${name}</td><td class="r">${count}</td><td class="r">${(count/otrosTotal*100).toFixed(1)}%</td></tr>`).join('')}
+      ${otrosSorted.map(([name,count])=>`<tr><td>${name.replace('Otros - ','').replace('Otros-','')}</td><td class="r">${count}</td><td class="r">${(count/otrosTot*100).toFixed(1)}%</td></tr>`).join('')}
     </tbody></table>`;
   } else {
-    otrosEl.innerHTML='<div class="empty">Sin datos de subcategorías — recargá el reporte para obtener este desglose</div>';
+    otrosEl.innerHTML='<div class="empty">Sin datos de subcategorías</div>';
   }
 
-  // ── PUNTO 5: Footer notes ──
+  // ── Footer notes ──
   const internalCount=w.internalCount||0;
-  const otrosDesc=otrosSorted.length?
-    'Otros: '+otrosSorted.map(([n,v])=>`${v} de ${n.replace('Otros - ','').replace('Otra','otras')}`).join(', ')+'.':
-    '';
   document.getElementById('catFooterNotes').innerHTML=
-    (internalCount>0?`<div>(*) No contempla <strong>${internalCount}</strong> conversaciones del equipo interno.</div>`:'')
-    +(otrosDesc?`<div>${otrosDesc}</div>`:'');
+    (internalCount>0?`<div>(*) No contempla <strong>${internalCount}</strong> conversaciones del equipo interno.</div>`:'');
 
   // ── Bubble chart ──
-  const bubData=sorted.map(([cat,count],i)=>{const ms=w.msgsByCat?.[cat];const sd=w.sdBycat?.[cat];if(!ms||!sd)return null;return{x:ms.avg,y:sd.pct,r:Math.max(5,Math.min(22,Math.sqrt(count)*1.8)),label:cat,color:PAL[i%PAL.length]};}).filter(Boolean);
+  const bubData=rows.map((r,i)=>{const ms=r.ms;const sd=r.sd;if(!ms||!sd)return null;return{x:ms.avg,y:sd.pct,r:Math.max(5,Math.min(22,Math.sqrt(r.count)*1.8)),label:r.label,color:r.color};}).filter(Boolean);
   dch('cBubble');const ctx=document.getElementById('cBubble');
   if(ctx&&bubData.length){charts['cBubble']=new Chart(ctx,{type:'bubble',data:{datasets:bubData.map(d=>({label:d.label,data:[{x:d.x,y:d.y,r:d.r}],backgroundColor:d.color+'aa',borderColor:d.color,borderWidth:1.5}))},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${c.raw.x}msg · ${c.raw.y}% same-day`}}},scales:{x:{title:{display:true,text:'Mensajes promedio',color:'#8a8a96',font:{size:10}},grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#8a8a96'}},y:{title:{display:true,text:'% mismo día',color:'#8a8a96',font:{size:10}},grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#8a8a96'},min:0,max:110}}}});}
 }
