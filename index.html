@@ -690,8 +690,7 @@ async function fetchWeeks(){
 
 async function fetchMsgReports(){
   const{data,error}=await db.from('message_reports').select('*').order('period_start',{ascending:false});
-  if(error){console.error('fetchMsgReports error',error);toast('Error al cargar mensajes: '+error.message,true);return;}
-  console.log('fetchMsgReports OK, rows:',data?.length, data?.map(r=>r.period_label));
+  if(error){toast('Error al cargar mensajes: '+error.message,true);return;}
   msgReports=(data||[]).map(r=>({
     id:r.id,label:r.period_label,start:r.period_start,end:r.period_end,
     totalMsgs:r.total_msgs||0,humanMsgs:r.human_msgs||0,botMsgs:r.bot_msgs||0,
@@ -1922,10 +1921,7 @@ document.getElementById('fileMsgs').addEventListener('change',function(e){
     p.msgs_by_day=msgsByDay;
     try{
       const{error:upsertErr}=await db.from('message_reports').upsert(p,{onConflict:'period_label'});
-      if(upsertErr){
-        alert('Error Supabase:\n'+JSON.stringify(upsertErr,null,2));
-        return;
-      }
+      if(upsertErr){toast('Error al guardar: '+upsertErr.message,true);console.error('upsert error',upsertErr);return;}
       toast('✓ Mensajes guardados');
       await fetchMsgReports();
     }catch(err){toast('Error: '+err.message,true);console.error('catch error',err);}
