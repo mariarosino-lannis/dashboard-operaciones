@@ -702,6 +702,7 @@ async function fetchMsgReports(){
     flowStats:r.flow_stats||{},by:r.uploaded_by,
     templates:r.templates||{},escGapMed:r.escalation_gap_med||0,escGapAvg:r.escalation_gap_avg||0,escGapsDist:r.escalation_gaps_dist||[],msgsByDay:r.msgs_by_day||{}
   }));
+  if(msgReports.length) activeMsgIdx=0;
   renderMsgPills();
   renderBot();
 }
