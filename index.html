@@ -690,7 +690,8 @@ async function fetchWeeks(){
 
 async function fetchMsgReports(){
   const{data,error}=await db.from('message_reports').select('*').order('period_start',{ascending:false});
-  if(error)return;
+  if(error){console.error('fetchMsgReports error',error);toast('Error al cargar mensajes: '+error.message,true);return;}
+  console.log('fetchMsgReports OK, rows:',data?.length, data?.map(r=>r.period_label));
   msgReports=(data||[]).map(r=>({
     id:r.id,label:r.period_label,start:r.period_start,end:r.period_end,
     totalMsgs:r.total_msgs||0,humanMsgs:r.human_msgs||0,botMsgs:r.bot_msgs||0,
@@ -1920,9 +1921,11 @@ document.getElementById('fileMsgs').addEventListener('change',function(e){
     p.escalation_gaps_dist=escalationGaps.slice(0,200);
     p.msgs_by_day=msgsByDay;
     try{
-      await db.from('message_reports').upsert(p,{onConflict:'period_label'});
-      toast('✓ Mensajes guardados');await fetchMsgReports();
-    }catch(err){toast('Error: '+err.message,true);}
+      const{error:upsertErr}=await db.from('message_reports').upsert(p,{onConflict:'period_label'});
+      if(upsertErr){toast('Error al guardar: '+upsertErr.message,true);console.error('upsert error',upsertErr);return;}
+      toast('✓ Mensajes guardados');
+      await fetchMsgReports();
+    }catch(err){toast('Error: '+err.message,true);console.error('catch error',err);}
   };
   reader.readAsArrayBuffer(file);e.target.value='';
 });
