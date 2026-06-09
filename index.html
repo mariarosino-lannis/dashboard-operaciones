@@ -1922,7 +1922,10 @@ document.getElementById('fileMsgs').addEventListener('change',function(e){
     p.msgs_by_day=msgsByDay;
     try{
       const{error:upsertErr}=await db.from('message_reports').upsert(p,{onConflict:'period_label'});
-      if(upsertErr){toast('Error al guardar: '+upsertErr.message,true);console.error('upsert error',upsertErr);return;}
+      if(upsertErr){
+        alert('Error Supabase:\n'+JSON.stringify(upsertErr,null,2));
+        return;
+      }
       toast('✓ Mensajes guardados');
       await fetchMsgReports();
     }catch(err){toast('Error: '+err.message,true);console.error('catch error',err);}
