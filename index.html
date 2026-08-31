@@ -1068,7 +1068,15 @@ function renderCategorias(w){
       {display:'SAS / RI',keys:['SAS / RI']},
     ]},
   ];
-  const GROUP_KEYS_DIRECT={};
+  const GROUP_KEYS_DIRECT={
+    // 'Facturación' e 'Impuestos' no tienen conteo propio aparte de sus subcats:
+    // la raw category 'Facturación' ya está contemplada en el subcat 'Facturación manual',
+    // y la raw category 'Impuestos' ya está en el subcat 'Impuestos mensuales'.
+    // Si no se vacían acá, esas claves se suman dos veces (una como "directa" del grupo
+    // y otra dentro del subcat), inflando el total del grupo por encima de la suma real de sus subcats.
+    'Facturación':[],
+    'Impuestos':[],
+  };
 
   // Collect all keys claimed by groups
   const claimedKeys=new Set();
