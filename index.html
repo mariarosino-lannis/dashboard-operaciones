@@ -395,6 +395,11 @@ body{font-family:'Inter',sans-serif;background:var(--paper);color:var(--ink);min
       </div>
       <div id="sub-bot">
       <div class="mc-grid" id="botMcs"></div>
+      <div class="card" id="msgBillingCard" style="margin-bottom:16px">
+        <div class="card-header"><div><div class="card-title">Entrantes vs. salientes</div><div class="card-sub">Desde el 1/oct/2026 Meta cobra los salientes de servicio (humano + AI) — los entrantes siguen siendo gratis</div></div></div>
+        <div class="mc-grid" id="msgDirMcs"></div>
+        <div class="ch" style="height:200px;margin-top:16px"><canvas id="cMsgDirEvol"></canvas></div>
+      </div>
       <div class="g2">
         <div class="card"><div class="card-header"><div><div class="card-title">Flujo de conversaciones</div><div class="card-sub">Cómo interactúan bot y humano</div></div></div><div class="ch" style="height:220px"><canvas id="cBotFlow"></canvas></div></div>
         <div class="card"><div class="card-header"><div><div class="card-title">Tiempo de respuesta real por hora</div><div class="card-sub">Humano vs AI agent — mediana en minutos</div></div></div><div class="ch" style="height:220px"><canvas id="cBotRT"></canvas></div></div>
@@ -714,6 +719,7 @@ async function fetchMsgReports(){
     aiRtMed:r.ai_rt_med||0,aiRtAvg:r.ai_rt_avg||0,
     broadcasts:r.broadcasts||{},hourlyHuman:r.hourly_human_rt||{},hourlyAi:r.hourly_ai_rt||{},
     flowStats:r.flow_stats||{},by:r.uploaded_by,
+    incomingMsgs:(r.flow_stats||{}).incoming??null,outgoingMsgs:(r.flow_stats||{}).outgoing??null,serviceOutgoingMsgs:(r.flow_stats||{}).serviceOutgoing??null,
     templates:r.templates||{},escGapMed:r.escalation_gap_med||0,escGapAvg:r.escalation_gap_avg||0,escGapsDist:r.escalation_gaps_dist||[],msgsByDay:r.msgs_by_day||{}
   }));
   if(msgReports.length) activeMsgIdx=0;
@@ -1364,6 +1370,7 @@ function renderBot(){
   const mr=msgReports[activeMsgIdx];
   if(!mr){
     document.getElementById('botMcs').innerHTML='<div class="empty" style="grid-column:span 4">Sin datos de mensajes — cargá el CSV de mensajes con el botón verde.</div>';
+    document.getElementById('msgDirMcs').innerHTML='<div class="empty" style="grid-column:span 3">Sin datos</div>';
     document.getElementById('broadcastList').innerHTML='<div class="empty">Sin datos</div>';
     document.getElementById('msgCompContent').innerHTML='<div class="empty">Sin datos</div>';
     return;
@@ -1373,6 +1380,29 @@ function renderBot(){
     <div class="mc c-green"><div class="mc-icon green"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="8" cy="8" r="6"/><path d="M8 4v4l2 2"/></svg></div><div class="mc-label">RT humano mediana</div><div class="mc-val">${mr.humanRtMed}m</div><div class="mc-sub">AI: ${mr.aiRtMed}m</div></div>
     <div class="mc c-amber"><div class="mc-icon amber"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 2l2 4h4l-3 3 1 4-4-2-4 2 1-4-3-3h4z"/></svg></div><div class="mc-label">Escalamiento bot→humano</div><div class="mc-val">${mr.escalationRate}%</div><div class="mc-sub">de conversaciones</div></div>
     <div class="mc c-green"><div class="mc-icon green"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 3L6 10l-3-3"/></svg></div><div class="mc-label">Resueltas solo por AI</div><div class="mc-val">${mr.aiOnlyConvs}</div><div class="mc-sub">sin intervención humana</div></div>`;
+
+  // ── Entrantes / salientes (Meta cobra salientes de servicio desde 1/oct/2026) ──
+  const msgDirEl=document.getElementById('msgDirMcs');
+  if(mr.incomingMsgs==null){
+    msgDirEl.innerHTML='<div class="empty" style="grid-column:span 3">Este período fue cargado antes de trackear entrantes/salientes — volvé a subir el CSV de mensajes para verlo acá.</div>';
+  }else{
+    const pctSaliente=mr.totalMsgs?((mr.outgoingMsgs/mr.totalMsgs)*100).toFixed(0):'0';
+    const pctFacturable=mr.outgoingMsgs?((mr.serviceOutgoingMsgs/mr.outgoingMsgs)*100).toFixed(0):'0';
+    msgDirEl.innerHTML=`
+      <div class="mc c-green"><div class="mc-icon green"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 5l6 4 6-4"/><rect x="2" y="3" width="12" height="10" rx="1.5"/></svg></div><div class="mc-label">Entrantes</div><div class="mc-val">${mr.incomingMsgs.toLocaleString('es')}</div><div class="mc-sub">siempre gratis</div></div>
+      <div class="mc c-accent"><div class="mc-icon accent"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 5l6 4 6-4"/><rect x="2" y="3" width="12" height="10" rx="1.5"/></svg></div><div class="mc-label">Salientes</div><div class="mc-val">${mr.outgoingMsgs.toLocaleString('es')}</div><div class="mc-sub">${pctSaliente}% del total</div></div>
+      <div class="mc c-red"><div class="mc-icon red"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 2v8M8 2l-3 3M8 2l3 3M3 12h10"/></svg></div><div class="mc-label">Salientes de servicio</div><div class="mc-val">${mr.serviceOutgoingMsgs.toLocaleString('es')}</div><div class="mc-sub">humano+AI · ${pctFacturable}% de salientes · facturable desde 1/oct</div></div>`;
+  }
+  if(msgReports.length>1){
+    const sortedD=[...msgReports].filter(r=>r.incomingMsgs!=null).sort((a,b)=>new Date(a.start)-new Date(b.start));
+    if(sortedD.length){
+      mkChart('cMsgDirEvol','bar',{labels:sortedD.map(r=>r.label),datasets:[
+        {label:'Entrantes',data:sortedD.map(r=>r.incomingMsgs),backgroundColor:'#10b981',borderRadius:4},
+        {label:'Salientes (total)',data:sortedD.map(r=>r.outgoingMsgs),backgroundColor:'#6366f1',borderRadius:4},
+        {label:'Salientes de servicio (facturable)',data:sortedD.map(r=>r.serviceOutgoingMsgs),backgroundColor:'#ef4444',borderRadius:4}
+      ]},{plugins:{legend:{display:true,position:'top',labels:{font:{size:10},boxWidth:10}}},scales:{y:{beginAtZero:true,grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#8a8a96',font:{size:10}}},x:{grid:{display:false},ticks:{color:'#3a3a42',font:{size:10}}}}});
+    }
+  }
 
   const fs=mr.flowStats||{};
   mkChart('cBotFlow','doughnut',{labels:['Bot→Humano','AI solo','Humano directo'],datasets:[{data:[fs.botHuman||0,fs.aiOnly||0,fs.humanOnly||0],backgroundColor:['#6366f1','#10b981','#f59e0b'],borderWidth:4,borderColor:'#fff'}]},{cutout:'60%'});
@@ -1416,6 +1446,9 @@ function renderBot(){
   let html=`<table class="tbl"><thead><tr><th>Métrica</th>${cols.map((c,i)=>`<th class="r" style="${i===0?'color:var(--accent);font-weight:700':''}">${lbls[i]}</th>`).join('')}</tr></thead><tbody>
   <tr class="tbl-section"><td colspan="${cols.length+1}">Volumen</td></tr>
   <tr><td>Mensajes totales</td>${cols.map((c,i)=>tdV(c.totalMsgs?.toLocaleString('es'),i===0)).join('')}</tr>
+  <tr><td>Entrantes</td>${cols.map((c,i)=>tdV(c.incomingMsgs!=null?c.incomingMsgs.toLocaleString('es'):'—',i===0)).join('')}</tr>
+  <tr><td>Salientes</td>${cols.map((c,i)=>tdV(c.outgoingMsgs!=null?c.outgoingMsgs.toLocaleString('es'):'—',i===0)).join('')}</tr>
+  <tr><td>Salientes de servicio (facturable 1/oct)</td>${cols.map((c,i)=>tdV(c.serviceOutgoingMsgs!=null?c.serviceOutgoingMsgs.toLocaleString('es'):'—',i===0)).join('')}</tr>
   <tr><td>Mensajes humanos</td>${cols.map((c,i)=>tdV(c.humanMsgs?.toLocaleString('es'),i===0)).join('')}</tr>
   <tr><td>Mensajes AI agent</td>${cols.map((c,i)=>tdV(c.botMsgs?.toLocaleString('es'),i===0)).join('')}</tr>
   <tr><td>Broadcasts</td>${cols.map((c,i)=>tdV(c.broadcastMsgs?.toLocaleString('es'),i===0)).join('')}</tr>
@@ -1886,6 +1919,10 @@ document.getElementById('fileMsgs').addEventListener('change',function(e){
     const workflowMsgs=parsed.filter(r=>r.sender==='workflow').length;
     const broadcastMsgs=parsed.filter(r=>r.sender==='broadcast').length;
     const n8nMsgs=parsed.filter(r=>r.sender==='n8n').length;
+    // ── Entrantes/salientes (Meta cobra mensajes salientes "de servicio" desde el 1/oct/2026) ──
+    const incomingMsgs=parsed.filter(r=>r.msgType==='incoming').length;
+    const outgoingMsgs=parsed.filter(r=>r.msgType==='outgoing').length;
+    const serviceOutgoingMsgs=parsed.filter(r=>r.msgType==='outgoing'&&['user','ai_agent'].includes(r.sender)).length;
     const byContact={};
     parsed.forEach(r=>{if(!byContact[r.cid])byContact[r.cid]=[];byContact[r.cid].push(r);});
     let aiOnly=0,botHuman=0;
@@ -1918,7 +1955,7 @@ document.getElementById('fileMsgs').addEventListener('change',function(e){
       human_rt_med:+medRT(humanRTs.map(x=>x.rt)).toFixed(1),human_rt_avg:+avgRT(humanRTs.map(x=>x.rt)).toFixed(1),
       ai_rt_med:+medRT(aiRTs.map(x=>x.rt)).toFixed(1),ai_rt_avg:+avgRT(aiRTs.map(x=>x.rt)).toFixed(1),
       broadcasts,hourly_human_rt:hourlyH,hourly_ai_rt:hourlyA,
-      flow_stats:{total:totalConvs,aiOnly,botHuman,humanOnly:totalConvs-aiOnly-botHuman}};
+      flow_stats:{total:totalConvs,aiOnly,botHuman,humanOnly:totalConvs-aiOnly-botHuman,incoming:incomingMsgs,outgoing:outgoingMsgs,serviceOutgoing:serviceOutgoingMsgs}};
 
     // ── Templates ──
     const templates={};
