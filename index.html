@@ -336,6 +336,10 @@ body{font-family:'Inter',sans-serif;background:var(--paper);color:var(--ink);min
         <div class="card-header" style="margin-bottom:12px"><div><div class="card-title">Apertura de categoría "Otros"</div><div class="card-sub">Desglose de las subcategorías agrupadas</div></div></div>
         <div id="otrosBreakdown"><div class="empty">Sin datos</div></div>
       </div>
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-header" style="margin-bottom:12px"><div><div class="card-title">Ruido excluido</div><div class="card-sub">Notificaciones automáticas y pruebas — se muestran pero no suman al total de consultas</div></div></div>
+        <div id="ruidoBreakdown"><div class="empty">Sin datos</div></div>
+      </div>
       <div class="card"><div class="card-header"><div><div class="card-title">Complejidad por categoría</div><div class="card-sub">Eje X = mensajes promedio · Eje Y = % same-day · Tamaño = volumen</div></div></div><div class="ch" style="height:280px"><canvas id="cBubble"></canvas></div></div>
     </div>
 
@@ -645,6 +649,16 @@ const CHLBL={'contact':'Cliente inició','user':'Equipo inició','ctc_ads':'Anun
 
 // ── Helpers ──
 function normCat(r){if(!r)return'Sin categoría';const s=String(r).trim();if(['Impuestos','Impuestos provinciales','Deudas'].includes(s))return'Impuestos/Deuda';if(['Otros - gestión de asesorías','Otros - notificaciones domicilio fiscal electrónico','Otros - otras notificaciones al mail','Otros - test','Otra'].includes(s))return'Otros';return s||'Sin categoría';}
+
+// ── Ruido (categorías que se muestran pero no se cuentan en los totales) ──
+// Pedido de negocio: notificaciones automáticas / pruebas que no son consultas reales.
+// Se descuentan del total en TODOS lados (header, Resumen, Categorías) pero se siguen
+// mostrando aparte para no perder visibilidad. No requiere re-subir CSVs: se calcula
+// a partir de w.otrosDetail, que ya guarda estas 3 subcategorías con su nombre original
+// tanto en reportes viejos como nuevos.
+const NOISE_CATS_LIST=['Otros - notificaciones domicilio fiscal electrónico','Otros - otras notificaciones al mail','Otros - test'];
+function noiseCount(w){const od=(w&&w.otrosDetail)||{};return NOISE_CATS_LIST.reduce((s,k)=>s+(od[k]||0),0);}
+function totalNeto(w){return Math.max(0,(w?.total||0)-noiseCount(w));}
 function pm(v){if(!v)return null;const p=String(v).split(':');if(p.length!==3)return null;const[h,m,s]=p.map(Number);return isNaN(h)?null:h*60+m+s/60;}
 function avg(a){const x=a.filter(v=>v!=null&&!isNaN(v));return x.length?x.reduce((s,v)=>s+v,0)/x.length:0;}
 function med(a){const x=[...a.filter(v=>v!=null&&!isNaN(v))].sort((a,b)=>a-b);if(!x.length)return 0;const m=Math.floor(x.length/2);return x.length%2?x[m]:(x[m-1]+x[m])/2;}
@@ -991,7 +1005,8 @@ function renderAll(){
   const w=getW();
   const badge=w.isM?'<span class="hbadge m">Mensual</span>':'<span class="hbadge w">Semanal</span>';
   document.getElementById('pageTitle').textContent=w.fl||w.week;
-  document.getElementById('pageMeta').textContent=w.total+' consultas · '+w.totalH+' hábiles'+(w.by?' · '+w.by:'');
+  {const _nc=noiseCount(w),_tn=totalNeto(w);
+  document.getElementById('pageMeta').textContent=(_nc>0?_tn+' consultas ('+w.total+' brutas, '+_nc+' de ruido excluido) · ':w.total+' consultas · ')+w.totalH+' hábiles'+(w.by?' · '+w.by:'');}
   document.getElementById('headerBadge').innerHTML=badge;
   renderResumen(w);renderCategorias(w);renderTiempos(w);renderCapacidad(w);
   renderConversaciones(w);renderClientes(w);renderBot();renderComparativa(w);
@@ -1002,8 +1017,9 @@ function renderAll(){
 function renderResumen(w){
   const prev=allWeeks.find((_,i)=>i>activeIdx&&allWeeks[i].isM===w.isM)||null;
   function dl(cur,pv,lo=false){if(!prev||pv==null||Math.abs(cur-pv)<0.1)return'';const d=cur-pv;const g=lo?(d<0):(d>0);return'<div class="mc-delta '+(g?'up':'dn')+'">'+(d>0?'↑':'↓')+' '+Math.abs(Math.round(d))+' vs ant.</div>';}
+  const _nc=noiseCount(w),_tn=totalNeto(w),_pnc=prev?noiseCount(prev):null,_ptn=prev!=null?totalNeto(prev):null;
   document.getElementById('mcs').innerHTML=`
-    <div class="mc c-accent"><div class="mc-icon accent"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12h3V6H2zM6 12h3V3H6zM10 12h3V8h-3z"/></svg></div><div class="mc-label">Consultas totales</div><div class="mc-val">${w.total.toLocaleString('es')}</div><div class="mc-sub">${w.totalH} hábiles</div>${dl(w.total,prev?.total)}</div>
+    <div class="mc c-accent"><div class="mc-icon accent"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12h3V6H2zM6 12h3V3H6zM10 12h3V8h-3z"/></svg></div><div class="mc-label">Consultas totales</div><div class="mc-val" style="display:flex;align-items:baseline;gap:9px">${_nc>0?`<span>${_tn.toLocaleString('es')}</span><span style="font-size:13px;color:var(--ink3);font-weight:500">/ ${w.total.toLocaleString('es')} brutas</span>`:`<span>${w.total.toLocaleString('es')}</span>`}</div><div class="mc-sub">${w.totalH} hábiles${_nc>0?' · '+_nc+' ruido excluido':''}</div>${dl(_tn,_ptn)}</div>
     <div class="mc c-green"><div class="mc-icon green"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="8" cy="8" r="6"/><path d="M8 4v4l2 2"/></svg></div><div class="mc-label">FRT mediana</div><div class="mc-val">${fmtM(w.frtMed)}</div><div class="mc-sub">objetivo &lt; 10m</div>${dl(w.frtMed,prev?.frtMed,true)}</div>
     <div class="mc c-${w.artMed<=SLA.art?'green':'amber'}"><div class="mc-icon ${w.artMed<=SLA.art?'green':'amber'}"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 2v4l3 2"/><circle cx="8" cy="8" r="6"/></svg></div><div class="mc-label">ART mediana</div><div class="mc-val">${fmtM(w.artMed)}</div><div class="mc-sub">objetivo &lt; 20m</div>${dl(w.artMed,prev?.artMed,true)}</div>
     <div class="mc c-${w.ttrMed<=SLA.ttr?'green':'red'}"><div class="mc-icon ${w.ttrMed<=SLA.ttr?'green':'red'}"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 3L6 10l-3-3"/></svg></div><div class="mc-label">TTR mediana</div><div class="mc-val">${fmtM(w.ttrMed)}</div><div class="mc-sub">objetivo &lt; 2h</div>${dl(w.ttrMed,prev?.ttrMed,true)}</div>`;
@@ -1033,7 +1049,9 @@ function renderHours(w,cid){
 
 // ── Categorías ──
 function renderCategorias(w){
-  const rawCats=w.cats||{};
+  const _nc=noiseCount(w);
+  const rawCats={...(w.cats||{})};
+  if(_nc>0&&rawCats['Otros']!=null)rawCats['Otros']=Math.max(0,(rawCats['Otros']||0)-_nc);
   const total=Object.values(rawCats).reduce((s,v)=>s+v,0)||1;
 
   // ── Group definitions ──
@@ -1116,8 +1134,10 @@ function renderCategorias(w){
     if(pct<=1){otrosSubs[cat]=(otrosSubs[cat]||0)+cnt;otrosTotal+=cnt;}
     else{standaloneCats.push([cat,cnt]);}
   });
-  // Also absorb "Otros" original sub-detail
-  Object.entries(w.otrosDetail||{}).forEach(([k,v])=>{otrosSubs[k]=(otrosSubs[k]||0)+v;});
+  // Also absorb "Otros" original sub-detail (excepto las de ruido, que van aparte y no se cuentan)
+  Object.entries(w.otrosDetail||{}).forEach(([k,v])=>{if(!NOISE_CATS_LIST.includes(k))otrosSubs[k]=(otrosSubs[k]||0)+v;});
+  const ruidoSubs={};
+  NOISE_CATS_LIST.forEach(k=>{const v=(w.otrosDetail||{})[k]||0;if(v)ruidoSubs[k]=v;});
 
   // Build rows
   const rows=[];
@@ -1212,10 +1232,25 @@ function renderCategorias(w){
     otrosEl.innerHTML='<div class="empty">Sin datos de subcategorías</div>';
   }
 
+  // ── Ruido excluido (se muestra pero no suma al total) ──
+  const ruidoEl=document.getElementById('ruidoBreakdown');
+  if(ruidoEl){
+    const ruidoSorted=Object.entries(ruidoSubs).sort((a,b)=>b[1]-a[1]);
+    if(ruidoSorted.length){
+      ruidoEl.innerHTML=`<table class="tbl"><thead><tr><th>Subcategoría</th><th class="r">Consultas</th></tr></thead><tbody>
+        ${ruidoSorted.map(([name,count])=>`<tr><td style="color:var(--ink3)">${name.replace('Otros - ','')}</td><td class="r" style="color:var(--ink3)">${count}</td></tr>`).join('')}
+        <tr style="background:var(--s2)"><td style="font-weight:600">Total excluido</td><td class="r" style="font-weight:600">${_nc}</td></tr>
+      </tbody></table>`;
+    } else {
+      ruidoEl.innerHTML='<div class="empty">Sin ruido detectado en este período</div>';
+    }
+  }
+
   // ── Footer notes ──
   const internalCount=w.internalCount||0;
   document.getElementById('catFooterNotes').innerHTML=
-    (internalCount>0?`<div>(*) No contempla <strong>${internalCount}</strong> conversaciones del equipo interno.</div>`:'');
+    (internalCount>0?`<div>(*) No contempla <strong>${internalCount}</strong> conversaciones del equipo interno.</div>`:'')+
+    (_nc>0?`<div>(*) No contempla <strong>${_nc}</strong> conversaciones de ruido (notificaciones automáticas / test) — ver desglose abajo.</div>`:'');
 
   // ── Bubble chart ──
   const bubData=rows.map((r,i)=>{const ms=r.ms;const sd=r.sd;if(!ms||!sd)return null;return{x:ms.avg,y:sd.pct,r:Math.max(5,Math.min(22,Math.sqrt(r.count)*1.8)),label:r.label,color:r.color};}).filter(Boolean);
