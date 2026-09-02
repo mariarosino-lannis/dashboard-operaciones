@@ -1140,8 +1140,13 @@ function renderCategorias(w){
     if(pct<=1){otrosSubs[cat]=(otrosSubs[cat]||0)+cnt;otrosTotal+=cnt;}
     else{standaloneCats.push([cat,cnt]);}
   });
-  // Also absorb "Otros" original sub-detail (excepto las de ruido, que van aparte y no se cuentan)
-  Object.entries(w.otrosDetail||{}).forEach(([k,v])=>{if(!NOISE_CATS_LIST.includes(k))otrosSubs[k]=(otrosSubs[k]||0)+v;});
+  // Also absorb "Otros" original sub-detail — SOLO las claves que normCat() efectivamente
+  // pliega dentro de 'Otros' (gestión de asesorías / "Otra"), sin contar el ruido (ya aparte).
+  // OJO: w.otrosDetail trae más categorías que esas (cualquier categoría <1%, incluso si ya
+  // tiene su propia fila o ya está dentro de un grupo, como "Referidos" en Ventas). Si se
+  // absorbieran todas acá, se duplicarían: sumarían tanto en su fila propia como en "Otros".
+  const OTROS_FOLD_KEYS=['Otros - gestión de asesorías','Otra'];
+  Object.entries(w.otrosDetail||{}).forEach(([k,v])=>{if(OTROS_FOLD_KEYS.includes(k))otrosSubs[k]=(otrosSubs[k]||0)+v;});
   const ruidoSubs={};
   NOISE_CATS_LIST.forEach(k=>{const v=(w.otrosDetail||{})[k]||0;if(v)ruidoSubs[k]=v;});
 
