@@ -213,13 +213,8 @@ body{font-family:'Inter',sans-serif;background:var(--paper);color:var(--ink);min
   </div>
 
   <div class="sb-section">
-    <div class="sb-label">Semanas guardadas</div>
-    <div class="period-pills" id="periodPillsWeeks"><div class="empty" style="padding:8px 0;font-size:11px;text-align:left;color:rgba(255,255,255,0.25)">Sin datos</div></div>
-  </div>
-
-  <div class="sb-section">
-    <div class="sb-label">Meses guardados</div>
-    <div class="period-pills" id="periodPillsMonths"><div class="empty" style="padding:8px 0;font-size:11px;text-align:left;color:rgba(255,255,255,0.25)">Sin datos</div></div>
+    <div class="sb-label">Períodos guardados</div>
+    <div class="period-pills" id="periodPills"><div class="empty" style="padding:8px 0;font-size:11px;text-align:left;color:rgba(255,255,255,0.25)">Sin datos</div></div>
   </div>
 
   <div class="sb-section">
@@ -336,10 +331,6 @@ body{font-family:'Inter',sans-serif;background:var(--paper);color:var(--ink);min
         <div class="card-header" style="margin-bottom:12px"><div><div class="card-title">Apertura de categoría "Otros"</div><div class="card-sub">Desglose de las subcategorías agrupadas</div></div></div>
         <div id="otrosBreakdown"><div class="empty">Sin datos</div></div>
       </div>
-      <div class="card" style="margin-bottom:16px">
-        <div class="card-header" style="margin-bottom:12px"><div><div class="card-title">Ruido excluido</div><div class="card-sub">Notificaciones automáticas y pruebas — se muestran pero no suman al total de consultas</div></div></div>
-        <div id="ruidoBreakdown"><div class="empty">Sin datos</div></div>
-      </div>
       <div class="card"><div class="card-header"><div><div class="card-title">Complejidad por categoría</div><div class="card-sub">Eje X = mensajes promedio · Eje Y = % same-day · Tamaño = volumen</div></div></div><div class="ch" style="height:280px"><canvas id="cBubble"></canvas></div></div>
     </div>
 
@@ -395,11 +386,6 @@ body{font-family:'Inter',sans-serif;background:var(--paper);color:var(--ink);min
       </div>
       <div id="sub-bot">
       <div class="mc-grid" id="botMcs"></div>
-      <div class="card" id="msgBillingCard" style="margin-bottom:16px">
-        <div class="card-header"><div><div class="card-title">Entrantes vs. salientes</div><div class="card-sub">Desde el 1/oct/2026 Meta cobra los salientes de servicio (humano + AI) — los entrantes siguen siendo gratis</div></div></div>
-        <div class="mc-grid" id="msgDirMcs"></div>
-        <div class="ch" style="height:200px;margin-top:16px"><canvas id="cMsgDirEvol"></canvas></div>
-      </div>
       <div class="g2">
         <div class="card"><div class="card-header"><div><div class="card-title">Flujo de conversaciones</div><div class="card-sub">Cómo interactúan bot y humano</div></div></div><div class="ch" style="height:220px"><canvas id="cBotFlow"></canvas></div></div>
         <div class="card"><div class="card-header"><div><div class="card-title">Tiempo de respuesta real por hora</div><div class="card-sub">Humano vs AI agent — mediana en minutos</div></div></div><div class="ch" style="height:220px"><canvas id="cBotRT"></canvas></div></div>
@@ -648,22 +634,23 @@ const SLA={frt:10,art:20,ttr:120};
 const MAX_CPH=4;
 const AV=['a0','a1','a2','a3'];
 const EQ_INT=new Set([318356816,315475410,295606873,340645465,318432393,318432542,318434168,331566697,316942904,318426014,343325858]);
-const EXCLUDE_CONTACTS=new Set(['338590743','326485789','415320204','405053937','395503910','411238335','389076205','324881294','395227721','411989881','330931132','387753916','332109842','411340452','321809883','332384170','318794941','354666100','354839550','321951367','332005827','341076424','351182784','483747469','484795194']);
+const EXCLUDE_CONTACTS=new Set(['338590743','326485789','415320204','405053937','395503910','411238335','389076205','324881294','395227721','411989881','330931132','387753916','332109842','411340452','321809883','332384170','318794941','354666100','354839550','321951367','332005827','341076424','351182784']);
 const CLOSED_BY={906585:'Mateo Lopez',906580:'Pablo Moreno',906560:'María Rosino',949998:'Camila Fernandez'};
+const EMAIL_AGENTS={'mateo.lopez':'Mateo Lopez','pablo.moreno':'Pablo Moreno','maria.rosino':'María Rosino','camila.fernandez':'Camila Fernandez','pablo.delucca':'Pablo De Lucca'};
+// Acepta ID numérico (sistema viejo) o email (sistema nuevo)
+function agentName(v){
+  const s=String(v==null?'':v).trim();if(!s)return '';
+  if(/^\d+(\.0)?$/.test(s))return CLOSED_BY[parseInt(s)]||'';
+  if(s.includes('@')){const k=s.split('@')[0].toLowerCase();return EMAIL_AGENTS[k]||k.split('.').map(x=>x.charAt(0).toUpperCase()+x.slice(1)).join(' ');}
+  return s;
+}
+// Tipo de período según duración: S=semanal (≤10d), Q=quincenal (11-20d), M=mensual (>20d)
+function periodType(days){return days<=10?'S':days<=20?'Q':'M';}
+function periodLabel(pt,from,startStr,endStr){return pt==='M'?MONTHS[from.getMonth()]+' '+from.getFullYear():(pt==='Q'?'Quinc. ':'Sem. ')+startStr+' – '+endStr;}
 const CHLBL={'contact':'Cliente inició','user':'Equipo inició','ctc_ads':'Anuncio','':'Desconocido'};
 
 // ── Helpers ──
-function normCat(r){if(!r)return'Sin categoría';const s=String(r).trim();if(['Impuestos','Impuestos provinciales','Deudas'].includes(s))return'Impuestos/Deuda';if(['Otros - gestión de asesorías','Otros - notificaciones domicilio fiscal electrónico','Otros - otras notificaciones al mail','Otros - test','Otra'].includes(s))return'Otros';return s||'Sin categoría';}
-
-// ── Ruido (categorías que se muestran pero no se cuentan en los totales) ──
-// Pedido de negocio: notificaciones automáticas / pruebas que no son consultas reales.
-// Se descuentan del total en TODOS lados (header, Resumen, Categorías) pero se siguen
-// mostrando aparte para no perder visibilidad. No requiere re-subir CSVs: se calcula
-// a partir de w.otrosDetail, que ya guarda estas 3 subcategorías con su nombre original
-// tanto en reportes viejos como nuevos.
-const NOISE_CATS_LIST=['Otros - notificaciones domicilio fiscal electrónico','Otros - otras notificaciones al mail','Otros - test'];
-function noiseCount(w){const od=(w&&w.otrosDetail)||{};return NOISE_CATS_LIST.reduce((s,k)=>s+(od[k]||0),0);}
-function totalNeto(w){return Math.max(0,(w?.total||0)-noiseCount(w));}
+function normCat(r){if(!r)return'Sin categoría';const s=String(r).trim();if(['Otros - gestión de asesorías','Otros - notificaciones domicilio fiscal electrónico','Otros - otras notificaciones al mail','Otros - test','Otra'].includes(s))return'Otros';return s||'Sin categoría';}
 function pm(v){if(!v)return null;const p=String(v).split(':');if(p.length!==3)return null;const[h,m,s]=p.map(Number);return isNaN(h)?null:h*60+m+s/60;}
 function avg(a){const x=a.filter(v=>v!=null&&!isNaN(v));return x.length?x.reduce((s,v)=>s+v,0)/x.length:0;}
 function med(a){const x=[...a.filter(v=>v!=null&&!isNaN(v))].sort((a,b)=>a-b);if(!x.length)return 0;const m=Math.floor(x.length/2);return x.length%2?x[m]:(x[m-1]+x[m])/2;}
@@ -691,9 +678,9 @@ async function fetchWeeks(){
     const from=new Date((r.week_start||'2000-01-01')+'T12:00:00');
     const to=new Date((r.week_end||r.week_start||'2000-01-01')+'T12:00:00');
     const diff=Math.round((to-from)/(1000*60*60*24))+1;
-    const isM=diff>10;
-    const fl=isM?MONTHS[from.getMonth()]+' '+from.getFullYear():'Sem. '+(r.week_start||'').substring(5).replace('-','/')+' – '+(r.week_end||'').substring(5).replace('-','/');
-    return{id:r.id,week:r.week_label,fl,isM,ws:r.week_start,we:r.week_end,
+    const pt=periodType(diff);const isM=pt==='M';
+    const fl=periodLabel(pt,from,(r.week_start||'').substring(5).replace('-','/'),(r.week_end||'').substring(5).replace('-','/'));
+    return{id:r.id,week:r.week_label,fl,isM,pt,ws:r.week_start,we:r.week_end,
       total:r.total||0,totalH:r.total_habil||0,workDays:r.working_days||0,availHrs:r.available_hours||0,
       frtMed:r.frt_med||0,frtAvg:r.frt_avg||0,artMed:r.art_med||0,artAvg:r.art_avg||0,ttrMed:r.ttr_med||0,ttrAvg:r.ttr_avg||0,
       days:r.days||{},hours:r.hours||{},cats:r.cats||{},catTimes:r.cat_times||{},otrosDetail:r.otros_detail||{},internalCount:r.internal_count||0,
@@ -709,7 +696,7 @@ async function fetchWeeks(){
 
 async function fetchMsgReports(){
   const{data,error}=await db.from('message_reports').select('*').order('period_start',{ascending:false});
-  if(error){toast('Error al cargar mensajes: '+error.message,true);return;}
+  if(error)return;
   msgReports=(data||[]).map(r=>({
     id:r.id,label:r.period_label,start:r.period_start,end:r.period_end,
     totalMsgs:r.total_msgs||0,humanMsgs:r.human_msgs||0,botMsgs:r.bot_msgs||0,
@@ -719,10 +706,8 @@ async function fetchMsgReports(){
     aiRtMed:r.ai_rt_med||0,aiRtAvg:r.ai_rt_avg||0,
     broadcasts:r.broadcasts||{},hourlyHuman:r.hourly_human_rt||{},hourlyAi:r.hourly_ai_rt||{},
     flowStats:r.flow_stats||{},by:r.uploaded_by,
-    incomingMsgs:(r.flow_stats||{}).incoming??null,outgoingMsgs:(r.flow_stats||{}).outgoing??null,serviceOutgoingMsgs:(r.flow_stats||{}).serviceOutgoing??null,
     templates:r.templates||{},escGapMed:r.escalation_gap_med||0,escGapAvg:r.escalation_gap_avg||0,escGapsDist:r.escalation_gaps_dist||[],msgsByDay:r.msgs_by_day||{}
   }));
-  if(msgReports.length) activeMsgIdx=0;
   renderMsgPills();
   renderBot();
 }
@@ -766,8 +751,8 @@ function computeWeek(rows,hols,actAgents){
     const dt=new Date(f+'T12:00:00');const dow=dt.getDay();
     const isWE=dow===0||dow===6,isFer=hols.has(f),inH=h>=9&&h<18;
     const habTime=!isWE&&!isFer&&inH;
-    const cid=parseInt(r[iCID]);const cbid=parseInt(r[iCB]);
-    const isInt=EQ_INT.has(cid);const agent=CLOSED_BY[cbid]||'';
+    const cid=parseInt(r[iCID]);
+    const isInt=EQ_INT.has(cid);const agent=agentName(r[iCB]);
     const src=String(r[iSrc]||'').trim();
     const hasBot=String(r[iNote]||'').toLowerCase().includes('workflow');
     const numA=parseInt(r[iNA])||0;
@@ -778,9 +763,9 @@ function computeWeek(rows,hols,actAgents){
     const contactId=String(r[iCID]||'').trim();
     const rawCh=r[iOpenedByChannel];
     const channelId=rawCh?String(rawCh).trim().replace('.0',''):'0';
-    return{f,h,ds:DN[dow],dow,isInt,agent,habTime,catN:normCat(r[iCat]),
+    return{f,h,channelId,ds:DN[dow],dow,isInt,agent,habTime,catN:normCat(r[iCat]),
       frt:pm(r[iFRT]),art:pm(r[iART]),ttr:pm(r[iTTR]),tta:pm(r[iTTA]),
-      src,hasBot,reassigned:numA>1,sameDay,totalMsgs,aiClosed,contactId,channelId};
+      src,hasBot,reassigned:numA>1,sameDay,totalMsgs,aiClosed,contactId};
   });
 
     const internalCount=processed.filter(r=>r.isInt).length;
@@ -790,7 +775,7 @@ function computeWeek(rows,hols,actAgents){
   const cats={},days={},hours={};
   allR.forEach(r=>{cats[r.catN]=(cats[r.catN]||0)+1;if(['lunes','martes','miércoles','jueves','viernes'].includes(r.ds))days[r.ds]=(days[r.ds]||0)+1;if(r.h>=0&&r.h<=23)hours[r.h]=(hours[r.h]||0)+1;});
   // Build otrosRaw AFTER cats — includes explicit Otros-* AND <1% cats
-  const ALWAYS_VIS=new Set(['Facturación','Facturas AI','Impuestos','Impuestos provinciales','Deudas','Deudas AI','SAS / RI','Sueldos','Baja servicios Lannis']);
+  const ALWAYS_VIS=new Set(['Facturación','Facturas AI','Impuestos','Impuestos provinciales','Deudas','SAS / RI','Sueldos','Baja servicios Lannis']);
   const catsTotal=Object.values(cats).reduce((s,v)=>s+v,0)||1;
   const otrosRaw={};
   // Iterate raw data rows (not processed) to get original category names
@@ -827,7 +812,7 @@ function computeWeek(rows,hols,actAgents){
       contactMap[r.contactId].count++;
       contactMap[r.contactId].cats[r.catN]=(contactMap[r.contactId].cats[r.catN]||0)+1;
       if(r.f>contactMap[r.contactId].last)contactMap[r.contactId].last=r.f;
-      if(r.channelId==='416252'||r.channelId===416252||r.channelId==='416252.0')contactMap[r.contactId].hasWA=true;
+      if(/whatsapp/i.test(r.channelId)||r.channelId==='416252')contactMap[r.contactId].hasWA=true;
     }
   });
 
@@ -857,11 +842,11 @@ function computeWeek(rows,hols,actAgents){
   const aH=wd*9;
   Object.values(agents).forEach(a=>{a.cph=aH>0?+(a.count/aH).toFixed(2):0;});
 
-  const from=new Date(sd[0]+'T12:00:00');const diff=Math.round((e-s)/(1000*60*60*24))+1;const isM=diff>10;
-  const fl=isM?MONTHS[from.getMonth()]+' '+from.getFullYear():'Sem. '+sd[0].substring(5).replace('-','/')+' – '+sd[sd.length-1].substring(5).replace('-','/');
+  const from=new Date(sd[0]+'T12:00:00');const diff=Math.round((e-s)/(1000*60*60*24))+1;const pt=periodType(diff);const isM=pt==='M';
+  const fl=periodLabel(pt,from,sd[0].substring(5).replace('-','/'),sd[sd.length-1].substring(5).replace('-','/'));
   const allFRT=habR.map(r=>r.frt),allART=habR.map(r=>r.art),allTTR=habR.map(r=>r.ttr);
 
-  return{week:sd[0]+' al '+sd[sd.length-1],ws:sd[0],we:sd[sd.length-1],fl,isM,
+  return{week:sd[0]+' al '+sd[sd.length-1],ws:sd[0],we:sd[sd.length-1],fl,isM,pt,
     total:allR.length,totalH:habR.length,workDays:wd,availHrs:aH,
     frtMed:+med(allFRT).toFixed(1),frtAvg:+avg(allFRT).toFixed(1),
     artMed:+med(allART).toFixed(1),artAvg:+avg(allART).toFixed(1),
@@ -927,26 +912,16 @@ async function confirmUpload(){
 
 // ── Pills ──
 function renderPills(){
-  const elW=document.getElementById('periodPillsWeeks');
-  const elM=document.getElementById('periodPillsMonths');
-  if(!allWeeks.length){
-    elW.innerHTML='<div style="font-size:11px;color:rgba(255,255,255,0.25);padding:4px 0">Sin datos</div>';
-    elM.innerHTML='<div style="font-size:11px;color:rgba(255,255,255,0.25);padding:4px 0">Sin datos</div>';
-    return;
-  }
-  function pillHtml(w,i){
-    return`<div class="period-pill ${i===activeIdx?'on':''}" onclick="selPeriod(${i})">
+  const el=document.getElementById('periodPills');
+  if(!allWeeks.length){el.innerHTML='<div style="font-size:11px;color:rgba(255,255,255,0.25);padding:4px 0">Sin datos</div>';return;}
+  el.innerHTML=allWeeks.map((w,i)=>`
+    <div class="period-pill ${i===activeIdx?'on':''}" onclick="selPeriod(${i})">
       <div class="period-pill-info">
         <div class="period-pill-name">${w.fl||w.week.substring(0,10)}</div>
         <div class="period-pill-sub">${w.total} consultas${w.by?' · '+w.by:''}</div>
       </div>
       <div class="period-pill-del" onclick="event.stopPropagation();delPeriod(${i},'${w.week}')">✕</div>
-    </div>`;
-  }
-  const weekPills=allWeeks.map((w,i)=>w.isM?null:pillHtml(w,i)).filter(Boolean).join('');
-  const monthPills=allWeeks.map((w,i)=>w.isM?pillHtml(w,i):null).filter(Boolean).join('');
-  elW.innerHTML=weekPills||'<div style="font-size:11px;color:rgba(255,255,255,0.25);padding:4px 0">Sin semanas</div>';
-  elM.innerHTML=monthPills||'<div style="font-size:11px;color:rgba(255,255,255,0.25);padding:4px 0">Sin meses</div>';
+    </div>`).join('');
 }
 
 function renderMsgPills(){
@@ -1009,10 +984,9 @@ function getW(){
 function renderAll(){
   if(!allWeeks.length){document.getElementById('pageTitle').textContent='Dashboard Operaciones';document.getElementById('pageMeta').textContent='Cargá el primer reporte para comenzar';return;}
   const w=getW();
-  const badge=w.isM?'<span class="hbadge m">Mensual</span>':'<span class="hbadge w">Semanal</span>';
+  const badge=w.pt==='M'?'<span class="hbadge m">Mensual</span>':w.pt==='Q'?'<span class="hbadge m" style="background:var(--amberbg);color:var(--amber)">Quincenal</span>':'<span class="hbadge w">Semanal</span>';
   document.getElementById('pageTitle').textContent=w.fl||w.week;
-  {const _nc=noiseCount(w),_tn=totalNeto(w);
-  document.getElementById('pageMeta').textContent=(_nc>0?_tn+' consultas ('+w.total+' brutas, '+_nc+' de ruido excluido) · ':w.total+' consultas · ')+w.totalH+' hábiles'+(w.by?' · '+w.by:'');}
+  document.getElementById('pageMeta').textContent=w.total+' consultas · '+w.totalH+' hábiles'+(w.by?' · '+w.by:'');
   document.getElementById('headerBadge').innerHTML=badge;
   renderResumen(w);renderCategorias(w);renderTiempos(w);renderCapacidad(w);
   renderConversaciones(w);renderClientes(w);renderBot();renderComparativa(w);
@@ -1021,11 +995,10 @@ function renderAll(){
 
 // ── Resumen ──
 function renderResumen(w){
-  const prev=allWeeks.find((_,i)=>i>activeIdx&&allWeeks[i].isM===w.isM)||null;
+  const prev=allWeeks.find((_,i)=>i>activeIdx&&allWeeks[i].pt===w.pt)||null;
   function dl(cur,pv,lo=false){if(!prev||pv==null||Math.abs(cur-pv)<0.1)return'';const d=cur-pv;const g=lo?(d<0):(d>0);return'<div class="mc-delta '+(g?'up':'dn')+'">'+(d>0?'↑':'↓')+' '+Math.abs(Math.round(d))+' vs ant.</div>';}
-  const _nc=noiseCount(w),_tn=totalNeto(w),_pnc=prev?noiseCount(prev):null,_ptn=prev!=null?totalNeto(prev):null;
   document.getElementById('mcs').innerHTML=`
-    <div class="mc c-accent"><div class="mc-icon accent"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12h3V6H2zM6 12h3V3H6zM10 12h3V8h-3z"/></svg></div><div class="mc-label">Consultas totales</div><div class="mc-val" style="display:flex;align-items:baseline;gap:9px">${_nc>0?`<span>${_tn.toLocaleString('es')}</span><span style="font-size:13px;color:var(--ink3);font-weight:500">/ ${w.total.toLocaleString('es')} brutas</span>`:`<span>${w.total.toLocaleString('es')}</span>`}</div><div class="mc-sub">${w.totalH} hábiles${_nc>0?' · '+_nc+' ruido excluido':''}</div>${dl(_tn,_ptn)}</div>
+    <div class="mc c-accent"><div class="mc-icon accent"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12h3V6H2zM6 12h3V3H6zM10 12h3V8h-3z"/></svg></div><div class="mc-label">Consultas totales</div><div class="mc-val">${w.total.toLocaleString('es')}</div><div class="mc-sub">${w.totalH} hábiles</div>${dl(w.total,prev?.total)}</div>
     <div class="mc c-green"><div class="mc-icon green"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="8" cy="8" r="6"/><path d="M8 4v4l2 2"/></svg></div><div class="mc-label">FRT mediana</div><div class="mc-val">${fmtM(w.frtMed)}</div><div class="mc-sub">objetivo &lt; 10m</div>${dl(w.frtMed,prev?.frtMed,true)}</div>
     <div class="mc c-${w.artMed<=SLA.art?'green':'amber'}"><div class="mc-icon ${w.artMed<=SLA.art?'green':'amber'}"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 2v4l3 2"/><circle cx="8" cy="8" r="6"/></svg></div><div class="mc-label">ART mediana</div><div class="mc-val">${fmtM(w.artMed)}</div><div class="mc-sub">objetivo &lt; 20m</div>${dl(w.artMed,prev?.artMed,true)}</div>
     <div class="mc c-${w.ttrMed<=SLA.ttr?'green':'red'}"><div class="mc-icon ${w.ttrMed<=SLA.ttr?'green':'red'}"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 3L6 10l-3-3"/></svg></div><div class="mc-label">TTR mediana</div><div class="mc-val">${fmtM(w.ttrMed)}</div><div class="mc-sub">objetivo &lt; 2h</div>${dl(w.ttrMed,prev?.ttrMed,true)}</div>`;
@@ -1055,216 +1028,68 @@ function renderHours(w,cid){
 
 // ── Categorías ──
 function renderCategorias(w){
-  const _nc=noiseCount(w);
-  const rawCats={...(w.cats||{})};
-  if(_nc>0&&rawCats['Otros']!=null)rawCats['Otros']=Math.max(0,(rawCats['Otros']||0)-_nc);
-  const total=Object.values(rawCats).reduce((s,v)=>s+v,0)||1;
-
-  // ── Group definitions ──
-  // Each group: { label, color, subcats: [{display, keys[]}] }
-  // keys[] = raw category names that map to this sub-item
-  const GROUPS=[
-    {label:'Facturación',color:'#6366f1',subcats:[
-      {display:'Facturas AI',keys:['Facturas AI']},
-      {display:'Facturación manual',keys:['Facturación','Facturacion']},
-    ]},
-    {label:'Impuestos',color:'#10b981',subcats:[
-      {display:'Impuestos mensuales',keys:['Impuestos','Impuestos provinciales','Impuestos/Deuda']},
-      {display:'Impuestos anuales',keys:['Impuestos anuales']},
-      {display:'Certificación de ingresos',keys:['Certificación de ingresos','Certificación de ingre...']},
-    ]},
-    {label:'Deuda / Pagos',color:'#f59e0b',subcats:[
-      {display:'Deuda',keys:['Deuda','Deudas']},
-      {display:'Deuda AI',keys:['Deuda AI']},
-      {display:'Pago mensual',keys:['Pago mensual']},
-    ]},
-    {label:'Ventas',color:'#f97316',subcats:[
-      {display:'Ventas - Monotributistas',keys:['Ventas - Monotributistas','Ventas - Monotributis...']},
-      {display:'Ventas - RI',keys:['Ventas - RI']},
-      {display:'Ventas - SAS',keys:['Ventas - SAS']},
-      {display:'Ventas - contador',keys:['Ventas - contador']},
-      {display:'Referidos',keys:['Referidos']},
-      {display:'Consulta sobre Lannis',keys:['Consulta sobre Lannis']},
-    ]},
-    {label:'RI y SAS',color:'#14b8a6',subcats:[
-      {display:'RI',keys:['RI']},
-      {display:'SAS',keys:['SAS']},
-      {display:'SAS / RI',keys:['SAS / RI']},
-    ]},
-  ];
-  const GROUP_KEYS_DIRECT={
-    // 'Facturación' e 'Impuestos' no tienen conteo propio aparte de sus subcats:
-    // la raw category 'Facturación' ya está contemplada en el subcat 'Facturación manual',
-    // y la raw category 'Impuestos' ya está en el subcat 'Impuestos mensuales'.
-    // Si no se vacían acá, esas claves se suman dos veces (una como "directa" del grupo
-    // y otra dentro del subcat), inflando el total del grupo por encima de la suma real de sus subcats.
-    'Facturación':[],
-    'Impuestos':[],
-  };
-
-  // Collect all keys claimed by groups
-  const claimedKeys=new Set();
-  GROUPS.forEach(g=>{
-    g.subcats.forEach(s=>s.keys.forEach(k=>claimedKeys.add(k)));
-    (GROUP_KEYS_DIRECT[g.label]||[g.label]).forEach(k=>claimedKeys.add(k));
-  });
-
-  // Build group totals
-  function sumKeys(keys){return keys.reduce((s,k)=>s+(rawCats[k]||0),0);}
-  function mergedTimes(keys){
-    const frts=[],ttrs=[];
-    keys.forEach(k=>{const ct=w.catTimes?.[k];if(ct){if(ct.frtAvg)frts.push(ct.frtAvg);if(ct.ttrAvg)ttrs.push(ct.ttrAvg);}});
-    if(!frts.length&&!ttrs.length)return null;
-    return{frtAvg:frts.length?frts.reduce((a,b)=>a+b,0)/frts.length:0,ttrAvg:ttrs.length?ttrs.reduce((a,b)=>a+b,0)/ttrs.length:0};
-  }
-  function mergedSD(keys){
-    let tot=0,sd=0;
-    keys.forEach(k=>{const s=w.sdBycat?.[k];if(s){tot+=s.total;sd+=s.sd;}});
-    if(!tot)return null;
-    return{pct:+((sd/tot)*100).toFixed(1)};
-  }
-  function mergedMsgs(keys){
-    let totC=0,totM=0;
-    keys.forEach(k=>{const m=w.msgsByCat?.[k];if(m){totC+=m.count;totM+=m.count*m.avg;}});
-    if(!totC)return null;
-    return{avg:+(totM/totC).toFixed(1)};
-  }
-
-  // Remaining (unclaimed) cats — >1% appear as standalone rows, ≤1% go into Otros
-  const otrosSubs={};
-  let otrosTotal=rawCats['Otros']||0;
-  const standaloneCats=[];
-  Object.entries(rawCats).forEach(([cat,cnt])=>{
-    if(claimedKeys.has(cat)||cat==='Otros'||cat==='Otra')return;
+  const rawCats=Object.entries(w.cats);
+  const total=rawCats.reduce((s,[,v])=>s+v,0)||1;
+  // Auto-group categories < 1% into Otros
+  const ALWAYS_VISIBLE=new Set(['Facturación','Facturas AI','Impuestos','Impuestos provinciales','Deudas','SAS / RI','Sueldos','Baja servicios Lannis']);
+  const mainCats=[],smallCats=[];
+  rawCats.forEach(([cat,cnt])=>{
     const pct=cnt/total*100;
-    if(pct<=1){otrosSubs[cat]=(otrosSubs[cat]||0)+cnt;otrosTotal+=cnt;}
-    else{standaloneCats.push([cat,cnt]);}
+    if(cat==='Otros'||pct>=1||ALWAYS_VISIBLE.has(cat)) mainCats.push([cat,cnt]);
+    else smallCats.push([cat,cnt]);
   });
-  // Also absorb "Otros" original sub-detail — SOLO las claves que normCat() efectivamente
-  // pliega dentro de 'Otros' (gestión de asesorías / "Otra"), sin contar el ruido (ya aparte).
-  // OJO: w.otrosDetail trae más categorías que esas (cualquier categoría <1%, incluso si ya
-  // tiene su propia fila o ya está dentro de un grupo, como "Referidos" en Ventas). Si se
-  // absorbieran todas acá, se duplicarían: sumarían tanto en su fila propia como en "Otros".
-  const OTROS_FOLD_KEYS=['Otros - gestión de asesorías','Otra'];
-  Object.entries(w.otrosDetail||{}).forEach(([k,v])=>{if(OTROS_FOLD_KEYS.includes(k))otrosSubs[k]=(otrosSubs[k]||0)+v;});
-  const ruidoSubs={};
-  NOISE_CATS_LIST.forEach(k=>{const v=(w.otrosDetail||{})[k]||0;if(v)ruidoSubs[k]=v;});
-
-  // Build rows
-  const rows=[];
-  GROUPS.forEach((g,gi)=>{
-    const directKeys=GROUP_KEYS_DIRECT[g.label]||[g.label];
-    const allGroupKeys=[...directKeys,...g.subcats.flatMap(s=>s.keys)];
-    const groupTotal=sumKeys(allGroupKeys);
-    if(!groupTotal)return;
-    const ct=mergedTimes(allGroupKeys);const sd=mergedSD(allGroupKeys);const ms=mergedMsgs(allGroupKeys);
-    rows.push({type:'group',label:g.label,count:groupTotal,color:g.color,ct,sd,ms,subcats:g.subcats,gi});
+  // Merge small cats into Otros
+  if(smallCats.length){
+    const otrosExtra=smallCats.reduce((s,[,v])=>s+v,0);
+    const otrosIdx=mainCats.findIndex(([c])=>c==='Otros');
+    if(otrosIdx>=0) mainCats[otrosIdx][1]+=otrosExtra;
+    else mainCats.push(['Otros',otrosExtra]);
+    // small cats already captured in otrosDetail at upload time
+  }
+  const sorted=mainCats.sort((a,b)=>{
+    if(a[0]==='Otros')return 1;
+    if(b[0]==='Otros')return -1;
+    return b[1]-a[1];
   });
-  // Add standalone cats (unclaimed, >1%) as individual rows
-  standaloneCats.forEach(([cat,cnt],si)=>{
-    const ct=w.catTimes?.[cat]||null;const sd=w.sdBycat?.[cat]||null;const ms=w.msgsByCat?.[cat]||null;
-    const ctN=ct?{frtAvg:ct.frtAvg||0,ttrAvg:ct.ttrAvg||0}:null;
-    const sdN=sd?{pct:sd.pct}:null;
-    const msN=ms?{avg:ms.avg}:null;
-    rows.push({type:'standalone',label:cat,count:cnt,color:PAL[(GROUPS.length+si)%PAL.length],ct:ctN,sd:sdN,ms:msN,subcats:[]});
-  });
-  // Add Otros as group
-  if(otrosTotal>0){
-    rows.push({type:'group',label:'Otros',count:otrosTotal,color:'#94a3b8',ct:null,sd:null,ms:null,subcats:[],gi:GROUPS.length,otrosSubs});
-  }
-  // Sort: groups+standalones by count desc, Otros always last
-  rows.sort((a,b)=>{if(a.label==='Otros')return 1;if(b.label==='Otros')return -1;return b.count-a.count;});
-  const mx=rows[0]?.count||1;
-
-  function sdBadge(sd){
-    if(!sd)return'—';
-    return sd.pct>=90?`<span class="badge-ok">${sd.pct}%</span>`:sd.pct>=70?`<span class="badge-mid">${sd.pct}%</span>`:`<span class="badge-fail">${sd.pct}%</span>`;
-  }
-  function barCell(count,color){
-    return`<div style="display:flex;align-items:center;justify-content:flex-end;gap:6px"><div style="width:60px;height:4px;background:var(--s3);border-radius:2px;overflow:hidden"><div style="width:${Math.round(count/mx*100)}%;height:100%;background:${color};border-radius:2px"></div></div>${count}</div>`;
-  }
-
-  let html='';
-  rows.forEach(r=>{
-    // Group header row
-    html+=`<tr>
-      <td><span class="cat-dot" style="background:${r.color}"></span><span style="font-weight:600">${r.label}</span></td>
-      <td class="r">${barCell(r.count,r.color)}</td>
-      <td class="r"><strong>${(r.count/total*100).toFixed(1)}%</strong></td>
-      <td class="r" style="color:${r.ct?(r.ct.frtAvg<=SLA.frt?'var(--green)':'var(--red)'):'var(--ink3)'}">${r.ct&&r.ct.frtAvg?hms(r.ct.frtAvg):'—'}</td>
-      <td class="r" style="color:${r.ct?(r.ct.ttrAvg<=SLA.ttr?'var(--green)':'var(--red)'):'var(--ink3)'}">${r.ct&&r.ct.ttrAvg?hms(r.ct.ttrAvg):'—'}</td>
-      <td class="r">${r.ms?r.ms.avg+'msg':'—'}</td>
-      <td class="r">${sdBadge(r.sd)}</td>
+  const mx=sorted[0]?.[1]||1;
+  document.getElementById('catBody').innerHTML=sorted.map(([name,count],i)=>{
+    const ct=w.catTimes?.[name];const sd=w.sdBycat?.[name];const ms=w.msgsByCat?.[name];
+    const sdBadge=sd?(sd.pct>=90?'<span class="badge-ok">'+sd.pct+'%</span>':sd.pct>=70?'<span class="badge-mid">'+sd.pct+'%</span>':'<span class="badge-fail">'+sd.pct+'%</span>'):'—';
+    return`<tr>
+      <td><span class="cat-dot" style="background:${PAL[i%PAL.length]}"></span><span style="font-weight:500">${name}</span></td>
+      <td class="r"><div style="display:flex;align-items:center;justify-content:flex-end;gap:6px"><div style="width:60px;height:4px;background:var(--s3);border-radius:2px;overflow:hidden"><div style="width:${Math.round(count/mx*100)}%;height:100%;background:${PAL[i%PAL.length]};border-radius:2px"></div></div>${count}</div></td>
+      <td class="r">${(count/total*100).toFixed(1)}%</td>
+      <td class="r" style="color:${ct?(ct.frtAvg<=SLA.frt?'var(--green)':'var(--red)'):'var(--ink3)'}">${ct?hms(ct.frtAvg):'—'}</td>
+      <td class="r" style="color:${ct?(ct.ttrAvg<=SLA.ttr?'var(--green)':'var(--red)'):'var(--ink3)'}">${ct?hms(ct.ttrAvg):'—'}</td>
+      <td class="r">${ms?ms.avg+'msg':'—'}</td>
+      <td class="r">${sdBadge}</td>
     </tr>`;
-    // Sub-rows
-    if(r.subcats&&r.subcats.length){
-      r.subcats.forEach(sub=>{
-        const subCount=sumKeys(sub.keys);
-        if(!subCount)return;
-        const subCt=mergedTimes(sub.keys);const subSd=mergedSD(sub.keys);const subMs=mergedMsgs(sub.keys);
-        html+=`<tr style="background:var(--s2)">
-          <td style="padding-left:28px;color:var(--ink3);font-size:11px">· ${sub.display}</td>
-          <td class="r" style="font-size:11px">${barCell(subCount,r.color+'99')}</td>
-          <td class="r" style="font-size:11px;color:var(--ink3)">${(subCount/total*100).toFixed(1)}%</td>
-          <td class="r" style="color:${subCt?(subCt.frtAvg<=SLA.frt?'var(--green)':'var(--red)'):'var(--ink3)'};font-size:11px">${subCt&&subCt.frtAvg?hms(subCt.frtAvg):'—'}</td>
-          <td class="r" style="color:${subCt?(subCt.ttrAvg<=SLA.ttr?'var(--green)':'var(--red)'):'var(--ink3)'};font-size:11px">${subCt&&subCt.ttrAvg?hms(subCt.ttrAvg):'—'}</td>
-          <td class="r" style="font-size:11px">${subMs?subMs.avg+'msg':'—'}</td>
-          <td class="r" style="font-size:11px">${sdBadge(subSd)}</td>
-        </tr>`;
-      });
-    }
-    // Otros sub-breakdown inline
-    if(r.label==='Otros'&&r.otrosSubs){
-      Object.entries(r.otrosSubs).sort((a,b)=>b[1]-a[1]).forEach(([name,cnt])=>{
-        if(!cnt)return;
-        html+=`<tr style="background:var(--s2)">
-          <td style="padding-left:28px;color:var(--ink3);font-size:11px">· ${name.replace('Otros - ','').replace('Otros-','')}</td>
-          <td class="r" style="font-size:11px">${barCell(cnt,'#94a3b899')}</td>
-          <td class="r" style="font-size:11px;color:var(--ink3)">${(cnt/total*100).toFixed(1)}%</td>
-          <td class="r" style="color:var(--ink3);font-size:11px">—</td>
-          <td class="r" style="color:var(--ink3);font-size:11px">—</td>
-          <td class="r" style="font-size:11px">—</td>
-          <td class="r" style="font-size:11px">—</td>
-        </tr>`;
-      });
-    }
-  });
-  document.getElementById('catBody').innerHTML=html;
-
-  // ── Otros breakdown card (kept for compatibility) ──
-  const otrosSorted=Object.entries(otrosSubs).sort((a,b)=>b[1]-a[1]);
+  }).join('');
+  // ── PUNTO 4: Otros breakdown ──
+  // Merge auto-grouped small cats into Otros breakdown
+  const otrosSubcats=w.otrosDetail||{};
+  const otrosSorted=Object.entries(otrosSubcats).sort((a,b)=>b[1]-a[1]);
   const otrosEl=document.getElementById('otrosBreakdown');
   if(otrosSorted.length){
-    const otrosTot=otrosSorted.reduce((s,[,v])=>s+v,0)||1;
+    const otrosTotal=otrosSorted.reduce((s,[,v])=>s+v,0)||1;
     otrosEl.innerHTML=`<table class="tbl"><thead><tr><th>Subcategoría</th><th class="r">Consultas</th><th class="r">%</th></tr></thead><tbody>
-      ${otrosSorted.map(([name,count])=>`<tr><td>${name.replace('Otros - ','').replace('Otros-','')}</td><td class="r">${count}</td><td class="r">${(count/otrosTot*100).toFixed(1)}%</td></tr>`).join('')}
+      ${otrosSorted.map(([name,count])=>`<tr><td>${name}</td><td class="r">${count}</td><td class="r">${(count/otrosTotal*100).toFixed(1)}%</td></tr>`).join('')}
     </tbody></table>`;
   } else {
-    otrosEl.innerHTML='<div class="empty">Sin datos de subcategorías</div>';
+    otrosEl.innerHTML='<div class="empty">Sin datos de subcategorías — recargá el reporte para obtener este desglose</div>';
   }
 
-  // ── Ruido excluido (se muestra pero no suma al total) ──
-  const ruidoEl=document.getElementById('ruidoBreakdown');
-  if(ruidoEl){
-    const ruidoSorted=Object.entries(ruidoSubs).sort((a,b)=>b[1]-a[1]);
-    if(ruidoSorted.length){
-      ruidoEl.innerHTML=`<table class="tbl"><thead><tr><th>Subcategoría</th><th class="r">Consultas</th></tr></thead><tbody>
-        ${ruidoSorted.map(([name,count])=>`<tr><td style="color:var(--ink3)">${name.replace('Otros - ','')}</td><td class="r" style="color:var(--ink3)">${count}</td></tr>`).join('')}
-        <tr style="background:var(--s2)"><td style="font-weight:600">Total excluido</td><td class="r" style="font-weight:600">${_nc}</td></tr>
-      </tbody></table>`;
-    } else {
-      ruidoEl.innerHTML='<div class="empty">Sin ruido detectado en este período</div>';
-    }
-  }
-
-  // ── Footer notes ──
+  // ── PUNTO 5: Footer notes ──
   const internalCount=w.internalCount||0;
+  const otrosDesc=otrosSorted.length?
+    'Otros: '+otrosSorted.map(([n,v])=>`${v} de ${n.replace('Otros - ','').replace('Otra','otras')}`).join(', ')+'.':
+    '';
   document.getElementById('catFooterNotes').innerHTML=
-    (internalCount>0?`<div>(*) No contempla <strong>${internalCount}</strong> conversaciones del equipo interno.</div>`:'')+
-    (_nc>0?`<div>(*) No contempla <strong>${_nc}</strong> conversaciones de ruido (notificaciones automáticas / test) — ver desglose abajo.</div>`:'');
+    (internalCount>0?`<div>(*) No contempla <strong>${internalCount}</strong> conversaciones del equipo interno.</div>`:'')
+    +(otrosDesc?`<div>${otrosDesc}</div>`:'');
 
   // ── Bubble chart ──
-  const bubData=rows.map((r,i)=>{const ms=r.ms;const sd=r.sd;if(!ms||!sd)return null;return{x:ms.avg,y:sd.pct,r:Math.max(5,Math.min(22,Math.sqrt(r.count)*1.8)),label:r.label,color:r.color};}).filter(Boolean);
+  const bubData=sorted.map(([cat,count],i)=>{const ms=w.msgsByCat?.[cat];const sd=w.sdBycat?.[cat];if(!ms||!sd)return null;return{x:ms.avg,y:sd.pct,r:Math.max(5,Math.min(22,Math.sqrt(count)*1.8)),label:cat,color:PAL[i%PAL.length]};}).filter(Boolean);
   dch('cBubble');const ctx=document.getElementById('cBubble');
   if(ctx&&bubData.length){charts['cBubble']=new Chart(ctx,{type:'bubble',data:{datasets:bubData.map(d=>({label:d.label,data:[{x:d.x,y:d.y,r:d.r}],backgroundColor:d.color+'aa',borderColor:d.color,borderWidth:1.5}))},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${c.raw.x}msg · ${c.raw.y}% same-day`}}},scales:{x:{title:{display:true,text:'Mensajes promedio',color:'#8a8a96',font:{size:10}},grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#8a8a96'}},y:{title:{display:true,text:'% mismo día',color:'#8a8a96',font:{size:10}},grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#8a8a96'},min:0,max:110}}}});}
 }
@@ -1375,7 +1200,6 @@ function renderBot(){
   const mr=msgReports[activeMsgIdx];
   if(!mr){
     document.getElementById('botMcs').innerHTML='<div class="empty" style="grid-column:span 4">Sin datos de mensajes — cargá el CSV de mensajes con el botón verde.</div>';
-    document.getElementById('msgDirMcs').innerHTML='<div class="empty" style="grid-column:span 3">Sin datos</div>';
     document.getElementById('broadcastList').innerHTML='<div class="empty">Sin datos</div>';
     document.getElementById('msgCompContent').innerHTML='<div class="empty">Sin datos</div>';
     return;
@@ -1385,29 +1209,6 @@ function renderBot(){
     <div class="mc c-green"><div class="mc-icon green"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="8" cy="8" r="6"/><path d="M8 4v4l2 2"/></svg></div><div class="mc-label">RT humano mediana</div><div class="mc-val">${mr.humanRtMed}m</div><div class="mc-sub">AI: ${mr.aiRtMed}m</div></div>
     <div class="mc c-amber"><div class="mc-icon amber"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 2l2 4h4l-3 3 1 4-4-2-4 2 1-4-3-3h4z"/></svg></div><div class="mc-label">Escalamiento bot→humano</div><div class="mc-val">${mr.escalationRate}%</div><div class="mc-sub">de conversaciones</div></div>
     <div class="mc c-green"><div class="mc-icon green"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 3L6 10l-3-3"/></svg></div><div class="mc-label">Resueltas solo por AI</div><div class="mc-val">${mr.aiOnlyConvs}</div><div class="mc-sub">sin intervención humana</div></div>`;
-
-  // ── Entrantes / salientes (Meta cobra salientes de servicio desde 1/oct/2026) ──
-  const msgDirEl=document.getElementById('msgDirMcs');
-  if(mr.incomingMsgs==null){
-    msgDirEl.innerHTML='<div class="empty" style="grid-column:span 3">Este período fue cargado antes de trackear entrantes/salientes — volvé a subir el CSV de mensajes para verlo acá.</div>';
-  }else{
-    const pctSaliente=mr.totalMsgs?((mr.outgoingMsgs/mr.totalMsgs)*100).toFixed(0):'0';
-    const pctFacturable=mr.outgoingMsgs?((mr.serviceOutgoingMsgs/mr.outgoingMsgs)*100).toFixed(0):'0';
-    msgDirEl.innerHTML=`
-      <div class="mc c-green"><div class="mc-icon green"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 5l6 4 6-4"/><rect x="2" y="3" width="12" height="10" rx="1.5"/></svg></div><div class="mc-label">Entrantes</div><div class="mc-val">${mr.incomingMsgs.toLocaleString('es')}</div><div class="mc-sub">siempre gratis</div></div>
-      <div class="mc c-accent"><div class="mc-icon accent"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 5l6 4 6-4"/><rect x="2" y="3" width="12" height="10" rx="1.5"/></svg></div><div class="mc-label">Salientes</div><div class="mc-val">${mr.outgoingMsgs.toLocaleString('es')}</div><div class="mc-sub">${pctSaliente}% del total</div></div>
-      <div class="mc c-red"><div class="mc-icon red"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 2v8M8 2l-3 3M8 2l3 3M3 12h10"/></svg></div><div class="mc-label">Salientes de servicio</div><div class="mc-val">${mr.serviceOutgoingMsgs.toLocaleString('es')}</div><div class="mc-sub">humano+AI · ${pctFacturable}% de salientes · facturable desde 1/oct</div></div>`;
-  }
-  if(msgReports.length>1){
-    const sortedD=[...msgReports].filter(r=>r.incomingMsgs!=null).sort((a,b)=>new Date(a.start)-new Date(b.start));
-    if(sortedD.length){
-      mkChart('cMsgDirEvol','bar',{labels:sortedD.map(r=>r.label),datasets:[
-        {label:'Entrantes',data:sortedD.map(r=>r.incomingMsgs),backgroundColor:'#10b981',borderRadius:4},
-        {label:'Salientes (total)',data:sortedD.map(r=>r.outgoingMsgs),backgroundColor:'#6366f1',borderRadius:4},
-        {label:'Salientes de servicio (facturable)',data:sortedD.map(r=>r.serviceOutgoingMsgs),backgroundColor:'#ef4444',borderRadius:4}
-      ]},{plugins:{legend:{display:true,position:'top',labels:{font:{size:10},boxWidth:10}}},scales:{y:{beginAtZero:true,grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#8a8a96',font:{size:10}}},x:{grid:{display:false},ticks:{color:'#3a3a42',font:{size:10}}}}});
-    }
-  }
 
   const fs=mr.flowStats||{};
   mkChart('cBotFlow','doughnut',{labels:['Bot→Humano','AI solo','Humano directo'],datasets:[{data:[fs.botHuman||0,fs.aiOnly||0,fs.humanOnly||0],backgroundColor:['#6366f1','#10b981','#f59e0b'],borderWidth:4,borderColor:'#fff'}]},{cutout:'60%'});
@@ -1451,9 +1252,6 @@ function renderBot(){
   let html=`<table class="tbl"><thead><tr><th>Métrica</th>${cols.map((c,i)=>`<th class="r" style="${i===0?'color:var(--accent);font-weight:700':''}">${lbls[i]}</th>`).join('')}</tr></thead><tbody>
   <tr class="tbl-section"><td colspan="${cols.length+1}">Volumen</td></tr>
   <tr><td>Mensajes totales</td>${cols.map((c,i)=>tdV(c.totalMsgs?.toLocaleString('es'),i===0)).join('')}</tr>
-  <tr><td>Entrantes</td>${cols.map((c,i)=>tdV(c.incomingMsgs!=null?c.incomingMsgs.toLocaleString('es'):'—',i===0)).join('')}</tr>
-  <tr><td>Salientes</td>${cols.map((c,i)=>tdV(c.outgoingMsgs!=null?c.outgoingMsgs.toLocaleString('es'):'—',i===0)).join('')}</tr>
-  <tr><td>Salientes de servicio (facturable 1/oct)</td>${cols.map((c,i)=>tdV(c.serviceOutgoingMsgs!=null?c.serviceOutgoingMsgs.toLocaleString('es'):'—',i===0)).join('')}</tr>
   <tr><td>Mensajes humanos</td>${cols.map((c,i)=>tdV(c.humanMsgs?.toLocaleString('es'),i===0)).join('')}</tr>
   <tr><td>Mensajes AI agent</td>${cols.map((c,i)=>tdV(c.botMsgs?.toLocaleString('es'),i===0)).join('')}</tr>
   <tr><td>Broadcasts</td>${cols.map((c,i)=>tdV(c.broadcastMsgs?.toLocaleString('es'),i===0)).join('')}</tr>
@@ -1485,7 +1283,7 @@ function toggleMsgComp(id){
 
 // ── Comparativa ──
 function renderComparativa(w){
-  const others=allWeeks.filter(x=>x.id!==w.id&&x.isM===w.isM);
+  const others=allWeeks.filter(x=>x.id!==w.id&&x.pt===w.pt);
   if(!compIds.length&&others.length)compIds=others.slice(0,2).map(x=>x.id);
   document.getElementById('compSelector').innerHTML=others.length?others.map(x=>`<div class="comp-chip ${compIds.includes(x.id)?'on':''}" onclick="toggleComp('${x.id}')">${x.fl||x.week.substring(0,10)}</div>`).join(''):'<span style="font-size:12px;color:var(--ink3)">No hay otros reportes.</span>';
   const sel=compIds.map(id=>allWeeks.find(x=>x.id===id)).filter(Boolean);
@@ -1531,7 +1329,7 @@ function renderComparativa(w){
 
   // ── Category history chart ──
   // Collect all categories across all weeks
-  const sameType=allWeeks.filter(x=>x.isM===w.isM);
+  const sameType=allWeeks.filter(x=>x.pt===w.pt);
   const allCatNames=[...new Set(sameType.flatMap(x=>Object.keys(x.cats||{})))].filter(c=>c&&c!=='Sin categoría').sort();
   // Build selector
   const currentCat=window._selectedHistCat||allCatNames[0]||'';
@@ -1552,7 +1350,7 @@ function selHistCat(cat){
 function renderCatHist(cat){
   if(!cat||!allWeeks.length)return;
   const w=allWeeks[activeIdx]||allWeeks[0];
-  const sameType=allWeeks.filter(x=>x.isM===(w?w.isM:true));
+  const sameType=allWeeks.filter(x=>x.pt===(w?w.pt:'M'));
   if(!sameType.length)return;
   const sorted=[...sameType].sort((a,b)=>new Date(a.ws)-new Date(b.ws));
   const labels=sorted.map(w=>w.fl||w.ws);
@@ -1674,7 +1472,7 @@ function renderGlosario(){
       items:[
         {term:'Equipo interno',formula:'Contact IDs: 318356816, 315475410, 295606873, 340645465, 318432393, 318432542, 318434168, 331566697, 316942904, 318426014, 343325858',desc:'Conversaciones de estos Contact IDs se excluyen de todas las métricas. La leyenda al pie de la tabla de categorías muestra cuántas se excluyeron en cada período.'},
         {term:'Contactos excluidos del Top 20',formula:'Lista de IDs hardcodeada en EXCLUDE_CONTACTS',desc:'Contactos institucionales (ARCA, ERREPAR, etc.) y contactos sin WhatsApp que distorsionan el ranking. Se excluyen del top 20 de clientes y del cómputo de contactMap.'},
-        {term:'Canal WhatsApp',formula:'Opened By Channel = 416252',desc:'Solo los contactos que abrieron conversaciones por este canal se incluyen en el Top 20. Los canales email (418941), website chat (442429) e Instagram (395708) se excluyen del ranking.'},
+        {term:'Canal WhatsApp',formula:'Opened By Channel = "WhatsApp" (sistema nuevo) o 416252 (sistema viejo)',desc:'Solo los contactos que abrieron conversaciones por este canal se incluyen en el Top 20. Los canales email (418941), website chat (442429) e Instagram (395708) se excluyen del ranking.'},
         {term:'Horario hábil',formula:'Lunes a viernes, 9:00 a 18:00hs',desc:'Consultas fuera de este horario no se cuentan como hábiles. Los feriados se marcan manualmente al subir cada reporte.'},
         {term:'SLA objetivos',formula:'FRT < 10min / ART < 20min / TTR < 2hs',desc:'Umbrales para semáforo de colores en la tab Tiempos. Verde = cumple, rojo = no cumple.'},
         {term:'MAX_CPH',formula:'4 consultas/hora por agente',desc:'Capacidad máxima sostenible definida por el equipo. Se usa para calcular % de carga en la tab Capacidad.'},
@@ -1799,7 +1597,7 @@ function renderGlosario(){
       title:'🔄 Tab: Comparativa',
       desc:'Comparación lado a lado entre períodos del mismo tipo (meses vs meses, semanas vs semanas).',
       items:[
-        {term:'Selector de períodos',formula:'allWeeks.filter(x => x.isM === w.isM)',desc:'Solo se puede comparar mensual con mensual o semanal con semanal. Seleccionás hasta 3 períodos para comparar con el activo.'},
+        {term:'Selector de períodos',formula:'allWeeks.filter(x => x.isM === w.isM)',desc:'Solo se compara el mismo tipo de período: semanal (≤10 días), quincenal (11-20) o mensual (>20). Seleccionás hasta 3 períodos para comparar con el activo.'},
         {term:'Tabla comparativa',formula:'Cols = [período activo, ...períodos seleccionados]',desc:'Muestra en columnas: volumen, SLA, por agente y por categoría. El período activo se destaca en azul.'},
         {term:'Histórico por categoría',formula:'COUNT(cat) por período, filtrado por isM, ordenado cronológicamente',desc:'Gráfico de línea de una categoría a lo largo del tiempo. Se selecciona con los chips. No necesitás elegir períodos — muestra todos automáticamente.'},
       ]
@@ -1882,7 +1680,7 @@ document.getElementById('fileConv').addEventListener('change',function(e){
     rows.slice(1).forEach(r=>{
       if(!r||!r[iS])return;
       const{f}=exDH(r[iS]);if(f.match(/^\d{4}-\d{2}-\d{2}$/))wDates.add(f);
-      const id=parseInt(r[iCB]);if(CLOSED_BY[id])agSet.add(CLOSED_BY[id]);
+      const ag=agentName(r[iCB]);if(ag)agSet.add(ag);
     });
     if(!wDates.size){toast('No se detectaron fechas válidas.',true);return;}
     showModal(wDates,[...agSet].sort());
@@ -1915,19 +1713,13 @@ document.getElementById('fileMsgs').addEventListener('change',function(e){
     const startStr=start.toISOString().substring(5,10).replace('-','/');
     const endStr=end.toISOString().substring(5,10).replace('-','/');
     const diffDays=Math.round((end-start)/(1000*60*60*24))+1;
-    const label=diffDays>10?
-      (MONTHS[start.getMonth()]+' '+start.getFullYear()+' mensajes'):
-      ('Sem. '+startStr+' – '+endStr+' mensajes');
+    const label=periodLabel(periodType(diffDays),start,startStr,endStr)+(periodType(diffDays)==='M'?' mensajes':' mensajes');
     const totalMsgs=parsed.length;
     const humanMsgs=parsed.filter(r=>r.sender==='user').length;
     const botMsgs=parsed.filter(r=>r.sender==='ai_agent').length;
     const workflowMsgs=parsed.filter(r=>r.sender==='workflow').length;
     const broadcastMsgs=parsed.filter(r=>r.sender==='broadcast').length;
     const n8nMsgs=parsed.filter(r=>r.sender==='n8n').length;
-    // ── Entrantes/salientes (Meta cobra mensajes salientes "de servicio" desde el 1/oct/2026) ──
-    const incomingMsgs=parsed.filter(r=>r.msgType==='incoming').length;
-    const outgoingMsgs=parsed.filter(r=>r.msgType==='outgoing').length;
-    const serviceOutgoingMsgs=parsed.filter(r=>r.msgType==='outgoing'&&['user','ai_agent'].includes(r.sender)).length;
     const byContact={};
     parsed.forEach(r=>{if(!byContact[r.cid])byContact[r.cid]=[];byContact[r.cid].push(r);});
     let aiOnly=0,botHuman=0;
@@ -1960,7 +1752,7 @@ document.getElementById('fileMsgs').addEventListener('change',function(e){
       human_rt_med:+medRT(humanRTs.map(x=>x.rt)).toFixed(1),human_rt_avg:+avgRT(humanRTs.map(x=>x.rt)).toFixed(1),
       ai_rt_med:+medRT(aiRTs.map(x=>x.rt)).toFixed(1),ai_rt_avg:+avgRT(aiRTs.map(x=>x.rt)).toFixed(1),
       broadcasts,hourly_human_rt:hourlyH,hourly_ai_rt:hourlyA,
-      flow_stats:{total:totalConvs,aiOnly,botHuman,humanOnly:totalConvs-aiOnly-botHuman,incoming:incomingMsgs,outgoing:outgoingMsgs,serviceOutgoing:serviceOutgoingMsgs}};
+      flow_stats:{total:totalConvs,aiOnly,botHuman,humanOnly:totalConvs-aiOnly-botHuman}};
 
     // ── Templates ──
     const templates={};
@@ -2005,11 +1797,9 @@ document.getElementById('fileMsgs').addEventListener('change',function(e){
     p.escalation_gaps_dist=escalationGaps.slice(0,200);
     p.msgs_by_day=msgsByDay;
     try{
-      const{error:upsertErr}=await db.from('message_reports').upsert(p,{onConflict:'period_label'});
-      if(upsertErr){toast('Error al guardar: '+upsertErr.message,true);console.error('upsert error',upsertErr);return;}
-      toast('✓ Mensajes guardados');
-      await fetchMsgReports();
-    }catch(err){toast('Error: '+err.message,true);console.error('catch error',err);}
+      await db.from('message_reports').upsert(p,{onConflict:'period_label'});
+      toast('✓ Mensajes guardados');await fetchMsgReports();
+    }catch(err){toast('Error: '+err.message,true);}
   };
   reader.readAsArrayBuffer(file);e.target.value='';
 });
