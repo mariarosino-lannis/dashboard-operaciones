@@ -655,6 +655,27 @@ function pm(v){if(!v)return null;const p=String(v).split(':');if(p.length!==3)re
 function avg(a){const x=a.filter(v=>v!=null&&!isNaN(v));return x.length?x.reduce((s,v)=>s+v,0)/x.length:0;}
 function med(a){const x=[...a.filter(v=>v!=null&&!isNaN(v))].sort((a,b)=>a-b);if(!x.length)return 0;const m=Math.floor(x.length/2);return x.length%2?x[m]:(x[m-1]+x[m])/2;}
 function hms(m){if(!m||isNaN(m)||m===0)return'—';const h=Math.floor(m/60),mn=Math.floor(m%60),ss=Math.round((m%1)*60);return h+':'+String(mn).padStart(2,'0')+':'+String(ss).padStart(2,'0');}
+// ART: si el export de conversaciones no lo trae, usa el RT humano (mediana/promedio) del reporte de mensajes que solape el período
+// Minutos hábiles (lun-vie, 9-18, sin feriados) entre dos timestamps 'YYYY-MM-DD HH:MM:SS'
+function bizMin(a,b,hols){
+  const P=t=>{const m=String(t||'').match(/(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?/);return m?{y:+m[1],mo:+m[2]-1,d:+m[3],mi:(+m[4])*60+(+m[5])+(+(m[6]||0))/60}:null;};
+  const x=P(a),y=P(b);if(!x||!y)return null;
+  const dayN=o=>Date.UTC(o.y,o.mo,o.d)/86400000;
+  const d0=dayN(x),d1=dayN(y);if(d1<d0||d1-d0>90)return null;
+  let tot=0;
+  for(let d=d0;d<=d1;d++){
+    const dt=new Date(d*86400000);const dow=dt.getUTCDay();const iso=dt.toISOString().substring(0,10);
+    if(dow===0||dow===6||(hols&&hols.has(iso)))continue;
+    const lo=Math.max(540,d===d0?x.mi:0),hi=Math.min(1080,d===d1?y.mi:1440);
+    if(hi>lo)tot+=hi-lo;
+  }
+  return tot;
+}
+function artFor(w){
+  if(w.artMed>0)return{med:w.artMed,avg:w.artAvg,fromMsgs:false};
+  const mr=(msgReports||[]).find(r=>r.start&&r.end&&r.start<=w.we&&r.end>=w.ws&&r.humanRtMed>0);
+  return mr?{med:mr.humanRtMed,avg:mr.humanRtAvg,fromMsgs:true}:{med:0,avg:0,fromMsgs:false};
+}
 function fmtM(m){if(!m||isNaN(m)||m===0)return'—';if(m<1)return Math.max(1,Math.round(m*60))+'s';if(m<60)return Math.round(m)+'m';return Math.floor(m/60)+'h '+Math.round(m%60)+'m';}
 function ini(n){return n.split(' ').filter(Boolean).slice(0,2).map(w=>w[0]).join('').toUpperCase();}
 function toast(msg,err=false){const t=document.getElementById('toast');t.textContent=msg;t.className='toast'+(err?' err':'');t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3000);}
@@ -736,7 +757,7 @@ function computeWeek(rows,hols,actAgents){
   const iNA=col('Number of Assignments'),iTTA=col('Time to First Assignment');
   const iOpenedByChannel=col('Opened By Channel');
   const iMO=col('Number of Outgoing Messages'),iMI=col('Number of Incoming Messages');
-  const iRes=col('DateTime Conversation Resolved'),iCBS=col('Closed By Source');
+  const iRes=col('DateTime Conversation Resolved'),iCBS=col('Closed By Source'),iFR=col('DateTime First Response');
 
   const data=rows.slice(1).filter(r=>r&&r.length>4&&r[iS]);
   const wDates=new Set();
@@ -764,7 +785,7 @@ function computeWeek(rows,hols,actAgents){
     const rawCh=r[iOpenedByChannel];
     const channelId=rawCh?String(rawCh).trim().replace('.0',''):'0';
     return{f,h,channelId,ds:DN[dow],dow,isInt,agent,habTime,catN:normCat(r[iCat]),
-      frt:pm(r[iFRT]),art:pm(r[iART]),ttr:pm(r[iTTR]),tta:pm(r[iTTA]),
+      frt:(iFR>=0&&r[iFR]&&bizMin(r[iS],r[iFR],hols)!=null)?bizMin(r[iS],r[iFR],hols):pm(r[iFRT]),art:pm(r[iART]),ttr:(r[iRes]&&bizMin(r[iS],r[iRes],hols)!=null)?bizMin(r[iS],r[iRes],hols):pm(r[iTTR]),tta:pm(r[iTTA]),
       src,hasBot,reassigned:numA>1,sameDay,totalMsgs,aiClosed,contactId};
   });
 
@@ -1000,7 +1021,7 @@ function renderResumen(w){
   document.getElementById('mcs').innerHTML=`
     <div class="mc c-accent"><div class="mc-icon accent"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12h3V6H2zM6 12h3V3H6zM10 12h3V8h-3z"/></svg></div><div class="mc-label">Consultas totales</div><div class="mc-val">${w.total.toLocaleString('es')}</div><div class="mc-sub">${w.totalH} hábiles</div>${dl(w.total,prev?.total)}</div>
     <div class="mc c-green"><div class="mc-icon green"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="8" cy="8" r="6"/><path d="M8 4v4l2 2"/></svg></div><div class="mc-label">FRT mediana</div><div class="mc-val">${fmtM(w.frtMed)}</div><div class="mc-sub">objetivo &lt; 10m</div>${dl(w.frtMed,prev?.frtMed,true)}</div>
-    <div class="mc c-${w.artMed<=SLA.art?'green':'amber'}"><div class="mc-icon ${w.artMed<=SLA.art?'green':'amber'}"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 2v4l3 2"/><circle cx="8" cy="8" r="6"/></svg></div><div class="mc-label">ART mediana</div><div class="mc-val">${fmtM(w.artMed)}</div><div class="mc-sub">${w.artMed?'objetivo &lt; 20m':'sin dato: el export nuevo no trae Average Response Time'}</div>${dl(w.artMed,prev?.artMed,true)}</div>
+    <div class="mc c-${artFor(w).med<=SLA.art?'green':'amber'}"><div class="mc-icon ${artFor(w).med<=SLA.art?'green':'amber'}"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 2v4l3 2"/><circle cx="8" cy="8" r="6"/></svg></div><div class="mc-label">ART mediana</div><div class="mc-val">${fmtM(artFor(w).med)}</div><div class="mc-sub">${artFor(w).med?(artFor(w).fromMsgs?'RT humano (de mensajes) · obj &lt; 20m':'objetivo &lt; 20m'):'sin dato: subí también el CSV de mensajes del período'}</div>${artFor(w).med&&prev?dl(artFor(w).med,artFor(prev).med,true):''}</div>
     <div class="mc c-${w.ttrMed<=SLA.ttr?'green':'red'}"><div class="mc-icon ${w.ttrMed<=SLA.ttr?'green':'red'}"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 3L6 10l-3-3"/></svg></div><div class="mc-label">TTR mediana</div><div class="mc-val">${fmtM(w.ttrMed)}</div><div class="mc-sub">objetivo &lt; 2h</div>${dl(w.ttrMed,prev?.ttrMed,true)}</div>`;
   mkChart('cDays','bar',{labels:Object.keys(w.days),datasets:[{data:Object.values(w.days),backgroundColor:'#6366f1',borderRadius:5,borderSkipped:false}]},{scales:{y:{beginAtZero:true,grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#8a8a96',font:{size:10}}},x:{grid:{display:false},ticks:{color:'#3a3a42'}}}});
   renderHours(w,'cHoursR');
@@ -1100,7 +1121,7 @@ function renderTiempos(w){
     const pct=Math.min((m/obj)*100,110);const okM=m<=obj;const okA=a<=obj;
     return`<div class="sla-row"><div class="sla-label"><strong>${label}</strong></div><div class="sla-bar"><div class="sla-bar-fill" style="width:${Math.min(pct,100)}%;background:${okM?'var(--green)':'var(--red)'}"></div></div><div class="sla-val ${okM?'ok':'fail'}">${hms(m)}</div><div class="sla-val ${okA?'ok':'fail'}" style="font-size:11px">${hms(a)}</div><div class="sla-obj">${hms(obj)}</div></div>`;
   }
-  document.getElementById('slaTeam').innerHTML=slaRow('KR1.1 FRT — 1ª respuesta',w.frtMed,w.frtAvg,SLA.frt)+slaRow('KR1.2 ART — Tiempo medio',w.artMed,w.artAvg,SLA.art)+slaRow('KR1.3 TTR — Resolución',w.ttrMed,w.ttrAvg,SLA.ttr);
+  document.getElementById('slaTeam').innerHTML=slaRow('KR1.1 FRT — 1ª respuesta',w.frtMed,w.frtAvg,SLA.frt)+slaRow('KR1.2 ART — Tiempo medio'+(artFor(w).fromMsgs?' (RT humano, mensajes)':''),artFor(w).med,artFor(w).avg,SLA.art)+slaRow('KR1.3 TTR — Resolución',w.ttrMed,w.ttrAvg,SLA.ttr);
   const ents=Object.entries(w.agents).filter(([n])=>n&&n!=='Sin agente').sort((a,b)=>b[1].count-a[1].count);
   document.getElementById('agentSlaCards').innerHTML=ents.map(([name,info],i)=>`
     <div class="card">
