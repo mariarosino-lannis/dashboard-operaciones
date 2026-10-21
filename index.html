@@ -1211,13 +1211,14 @@ function wkDelta(cur,pv,unit,lowGood,label){
 function buildWeeklySlides(w){
   const prev=allWeeks.find((x,i)=>i>activeIdx&&x.pt===w.pt)||null;
   const word=w.pt==='M'?'mes':w.pt==='Q'?'quincena':'semana';
+  const elp=w.pt==='M'?'el mes':'la '+word,dlp=w.pt==='M'?'del mes':'de la '+word;
   const pl=prev?(w.pt==='M'?'el mes anterior':w.pt==='Q'?'la quincena anterior':'la semana anterior'):'';
   const o=w.ops||null;const slides=[];
   const sysCross=prev&&prev.ws<SYSTEM_CHANGE&&w.ws>=SYSTEM_CHANGE; // FRT no comparable entre sistemas
   // 1. Números
   const sla=(v,obj)=>v<=obj?'g':'r';
   slides.push(`<div class="wk-slide"><div class="wk-eyebrow">Operaciones — Resumen</div>
-    <div class="wk-h">Los números que resumen la ${word}</div><div class="wk-sub">Consultas totales y tiempos de respuesta · ${wkEsc(w.fl||w.week)}</div>
+    <div class="wk-h">Los números que resumen ${elp}</div><div class="wk-sub">Consultas totales y tiempos de respuesta · ${wkEsc(w.fl||w.week)}</div>
     <div class="wk-cards">
       <div class="wk-card"><div class="l">Consultas totales</div><div class="v">${w.total.toLocaleString('es')}</div><div class="s">${w.totalH.toLocaleString('es')} en horario hábil</div>${prev?wkDelta(w.total,prev.total,'',false,pl):''}</div>
       <div class="wk-card ${sla(w.frtMed,SLA.frt)}"><div class="l">FRT mediana</div><div class="v">${fmtM(w.frtMed)}</div><div class="s">objetivo &lt; ${SLA.frt}m</div>${prev&&!sysCross&&prev.frtMed?wkDelta(+w.frtMed.toFixed(1),+prev.frtMed.toFixed(1),' min',true,pl):''}</div>
@@ -1233,30 +1234,64 @@ function buildWeeklySlides(w){
   const mx=Math.max(...main.map(x=>x[1]),1);
   const chip=(c,n)=>{if(!prev)return'';const pv=c==='Otros'?prevOtros:(prev.cats[c]||0);const d=n-pv;return d?`<span style="color:var(--${d>0?'amber':'green'})">${d>0?'+':''}${d}</span>`:'<span style="color:var(--ink3)">=</span>';};
   slides.push(`<div class="wk-slide"><div class="wk-eyebrow">Operaciones — Conversaciones</div>
-    <div class="wk-h">${w.total.toLocaleString('es')} conversaciones en ${w.pt==='M'?'el mes':'la '+word}, por categoría</div><div class="wk-sub">${prev?'La columna “vs ant.” compara con '+pl+'.':'&nbsp;'}</div>
+    <div class="wk-h">${w.total.toLocaleString('es')} conversaciones en ${elp}, por categoría</div><div class="wk-sub">${prev?'La columna “vs ant.” compara con '+pl+'.':'&nbsp;'}</div>
     <div class="wk-row h"><div>Categoría</div><div></div><div class="n">Consultas</div><div class="n">%</div><div class="n">${prev?'vs ant.':''}</div></div>
     ${main.map(([c,n],i)=>`<div class="wk-row"><div>${wkEsc(c)}</div><div class="wk-bar"><i style="width:${Math.round(n/mx*100)}%;background:${PAL[i%PAL.length]}"></i></div><div class="n">${n}</div><div class="n">${(n/tot*100).toFixed(1)}%</div><div class="n">${chip(c,n)}</div></div>`).join('')}
     <div class="wk-note">“Otros” agrupa las categorías de menos del 1% y las de tipo “Otros - …”.</div></div>`);
+  // 2b. Tendencia (mensual/quincenal): últimos períodos del mismo tipo
+  if(w.pt!=='S'){
+    const same=allWeeks.filter(x=>x.pt===w.pt&&x.ws<=w.ws).sort((a,b)=>new Date(a.ws)-new Date(b.ws)).slice(-6);
+    if(same.length>=2){
+      const tm=Math.max(...same.map(x=>x.total),1);
+      slides.push(`<div class="wk-slide"><div class="wk-eyebrow">Operaciones — Tendencia</div><div class="wk-h">Evolución de los últimos ${same.length} ${w.pt==='M'?'meses':'períodos'}</div><div class="wk-sub">Volumen y tiempos medianos por período.</div>
+        <div class="wk-row h" style="grid-template-columns:1.2fr 3fr .8fr .8fr .8fr"><div>Período</div><div></div><div class="n">Consultas</div><div class="n">FRT med.</div><div class="n">TTR med.</div></div>
+        ${same.map(x=>`<div class="wk-row" style="grid-template-columns:1.2fr 3fr .8fr .8fr .8fr;${x.id===w.id?'font-weight:600':''}"><div>${wkEsc(x.fl)}</div><div class="wk-bar"><i style="width:${Math.round(x.total/tm*100)}%;background:${x.id===w.id?'var(--accent)':'var(--ink4)'}"></i></div><div class="n">${x.total}</div><div class="n">${fmtM(x.frtMed)}</div><div class="n">${fmtM(x.ttrMed)}</div></div>`).join('')}
+        <div class="wk-note">La 1ª respuesta de períodos posteriores a ${wkDmy(SYSTEM_CHANGE)} incluye al bot, por lo que no es comparable con los anteriores.</div></div>`);
+    }
+    // Semana a semana dentro del período (si hay semanas cargadas)
+    const inside=allWeeks.filter(x=>x.pt==='S'&&x.ws>=w.ws&&x.we<=w.we).sort((a,b)=>new Date(a.ws)-new Date(b.ws));
+    if(inside.length>=2){
+      const im=Math.max(...inside.map(x=>x.total),1);
+      slides.push(`<div class="wk-slide"><div class="wk-eyebrow">Operaciones — Semana a semana</div><div class="wk-h">Cómo se repartió ${elp}</div><div class="wk-sub">Semanas cargadas dentro del período.</div>
+        <div class="wk-row h" style="grid-template-columns:1.2fr 3fr .8fr .8fr .8fr"><div>Semana</div><div></div><div class="n">Consultas</div><div class="n">FRT med.</div><div class="n">TTR med.</div></div>
+        ${inside.map(x=>`<div class="wk-row" style="grid-template-columns:1.2fr 3fr .8fr .8fr .8fr"><div>${wkDmy(x.ws)} al ${wkDmy(x.we)}</div><div class="wk-bar"><i style="width:${Math.round(x.total/im*100)}%"></i></div><div class="n">${x.total}</div><div class="n">${fmtM(x.frtMed)}</div><div class="n">${fmtM(x.ttrMed)}</div></div>`).join('')}</div>`);
+    }
+  }
   // 3. Demanda
   const DOW=['lunes','martes','miércoles','jueves','viernes'];const dv=DOW.map(d=>w.days[d]||0);const dmx=Math.max(...dv,1);
   const hrs=Object.entries(w.hours||{}).map(([h,n])=>[+h,n]).sort((a,b)=>b[1]-a[1]);
   const peakH=hrs[0],peakD=DOW[dv.indexOf(Math.max(...dv))];
   const zon=o?`<div class="wk-note" style="margin-top:1.2em"><b>${o.off.pct}%</b> de las conversaciones llegó fuera de horario (${o.zones.noche} de noche, ${o.zones.finde} en fin de semana o feriado).</div>`:'';
   slides.push(`<div class="wk-slide"><div class="wk-eyebrow">Operaciones — Demanda</div>
-    <div class="wk-h">Cuándo escriben los clientes</div><div class="wk-sub">${peakH?'Pico de la '+word+': '+peakD+' y '+peakH[0]+':00 hs.':'&nbsp;'}</div>
+    <div class="wk-h">Cuándo escriben los clientes</div><div class="wk-sub">${peakH?'Pico '+dlp+': '+peakD+' y '+peakH[0]+':00 hs.':'&nbsp;'}</div>
     <div class="wk-g2"><div><div style="font-weight:600;margin-bottom:.5em">Por día (lun-vie)</div>${DOW.map((d,i)=>`<div class="wk-mini"><span style="text-transform:capitalize">${d}</span><div class="wk-bar"><i style="width:${Math.round(dv[i]/dmx*100)}%"></i></div><span class="n" style="font-family:'JetBrains Mono',monospace;text-align:right">${dv[i]}</span></div>`).join('')}</div>
     <div><div style="font-weight:600;margin-bottom:.5em">Horas con más consultas</div>${hrs.slice(0,6).map(([h,n])=>`<div class="wk-mini"><span>${h}:00</span><div class="wk-bar"><i style="width:${Math.round(n/(hrs[0][1]||1)*100)}%;background:var(--purple)"></i></div><span style="font-family:'JetBrains Mono',monospace;text-align:right">${n}</span></div>`).join('')}</div></div>${zon}</div>`);
-  // 4. Destacados (automáticos)
-  const B=[];const topC=main.filter(x=>x[0]!=='Otros')[0];
-  if(prev){const d=w.total-prev.total,pc=prev.total?Math.round(d/prev.total*100):0;B.push(['accent','Volumen',`${w.total} conversaciones, ${d>=0?'+':''}${d} (${pc>=0?'+':''}${pc}%) vs ${pl}.`]);}
-  else B.push(['accent','Volumen',`${w.total} conversaciones, ${w.totalH} en horario hábil.`]);
-  if(topC)B.push(['purple','Principal motivo',`${topC[0]} concentra el ${(topC[1]/tot*100).toFixed(1)}% (${topC[1]} conversaciones).`]);
-  if(prev){const ch=Object.keys(w.cats).map(c=>[c,(w.cats[c]||0)-(prev.cats[c]||0)]).filter(x=>x[0]!=='Otros'&&!/outbound/i.test(x[0])).sort((a,b)=>Math.abs(b[1])-Math.abs(a[1]))[0];if(ch&&Math.abs(ch[1])>=3)B.push(['amber','Mayor variación',`${ch[0]}: ${ch[1]>0?'+':''}${ch[1]} conversaciones vs ${pl}.`]);}
-  B.push([w.frtMed<=SLA.frt&&w.ttrMed<=SLA.ttr?'green':'red','Cumplimiento de tiempos',`FRT mediana ${fmtM(w.frtMed)} (objetivo ${SLA.frt}m) y TTR mediana ${fmtM(w.ttrMed)} (objetivo ${SLA.ttr/60}h).`]);
-  if(o)B.push(['red','Resolución lenta',`${o.slow.d1Pct}% de las hábiles tardó más de 2 hs en resolverse (${o.slow.d1} de ${o.slow.base}).`]);
-  if(o)B.push(['purple','Fuera de horario',`${o.off.pct}% de la demanda (${o.off.n} conversaciones) llegó de noche o en fin de semana.`]);
-  slides.push(`<div class="wk-slide"><div class="wk-eyebrow">Resumen</div><div class="wk-h">Lo más importante de la ${word}</div><div class="wk-sub">Generado automáticamente a partir de los datos cargados.</div>
-    ${B.map(b=>`<div class="wk-bul"><div class="bar" style="background:var(--${b[0]})"></div><div><b>${b[1]}</b><span class="t">${b[2]}</span></div></div>`).join('')}</div>`);
+  // 4. Para tener en cuenta: solo lo que se desvía (no repite lo de las slides anteriores)
+  const A=[];
+  if(prev){
+    const ch=Object.keys(w.cats).filter(c=>c!=='Otros'&&!/outbound/i.test(c)).map(c=>[c,(w.cats[c]||0)-(prev.cats[c]||0)]);
+    ch.filter(x=>x[1]>=3).sort((a,b)=>b[1]-a[1]).slice(0,2).forEach(x=>A.push(['amber','Subió: '+x[0],`+${x[1]} conversaciones vs ${pl} (${w.cats[x[0]]} contra ${prev.cats[x[0]]||0}). Revisar si hay una causa puntual.`]));
+    ch.filter(x=>x[1]<=-3).sort((a,b)=>a[1]-b[1]).slice(0,1).forEach(x=>A.push(['green','Bajó: '+x[0],`${x[1]} conversaciones vs ${pl} (${w.cats[x[0]]||0} contra ${prev.cats[x[0]]}).`]));
+  }
+  if(w.frtMed>SLA.frt)A.push(['red','Primera respuesta fuera de objetivo',`FRT mediana ${fmtM(w.frtMed)} contra objetivo de ${SLA.frt}m.`]);
+  if(w.ttrMed>SLA.ttr)A.push(['red','Resolución fuera de objetivo',`TTR mediana ${fmtM(w.ttrMed)} contra objetivo de ${SLA.ttr/60}h.`]);
+  if(o&&o.slow.d1Pct>=10)A.push(['red','Resoluciones lentas',`${o.slow.d1Pct}% de las conversaciones hábiles tardó más de 2 hs en resolverse (${o.slow.d1} de ${o.slow.base}).`]);
+  if(o&&o.recur.pct>=10){const rc=Object.entries(o.recur.byCat).sort((a,b)=>b[1]-a[1])[0];A.push(['purple','Clientes que vuelven por lo mismo',`${o.recur.pct}% de los contactos tuvo 2 o más conversaciones del mismo tema${rc?' (sobre todo '+rc[0]+')':''}. Puede indicar que la primera respuesta no resolvió.`]);}
+  if(A.length)slides.push(`<div class="wk-slide"><div class="wk-eyebrow">Resumen</div><div class="wk-h">Para tener en cuenta</div><div class="wk-sub">Solo lo que cambió o se aparta del objetivo ${dlp}.</div>
+    ${A.map(b=>`<div class="wk-bul"><div class="bar" style="background:var(--${b[0]})"></div><div><b>${wkEsc(b[1])}</b><span class="t">${wkEsc(b[2])}</span></div></div>`).join('')}</div>`);
+  // 4b. Llamadas del período (si hay reporte de llamadas que cae dentro)
+  if(w.pt!=='S'&&typeof callsReports!=='undefined'){
+    const cr=callsReports.filter(c=>c.start&&c.start>=w.ws&&c.start<=w.we).sort((a,b)=>new Date(b.start)-new Date(a.start))[0];
+    if(cr&&cr.total){
+      const pc=callsReports.filter(c=>c.start&&c.start<w.ws).sort((a,b)=>new Date(b.start)-new Date(a.start))[0];
+      slides.push(`<div class="wk-slide"><div class="wk-eyebrow">Operaciones — Llamadas</div><div class="wk-h">Llamadas con clientes</div><div class="wk-sub">${wkEsc(cr.label||'')}</div>
+        <div class="wk-cards" style="grid-template-columns:repeat(4,1fr)">
+        <div class="wk-card"><div class="l">Llamadas</div><div class="v">${cr.total}</div>${pc?wkDelta(cr.total,pc.total,'',false,'el período anterior'):''}</div>
+        <div class="wk-card g"><div class="l">Minutos</div><div class="v">${Math.round(cr.minutes).toLocaleString('es')}</div>${pc?wkDelta(Math.round(cr.minutes),Math.round(pc.minutes),'',false,'el período anterior'):''}</div>
+        <div class="wk-card p"><div class="l">Duración promedio</div><div class="v">${Math.round(cr.avgDur)}m</div></div>
+        <div class="wk-card a"><div class="l">Clientes únicos</div><div class="v">${cr.uniqueClients}</div></div></div></div>`);
+    }
+  }
   // 5. Bot (solo si hay ops)
   if(o){
     const bc=Object.entries(o.botCat).filter(([c,v])=>v.t>=5&&!/outbound/i.test(c)).map(([c,v])=>[c,v.t,v.b,Math.round(v.b/v.t*100)]).sort((a,b)=>b[3]-a[3]);
@@ -1284,7 +1319,7 @@ function renderWeekly(w){
   const notes=wkGetNotes(w);
   el.innerHTML=`<div class="wk-controls"><button class="wk-btn pri" onclick="wkOpen(0)">▶ Presentar</button><button class="wk-btn" onclick="window.print()">Imprimir / guardar PDF</button><span style="font-size:11px;color:var(--ink3)">Período activo: <b>${wkEsc(w.fl||w.week)}</b> · cambialo en la barra lateral. Flechas ← → y Esc en modo presentación.</span></div>
   ${wkSlides.join('')}
-  <div class="card wk-editor"><div class="card-header"><div><div class="card-title">Resumen desde Operaciones (editable)</div><div class="card-sub">Lo que quieras destacar de la ${w.pt==='M'?'mes':'semana'} a mano. Se guarda en este navegador, por período, y aparece como última slide.</div></div></div>
+  <div class="card wk-editor"><div class="card-header"><div><div class="card-title">Resumen desde Operaciones (editable)</div><div class="card-sub">Lo que quieras destacar ${w.pt==='M'?'del mes':w.pt==='Q'?'de la quincena':'de la semana'} a mano. Se guarda en este navegador, por período, y aparece como última slide.</div></div></div>
     <div id="wkEd">${notes.map((n,i)=>`<div class="wk-ed-row"><input value="${wkEsc(n.t)}" placeholder="Título (ej: Confección de IIBB)" onchange="wkEdit(${i},'t',this.value)"><input value="${wkEsc(n.d)}" placeholder="Descripción" onchange="wkEdit(${i},'d',this.value)"><button class="wk-btn" onclick="wkDel(${i})">✕</button></div>`).join('')}</div>
     <div style="display:flex;gap:8px;margin-top:6px"><button class="wk-btn" onclick="wkAdd()">+ Agregar punto</button>${prev&&wkGetNotes(prev).length&&!notes.length?'<button class="wk-btn" onclick="wkCopyPrev()">Copiar del período anterior</button>':''}</div></div>`;
 }
