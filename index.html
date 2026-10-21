@@ -62,6 +62,44 @@ body{font-family:'Inter',sans-serif;background:var(--paper);color:var(--ink);min
 .upload-btn.cons{background:rgba(99,102,241,0.15);color:#a5b4fc;border:1px solid rgba(99,102,241,0.25)}
 .upload-btn.cons:hover{background:rgba(99,102,241,0.25)}
 
+
+/* ── Weekly (modo presentación) ── */
+.wk-controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:16px}
+.wk-btn{padding:8px 14px;border-radius:var(--rs);font-size:12px;font-weight:500;cursor:pointer;border:1px solid var(--border2);background:var(--surface);color:var(--ink2)}
+.wk-btn.pri{background:var(--accent);color:#fff;border-color:var(--accent)}
+.wk-slide{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:2em 2.4em;margin-bottom:16px;box-shadow:var(--shadow);font-size:13px;line-height:1.5}
+.wk-eyebrow{color:var(--accent);font-weight:600;text-transform:uppercase;letter-spacing:.06em;font-size:.85em}
+.wk-h{font-family:'Syne',sans-serif;font-size:2em;font-weight:700;letter-spacing:-0.02em;margin:.25em 0 .2em;color:var(--ink)}
+.wk-sub{color:var(--ink3);margin-bottom:1.4em}
+.wk-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:1em}
+.wk-card{border:1px solid var(--border2);border-radius:10px;padding:1.1em 1.2em;border-top:4px solid var(--accent)}
+.wk-card.g{border-top-color:var(--green)}.wk-card.a{border-top-color:var(--amber)}.wk-card.r{border-top-color:var(--red)}.wk-card.p{border-top-color:var(--purple)}
+.wk-card .l{font-size:.8em;text-transform:uppercase;letter-spacing:.06em;color:var(--ink3);font-weight:600}
+.wk-card .v{font-family:'Syne',sans-serif;font-size:3em;font-weight:700;letter-spacing:-0.03em;line-height:1.1;margin:.15em 0}
+.wk-card .s{color:var(--ink3);font-size:.95em}
+.wk-d{font-size:.85em;font-weight:600;margin-top:.4em}
+.wk-d.up{color:var(--green)}.wk-d.dn{color:var(--red)}.wk-d.eq{color:var(--ink3)}
+.wk-note{color:var(--ink3);font-size:.8em;margin-top:1.4em}
+.wk-row{display:grid;grid-template-columns:1.6fr 3fr .6fr .6fr .7fr;gap:.8em;align-items:center;padding:.38em 0;border-bottom:1px solid var(--border)}
+.wk-row.h{font-size:.8em;text-transform:uppercase;letter-spacing:.05em;color:var(--ink3);font-weight:600}
+.wk-row .n{text-align:right;font-family:'JetBrains Mono',monospace}
+.wk-bar{height:.7em;background:var(--s3);border-radius:99px;overflow:hidden}.wk-bar>i{display:block;height:100%;background:var(--accent);border-radius:99px}
+.wk-bul{display:flex;gap:1em;align-items:flex-start;padding:.7em 0}
+.wk-bul b{display:block;font-weight:600;color:var(--ink)}
+.wk-bul span.t{color:var(--ink3);font-size:.95em}
+.wk-bul .bar{width:.4em;align-self:stretch;border-radius:99px;flex-shrink:0}
+.wk-g2{display:grid;grid-template-columns:1fr 1fr;gap:2em}
+.wk-mini{display:grid;grid-template-columns:5em 1fr 3em;gap:.7em;align-items:center;padding:.3em 0;font-size:.95em}
+#wkOv{display:none;position:fixed;inset:0;background:var(--paper);z-index:1000;flex-direction:column}
+#wkOv.on{display:flex}
+#wkOv .wk-stage{flex:1;overflow:auto;padding:3vh 4vw}
+#wkOv .wk-slide{font-size:clamp(14px,1.55vw,26px);box-shadow:none;border:none;background:transparent;margin:0;padding:0;min-height:100%}
+#wkOv .wk-bar-nav{display:flex;justify-content:space-between;align-items:center;padding:10px 24px;border-top:1px solid var(--border);background:var(--surface)}
+.wk-ed-row{display:grid;grid-template-columns:1fr 2fr auto;gap:8px;margin-bottom:8px}
+.wk-ed-row input{padding:8px 10px;border:1px solid var(--border2);border-radius:var(--rs);font-family:inherit;font-size:12px}
+@media print{.sidebar,.tabs-bar,.main-header,.wk-controls,.wk-editor,#wkOv{display:none!important}.app{display:block!important}.tab-c{display:none!important}#tab-weekly{display:block!important}.wk-slide{break-inside:avoid;page-break-after:always;box-shadow:none}}
+@media(max-width:900px){.wk-cards,.wk-g2{grid-template-columns:1fr}}
+
 /* ── Main ── */
 .main{min-width:0;overflow:auto;display:flex;flex-direction:column}
 .main-header{background:var(--surface);border-bottom:1px solid var(--border);padding:18px 32px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10}
@@ -232,6 +270,7 @@ body{font-family:'Inter',sans-serif;background:var(--paper);color:var(--ink);min
   <div class="sb-section" style="padding-top:8px;padding-bottom:8px">
     <div class="nav-section-label" style="padding:0 0 4px">Análisis</div>
     <div class="nav-item on" onclick="showTab('resumen',this)"><svg class="ni" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>Resumen</div>
+    <div class="nav-item" onclick="showTab('weekly',this)"><svg class="ni" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1.5" y="2.5" width="13" height="9" rx="1.5"/><path d="M5 14h6M8 11.5V14"/></svg>Weekly</div>
     <div class="nav-item" onclick="showTab('categorias',this)"><svg class="ni" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6"/><path d="M8 2v6l4 2"/></svg>Categorías</div>
     <div class="nav-item" onclick="showTab('tiempos',this)"><svg class="ni" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6"/><path d="M8 4v4l3 2"/></svg>Tiempos & SLA</div>
     <div class="nav-item" onclick="showTab('capacidad',this)"><svg class="ni" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 12h3V6H2zM6 12h3V3H6zM10 12h3V8h-3z"/></svg>Capacidad</div>
@@ -294,6 +333,7 @@ body{font-family:'Inter',sans-serif;background:var(--paper);color:var(--ink);min
   </div>
   <div class="tabs-bar">
     <div class="tab-btn on" onclick="showTab('resumen',this)">Resumen</div>
+    <div class="tab-btn" onclick="showTab('weekly',this)">Weekly</div>
     <div class="tab-btn" onclick="showTab('categorias',this)">Categorías</div>
     <div class="tab-btn" onclick="showTab('tiempos',this)">Tiempos & SLA</div>
     <div class="tab-btn" onclick="showTab('capacidad',this)">Capacidad</div>
@@ -342,6 +382,10 @@ body{font-family:'Inter',sans-serif;background:var(--paper);color:var(--ink);min
       <div id="agentSlaCards"></div>
       <div class="card"><div class="card-header"><div><div class="card-title">Comparativa visual</div></div></div><div class="ch" style="height:230px"><canvas id="cAgentTimes"></canvas></div></div>
     </div>
+
+    <!-- WEEKLY -->
+    <div id="tab-weekly" class="tab-c"><div id="wkContent"></div></div>
+    <div id="wkOv"><div class="wk-stage" id="wkStage"></div><div class="wk-bar-nav"><button class="wk-btn" onclick="wkStep(-1)">← Anterior</button><span id="wkCount" style="font-size:12px;color:var(--ink3)"></span><span><button class="wk-btn" onclick="wkStep(1)">Siguiente →</button> <button class="wk-btn" onclick="wkClose()">Salir (Esc)</button></span></div></div>
 
     <!-- BOT Y DEMANDA -->
     <div id="tab-botdemanda" class="tab-c"><div id="opsContent"></div></div>
@@ -801,6 +845,7 @@ function computeWeek(rows,hols,actAgents){
     return{f,h,channelId,ds:DN[dow],dow,isInt,agent,habTime,catN:normCat(r[iCat]),
       frt:(iFR>=0&&r[iFR]&&bizMin(r[iS],r[iFR],hols)!=null)?bizMin(r[iS],r[iFR],hols):pm(r[iFRT]),art:pm(r[iART]),ttr:(r[iRes]&&bizMin(r[iS],r[iRes],hols)!=null)?bizMin(r[iS],r[iRes],hols):pm(r[iTTR]),tta:pm(r[iTTA]),
       src,hasBot,reassigned:numA>1,sameDay,totalMsgs,aiClosed,contactId,
+      botSrc:['ai_agent','workflow','api'].includes(String(r[iCBS]||'').trim()),
       inM:parseInt(r[iMI])||0,outM:parseInt(r[iMO])||0,
       cbEmpty:(!String(r[iCB]||'').trim()||String(r[iCB]).trim()==='0'),
       frtRaw:pm(r[iFRT]),hasFR:((iFR>=0&&String(r[iFR]||'').trim()!=='')||pm(r[iFRT])!=null),
@@ -844,7 +889,7 @@ function computeWeek(rows,hols,actAgents){
   allR.forEach(r=>{
     {const _k=r.src||r.chLabel;channels[_k]=(channels[_k]||0)+1;}
     if(r.hasBot)botC++;if(r.reassigned)reassC++;
-    if(r.sameDay)sdTotal++;if(r.aiClosed||r.cbEmpty)aiCl++;
+    if(r.sameDay)sdTotal++;if(r.aiClosed||r.botSrc||r.cbEmpty)aiCl++;
     if(!sdCat[r.catN])sdCat[r.catN]={total:0,sd:0,msgs:[]};
     sdCat[r.catN].total++;if(r.sameDay)sdCat[r.catN].sd++;sdCat[r.catN].msgs.push(r.totalMsgs);
     if(r.tta!=null)ttaVals.push(r.tta);
@@ -881,7 +926,7 @@ function computeWeek(rows,hols,actAgents){
   // ── OPS: métricas de bot, demanda, mensajes, recurrencia y canal ──
   // Bases: total = conversaciones no internas (todas las horas). hábiles = lun-vie 9-18 sin feriados.
   // "Bot" = conversación sin agente humano en Closed By (o cerrada por ai_agent).
-  const opsRows=allR.map(r=>({...r,bot:(r.aiClosed||r.cbEmpty)}));
+  const opsRows=allR.map(r=>({...r,bot:(r.aiClosed||r.botSrc||r.cbEmpty)}));
   const opsHab=opsRows.filter(r=>r.zone==='hab');
   const pc=(n,d)=>d>0?+(n/d*100).toFixed(1):0;
   const m1=a=>+med(a).toFixed(1), a1=a=>+avg(a).toFixed(1);
@@ -1078,7 +1123,7 @@ function renderAll(){
   document.getElementById('pageMeta').textContent=w.total+' consultas · '+w.totalH+' hábiles'+(w.by?' · '+w.by:'');
   document.getElementById('headerBadge').innerHTML=badge;
   renderResumen(w);renderCategorias(w);renderTiempos(w);renderCapacidad(w);
-  renderConversaciones(w);renderClientes(w);renderBot();renderOps(w);renderComparativa(w);
+  renderConversaciones(w);renderClientes(w);renderBot();renderOps(w);renderWeekly(w);renderComparativa(w);
   renderCapAvanzada(w);renderGlosario();
 }
 
@@ -1147,6 +1192,111 @@ function renderOps(w){
   const b=o.msgs.b;
   mkChart('cOpsMsgs','bar',{labels:['1 mensaje','2-4','5-9','10+'],datasets:[{label:'Conversaciones',data:[b['1'],b['2-4'],b['5-9'],b['10+']],backgroundColor:'#6366f1',borderRadius:4}]},{plugins:{legend:{display:false}}});
 }
+
+
+// ── Weekly: deck para presentar a otros equipos ──
+const SYSTEM_CHANGE='2026-10-05'; // desde esta fecha el export incluye respuestas del bot en la 1ª respuesta
+let wkSlides=[],wkIdx=0;
+function wkKey(w){return 'wkNotes:'+(w.week||w.ws);}
+function wkGetNotes(w){try{const v=JSON.parse(localStorage.getItem(wkKey(w))||'null');return Array.isArray(v)?v:[];}catch(e){return[];}}
+function wkSetNotes(w,n){try{localStorage.setItem(wkKey(w),JSON.stringify(n));}catch(e){}}
+function wkDmy(iso){const p=String(iso||'').split('-');return p.length===3?(+p[2])+'/'+(+p[1]):iso;}
+function wkEsc(t){return String(t==null?'':t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');}
+function wkDelta(cur,pv,unit,lowGood,label){
+  if(pv==null)return'';const d=+(cur-pv).toFixed(1);
+  if(!d)return'<div class="wk-d eq">= igual que '+label+'</div>';
+  const good=lowGood?d<0:d>0;
+  return'<div class="wk-d '+(good?'up':'dn')+'">'+(d>0?'▲ +':'▼ ')+d.toLocaleString('es')+unit+' vs '+label+'</div>';
+}
+function buildWeeklySlides(w){
+  const prev=allWeeks.find((x,i)=>i>activeIdx&&x.pt===w.pt)||null;
+  const word=w.pt==='M'?'mes':w.pt==='Q'?'quincena':'semana';
+  const pl=prev?(w.pt==='M'?'el mes anterior':w.pt==='Q'?'la quincena anterior':'la semana anterior'):'';
+  const o=w.ops||null;const slides=[];
+  const sysCross=prev&&prev.ws<SYSTEM_CHANGE&&w.ws>=SYSTEM_CHANGE; // FRT no comparable entre sistemas
+  // 1. Números
+  const sla=(v,obj)=>v<=obj?'g':'r';
+  slides.push(`<div class="wk-slide"><div class="wk-eyebrow">Operaciones — Resumen</div>
+    <div class="wk-h">Los números que resumen la ${word}</div><div class="wk-sub">Consultas totales y tiempos de respuesta · ${wkEsc(w.fl||w.week)}</div>
+    <div class="wk-cards">
+      <div class="wk-card"><div class="l">Consultas totales</div><div class="v">${w.total.toLocaleString('es')}</div><div class="s">${w.totalH.toLocaleString('es')} en horario hábil</div>${prev?wkDelta(w.total,prev.total,'',false,pl):''}</div>
+      <div class="wk-card ${sla(w.frtMed,SLA.frt)}"><div class="l">FRT mediana</div><div class="v">${fmtM(w.frtMed)}</div><div class="s">objetivo &lt; ${SLA.frt}m</div>${prev&&!sysCross&&prev.frtMed?wkDelta(+w.frtMed.toFixed(1),+prev.frtMed.toFixed(1),' min',true,pl):''}</div>
+      <div class="wk-card ${sla(w.ttrMed,SLA.ttr)}"><div class="l">TTR mediana</div><div class="v">${fmtM(w.ttrMed)}</div><div class="s">objetivo &lt; ${SLA.ttr/60}h</div>${prev&&prev.ttrMed?wkDelta(+w.ttrMed.toFixed(1),+prev.ttrMed.toFixed(1),' min',true,pl):''}</div>
+    </div>
+    <div class="wk-note">Tiempos en horas hábiles (lun-vie 9-18, sin feriados).${w.ws>=SYSTEM_CHANGE?' Desde el cambio de sistema, la 1ª respuesta incluye al bot.':''}</div></div>`);
+  // 2. Categorías
+  const ALW=new Set(['Facturación','Facturas AI','Impuestos','Impuestos provinciales','Deudas','SAS / RI','Sueldos','Baja servicios Lannis']);
+  const tot=w.total||1;let otros=w.cats['Otros']||0;const main=[];
+  Object.entries(w.cats).forEach(([c,n])=>{if(c==='Otros')return;if(n/tot*100>=1||ALW.has(c))main.push([c,n]);else otros+=n;});
+  main.sort((a,b)=>b[1]-a[1]);if(otros)main.push(['Otros',otros]);
+  const prevOtros=prev?((prev.cats['Otros']||0)+Object.entries(prev.cats).filter(([c,n])=>c!=='Otros'&&n/(prev.total||1)*100<1&&!ALW.has(c)).reduce((s,[,n])=>s+n,0)):0;
+  const mx=Math.max(...main.map(x=>x[1]),1);
+  const chip=(c,n)=>{if(!prev)return'';const pv=c==='Otros'?prevOtros:(prev.cats[c]||0);const d=n-pv;return d?`<span style="color:var(--${d>0?'amber':'green'})">${d>0?'+':''}${d}</span>`:'<span style="color:var(--ink3)">=</span>';};
+  slides.push(`<div class="wk-slide"><div class="wk-eyebrow">Operaciones — Conversaciones</div>
+    <div class="wk-h">${w.total.toLocaleString('es')} conversaciones en ${w.pt==='M'?'el mes':'la '+word}, por categoría</div><div class="wk-sub">${prev?'La columna “vs ant.” compara con '+pl+'.':'&nbsp;'}</div>
+    <div class="wk-row h"><div>Categoría</div><div></div><div class="n">Consultas</div><div class="n">%</div><div class="n">${prev?'vs ant.':''}</div></div>
+    ${main.map(([c,n],i)=>`<div class="wk-row"><div>${wkEsc(c)}</div><div class="wk-bar"><i style="width:${Math.round(n/mx*100)}%;background:${PAL[i%PAL.length]}"></i></div><div class="n">${n}</div><div class="n">${(n/tot*100).toFixed(1)}%</div><div class="n">${chip(c,n)}</div></div>`).join('')}
+    <div class="wk-note">“Otros” agrupa las categorías de menos del 1% y las de tipo “Otros - …”.</div></div>`);
+  // 3. Demanda
+  const DOW=['lunes','martes','miércoles','jueves','viernes'];const dv=DOW.map(d=>w.days[d]||0);const dmx=Math.max(...dv,1);
+  const hrs=Object.entries(w.hours||{}).map(([h,n])=>[+h,n]).sort((a,b)=>b[1]-a[1]);
+  const peakH=hrs[0],peakD=DOW[dv.indexOf(Math.max(...dv))];
+  const zon=o?`<div class="wk-note" style="margin-top:1.2em"><b>${o.off.pct}%</b> de las conversaciones llegó fuera de horario (${o.zones.noche} de noche, ${o.zones.finde} en fin de semana o feriado).</div>`:'';
+  slides.push(`<div class="wk-slide"><div class="wk-eyebrow">Operaciones — Demanda</div>
+    <div class="wk-h">Cuándo escriben los clientes</div><div class="wk-sub">${peakH?'Pico de la '+word+': '+peakD+' y '+peakH[0]+':00 hs.':'&nbsp;'}</div>
+    <div class="wk-g2"><div><div style="font-weight:600;margin-bottom:.5em">Por día (lun-vie)</div>${DOW.map((d,i)=>`<div class="wk-mini"><span style="text-transform:capitalize">${d}</span><div class="wk-bar"><i style="width:${Math.round(dv[i]/dmx*100)}%"></i></div><span class="n" style="font-family:'JetBrains Mono',monospace;text-align:right">${dv[i]}</span></div>`).join('')}</div>
+    <div><div style="font-weight:600;margin-bottom:.5em">Horas con más consultas</div>${hrs.slice(0,6).map(([h,n])=>`<div class="wk-mini"><span>${h}:00</span><div class="wk-bar"><i style="width:${Math.round(n/(hrs[0][1]||1)*100)}%;background:var(--purple)"></i></div><span style="font-family:'JetBrains Mono',monospace;text-align:right">${n}</span></div>`).join('')}</div></div>${zon}</div>`);
+  // 4. Destacados (automáticos)
+  const B=[];const topC=main.filter(x=>x[0]!=='Otros')[0];
+  if(prev){const d=w.total-prev.total,pc=prev.total?Math.round(d/prev.total*100):0;B.push(['accent','Volumen',`${w.total} conversaciones, ${d>=0?'+':''}${d} (${pc>=0?'+':''}${pc}%) vs ${pl}.`]);}
+  else B.push(['accent','Volumen',`${w.total} conversaciones, ${w.totalH} en horario hábil.`]);
+  if(topC)B.push(['purple','Principal motivo',`${topC[0]} concentra el ${(topC[1]/tot*100).toFixed(1)}% (${topC[1]} conversaciones).`]);
+  if(prev){const ch=Object.keys(w.cats).map(c=>[c,(w.cats[c]||0)-(prev.cats[c]||0)]).filter(x=>x[0]!=='Otros'&&!/outbound/i.test(x[0])).sort((a,b)=>Math.abs(b[1])-Math.abs(a[1]))[0];if(ch&&Math.abs(ch[1])>=3)B.push(['amber','Mayor variación',`${ch[0]}: ${ch[1]>0?'+':''}${ch[1]} conversaciones vs ${pl}.`]);}
+  B.push([w.frtMed<=SLA.frt&&w.ttrMed<=SLA.ttr?'green':'red','Cumplimiento de tiempos',`FRT mediana ${fmtM(w.frtMed)} (objetivo ${SLA.frt}m) y TTR mediana ${fmtM(w.ttrMed)} (objetivo ${SLA.ttr/60}h).`]);
+  if(o)B.push(['red','Resolución lenta',`${o.slow.d1Pct}% de las hábiles tardó más de 2 hs en resolverse (${o.slow.d1} de ${o.slow.base}).`]);
+  if(o)B.push(['purple','Fuera de horario',`${o.off.pct}% de la demanda (${o.off.n} conversaciones) llegó de noche o en fin de semana.`]);
+  slides.push(`<div class="wk-slide"><div class="wk-eyebrow">Resumen</div><div class="wk-h">Lo más importante de la ${word}</div><div class="wk-sub">Generado automáticamente a partir de los datos cargados.</div>
+    ${B.map(b=>`<div class="wk-bul"><div class="bar" style="background:var(--${b[0]})"></div><div><b>${b[1]}</b><span class="t">${b[2]}</span></div></div>`).join('')}</div>`);
+  // 5. Bot (solo si hay ops)
+  if(o){
+    const bc=Object.entries(o.botCat).filter(([c,v])=>v.t>=5&&!/outbound/i.test(c)).map(([c,v])=>[c,v.t,v.b,Math.round(v.b/v.t*100)]).sort((a,b)=>b[3]-a[3]);
+    const hi=bc.slice(0,3),lo=bc.slice(-3).reverse();
+    slides.push(`<div class="wk-slide"><div class="wk-eyebrow">Operaciones — Automatización</div><div class="wk-h">Cuánto se resuelve sin agente</div><div class="wk-sub">Conversaciones cerradas sin un agente humano, por categoría (mínimo 5 conversaciones).</div>
+      <div class="wk-cards"><div class="wk-card p"><div class="l">Cierre sin agente</div><div class="v">${o.bot.pct}%</div><div class="s">${o.bot.n} de ${o.total}</div></div>
+      <div class="wk-card a"><div class="l">Sin respuesta</div><div class="v">${o.sinResp.pct}%</div><div class="s">${o.sinResp.n} conversaciones sin primera respuesta</div></div>
+      <div class="wk-card"><div class="l">Mensajes por conversación</div><div class="v">${o.msgs.avg}</div><div class="s">bot ${o.msgs.avgBot} · agente ${o.msgs.avgHum}</div></div></div>
+      <div class="wk-g2" style="margin-top:1.4em"><div><div style="font-weight:600;margin-bottom:.4em">Más cerradas sin agente</div>${hi.map(x=>`<div class="wk-mini"><span style="grid-column:1/2">${wkEsc(x[0])}</span><div class="wk-bar"><i style="width:${x[3]}%;background:var(--purple)"></i></div><span style="text-align:right">${x[3]}%</span></div>`).join('')}</div>
+      <div><div style="font-weight:600;margin-bottom:.4em">Siempre llegan a una persona</div>${lo.map(x=>`<div class="wk-mini"><span>${wkEsc(x[0])}</span><div class="wk-bar"><i style="width:${x[3]}%;background:var(--purple)"></i></div><span style="text-align:right">${x[3]}%</span></div>`).join('')}</div></div>
+      <div class="wk-note">“Sin agente” incluye cierres automáticos (API/workflow): el export actual no distingue si lo resolvió el bot o se cerró solo.</div></div>`);
+  }
+  // 6. Resumen desde Operaciones (editable)
+  const notes=wkGetNotes(w).filter(n=>(n.t||'').trim()||(n.d||'').trim());
+  const COL=['accent','purple','green','amber'];
+  const ttl=w.pt==='M'?'Mes de '+(w.fl||''):'Semana del '+wkDmy(w.ws)+' al '+wkDmy(w.we);
+  if(notes.length)slides.push(`<div class="wk-slide"><div class="wk-eyebrow">Resumen</div><div class="wk-h">${ttl}, en resumen desde Operaciones</div><div class="wk-sub">&nbsp;</div>
+    ${notes.map((n,i)=>`<div class="wk-bul"><div class="bar" style="background:var(--${COL[i%4]})"></div><div><b>${wkEsc(n.t)}</b><span class="t">${wkEsc(n.d)}</span></div></div>`).join('')}</div>`);
+  return slides;
+}
+function renderWeekly(w){
+  const el=document.getElementById('wkContent');if(!el||!w)return;
+  wkSlides=buildWeeklySlides(w);
+  const prev=allWeeks.find((x,i)=>i>activeIdx&&x.pt===w.pt)||null;
+  const notes=wkGetNotes(w);
+  el.innerHTML=`<div class="wk-controls"><button class="wk-btn pri" onclick="wkOpen(0)">▶ Presentar</button><button class="wk-btn" onclick="window.print()">Imprimir / guardar PDF</button><span style="font-size:11px;color:var(--ink3)">Período activo: <b>${wkEsc(w.fl||w.week)}</b> · cambialo en la barra lateral. Flechas ← → y Esc en modo presentación.</span></div>
+  ${wkSlides.join('')}
+  <div class="card wk-editor"><div class="card-header"><div><div class="card-title">Resumen desde Operaciones (editable)</div><div class="card-sub">Lo que quieras destacar de la ${w.pt==='M'?'mes':'semana'} a mano. Se guarda en este navegador, por período, y aparece como última slide.</div></div></div>
+    <div id="wkEd">${notes.map((n,i)=>`<div class="wk-ed-row"><input value="${wkEsc(n.t)}" placeholder="Título (ej: Confección de IIBB)" onchange="wkEdit(${i},'t',this.value)"><input value="${wkEsc(n.d)}" placeholder="Descripción" onchange="wkEdit(${i},'d',this.value)"><button class="wk-btn" onclick="wkDel(${i})">✕</button></div>`).join('')}</div>
+    <div style="display:flex;gap:8px;margin-top:6px"><button class="wk-btn" onclick="wkAdd()">+ Agregar punto</button>${prev&&wkGetNotes(prev).length&&!notes.length?'<button class="wk-btn" onclick="wkCopyPrev()">Copiar del período anterior</button>':''}</div></div>`;
+}
+function wkEdit(i,k,v){const w=getW();const n=wkGetNotes(w);if(!n[i])return;n[i][k]=v;wkSetNotes(w,n);renderWeekly(w);}
+function wkAdd(){const w=getW();const n=wkGetNotes(w);n.push({t:'',d:''});wkSetNotes(w,n);renderWeekly(w);}
+function wkDel(i){const w=getW();const n=wkGetNotes(w);n.splice(i,1);wkSetNotes(w,n);renderWeekly(w);}
+function wkCopyPrev(){const w=getW();const prev=allWeeks.find((x,i)=>i>activeIdx&&x.pt===w.pt);if(!prev)return;wkSetNotes(w,wkGetNotes(prev));renderWeekly(w);}
+function wkOpen(i){wkIdx=i;document.getElementById('wkOv').classList.add('on');wkShow();}
+function wkClose(){document.getElementById('wkOv').classList.remove('on');}
+function wkShow(){wkIdx=Math.max(0,Math.min(wkSlides.length-1,wkIdx));document.getElementById('wkStage').innerHTML=wkSlides[wkIdx];document.getElementById('wkCount').textContent=(wkIdx+1)+' / '+wkSlides.length;}
+function wkStep(d){wkIdx+=d;wkShow();}
+document.addEventListener('keydown',e=>{const ov=document.getElementById('wkOv');if(!ov||!ov.classList.contains('on'))return;if(e.key==='ArrowRight'||e.key===' ')wkStep(1);else if(e.key==='ArrowLeft')wkStep(-1);else if(e.key==='Escape')wkClose();});
 
 // ── Resumen ──
 function renderResumen(w){
