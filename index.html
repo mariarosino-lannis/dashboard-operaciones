@@ -791,6 +791,7 @@ function computeWeek(rows,hols,actAgents){
 
     const internalCount=processed.filter(r=>r.isInt).length;
   const allR=processed.filter(r=>!r.isInt&&r.f);
+  const habAll=processed.filter(r=>r.habTime&&!r.isInt); // todas las hábiles (incluye cerradas por bot/sin agente)
   const habR=processed.filter(r=>r.habTime&&!r.isInt&&(actAgents.size===0||actAgents.has(r.agent)));
 
   const cats={},days={},hours={};
@@ -868,7 +869,7 @@ function computeWeek(rows,hols,actAgents){
   const allFRT=habR.map(r=>r.frt),allART=habR.map(r=>r.art),allTTR=habR.map(r=>r.ttr);
 
   return{week:sd[0]+' al '+sd[sd.length-1],ws:sd[0],we:sd[sd.length-1],fl,isM,pt,
-    total:allR.length,totalH:habR.length,workDays:wd,availHrs:aH,
+    total:allR.length,totalH:habAll.length,workDays:wd,availHrs:aH,
     frtMed:+med(allFRT).toFixed(1),frtAvg:+avg(allFRT).toFixed(1),
     artMed:+med(allART).toFixed(1),artAvg:+avg(allART).toFixed(1),
     ttrMed:+med(allTTR).toFixed(1),ttrAvg:+avg(allTTR).toFixed(1),
