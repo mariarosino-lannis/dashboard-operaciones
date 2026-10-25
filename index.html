@@ -380,7 +380,7 @@ body{font-family:'Inter',sans-serif;background:var(--paper);color:var(--ink);min
     <div id="tab-tiempos" class="tab-c">
       <div class="card"><div class="card-header"><div><div class="card-title">SLA — Equipo completo</div><div class="card-sub">Lun-vie · 9-18hs · sin feriados | Barra = mediana vs objetivo · se muestra la mediana: el promedio se distorsiona con pocos casos muy lentos</div></div></div><div id="slaTeam"></div></div>
       <div id="agentSlaCards"></div>
-      <div class="card"><div class="card-header"><div><div class="card-title">Comparativa visual</div></div></div><div class="ch" style="height:230px"><canvas id="cAgentTimes"></canvas></div></div>
+      <div class="card"><div class="card-header"><div><div class="card-title">Comparativa visual</div><div class="card-sub">Medianas por agente. FRT en segundos (eje derecho) y TTR en minutos (eje izquierdo): son escalas distintas.</div></div></div><div class="ch" style="height:260px"><canvas id="cAgentTimes"></canvas></div></div>
     </div>
 
     <!-- WEEKLY -->
@@ -1129,7 +1129,7 @@ function renderAll(){
   const w=getW();
   const badge=w.pt==='M'?'<span class="hbadge m">Mensual</span>':w.pt==='Q'?'<span class="hbadge m" style="background:var(--amberbg);color:var(--amber)">Quincenal</span>':'<span class="hbadge w">Semanal</span>';
   document.getElementById('pageTitle').textContent=w.fl||w.week;
-  document.getElementById('pageMeta').textContent=w.total+' consultas · '+w.totalH+' hábiles'+(w.by?' · '+w.by:'');
+  document.getElementById('pageMeta').textContent=w.total+' consultas · '+w.totalH+' hábiles'+(w.internalCount?' · '+w.internalCount+' excluidas (envíos masivos e internos)':'')+(w.by?' · '+w.by:'');
   document.getElementById('headerBadge').innerHTML=badge;
   renderResumen(w);renderCategorias(w);renderTiempos(w);renderCapacidad(w);
   renderConversaciones(w);renderClientes(w);renderBot();renderOps(w);renderWeekly(w);renderComparativa(w);
@@ -1456,7 +1456,11 @@ function renderTiempos(w){
       <div class="card-header"><div style="display:flex;align-items:center;gap:10px"><div class="av ${AV[i%4]}" style="width:38px;height:38px;font-size:13px">${ini(name)}</div><div><div class="card-title">${name}</div><div class="card-sub">${info.count} consultas hábiles</div></div></div></div>
       ${slaRow('KR1.1 FRT',info.frtMed,info.frtAvg,SLA.frt)}${slaRow('KR1.2 ART',info.artMed,info.artAvg,SLA.art)}${slaRow('KR1.3 TTR',info.ttrMed,info.ttrAvg,SLA.ttr)}
     </div>`).join('');
-  mkChart('cAgentTimes','bar',{labels:ents.map(([n])=>n),datasets:[{label:'FRT',data:ents.map(([,a])=>+a.frtMed.toFixed(1)),backgroundColor:'#6366f1',borderRadius:4},{label:'ART',data:ents.map(([,a])=>+a.artMed.toFixed(1)),backgroundColor:'#10b981',borderRadius:4},{label:'TTR',data:ents.map(([,a])=>+a.ttrMed.toFixed(1)),backgroundColor:'#f59e0b',borderRadius:4}]},{scales:{y:{beginAtZero:true,grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#8a8a96',font:{size:10}}},x:{grid:{display:false},ticks:{color:'#3a3a42'}}}});
+  {const hasArt=ents.some(([,a])=>a.artMed>0);
+  const ds=[{label:'FRT mediana (segundos, eje derecho)',yAxisID:'y1',data:ents.map(([,a])=>Math.round(a.frtMed*60)),backgroundColor:'#6366f1',borderRadius:4}];
+  if(hasArt)ds.push({label:'ART mediana (min)',yAxisID:'y',data:ents.map(([,a])=>+a.artMed.toFixed(1)),backgroundColor:'#10b981',borderRadius:4});
+  ds.push({label:'TTR mediana (minutos, eje izquierdo)',yAxisID:'y',data:ents.map(([,a])=>+a.ttrMed.toFixed(1)),backgroundColor:'#f59e0b',borderRadius:4});
+  mkChart('cAgentTimes','bar',{labels:ents.map(([n])=>n),datasets:ds},{plugins:{legend:{display:true,position:'bottom',labels:{boxWidth:12,font:{size:11}}}},scales:{y:{beginAtZero:true,position:'left',title:{display:true,text:'minutos',font:{size:10}},grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#8a8a96',font:{size:10}}},y1:{beginAtZero:true,position:'right',title:{display:true,text:'segundos',font:{size:10}},grid:{display:false},ticks:{color:'#6366f1',font:{size:10}}},x:{grid:{display:false},ticks:{color:'#3a3a42'}}}});}
 }
 
 // ── Capacidad ──
