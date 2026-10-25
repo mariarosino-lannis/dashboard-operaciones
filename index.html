@@ -378,7 +378,7 @@ body{font-family:'Inter',sans-serif;background:var(--paper);color:var(--ink);min
 
     <!-- TIEMPOS -->
     <div id="tab-tiempos" class="tab-c">
-      <div class="card"><div class="card-header"><div><div class="card-title">SLA — Equipo completo</div><div class="card-sub">Lun-vie · 9-18hs · sin feriados | Barra = mediana vs objetivo · Col 1 = mediana · Col 2 = promedio</div></div></div><div id="slaTeam"></div></div>
+      <div class="card"><div class="card-header"><div><div class="card-title">SLA — Equipo completo</div><div class="card-sub">Lun-vie · 9-18hs · sin feriados | Barra = mediana vs objetivo · se muestra la mediana: el promedio se distorsiona con pocos casos muy lentos</div></div></div><div id="slaTeam"></div></div>
       <div id="agentSlaCards"></div>
       <div class="card"><div class="card-header"><div><div class="card-title">Comparativa visual</div></div></div><div class="ch" style="height:230px"><canvas id="cAgentTimes"></canvas></div></div>
     </div>
@@ -1447,7 +1447,7 @@ function renderCategorias(w){
 function renderTiempos(w){
   function slaRow(label,m,a,obj){
     const pct=Math.min((m/obj)*100,110);const okM=m<=obj;const okA=a<=obj;
-    return`<div class="sla-row"><div class="sla-label"><strong>${label}</strong></div><div class="sla-bar"><div class="sla-bar-fill" style="width:${Math.min(pct,100)}%;background:${okM?'var(--green)':'var(--red)'}"></div></div><div class="sla-val ${okM?'ok':'fail'}">${hms(m)}</div><div class="sla-val ${okA?'ok':'fail'}" style="font-size:11px">${hms(a)}</div><div class="sla-obj">${hms(obj)}</div></div>`;
+    return`<div class="sla-row"><div class="sla-label"><strong>${label}</strong></div><div class="sla-bar"><div class="sla-bar-fill" style="width:${Math.min(pct,100)}%;background:${okM?'var(--green)':'var(--red)'}"></div></div><div class="sla-val ${okM?'ok':'fail'}">${hms(m)}</div><div class="sla-val" style="font-size:11px"></div><div class="sla-obj">${hms(obj)}</div></div>`;
   }
   document.getElementById('slaTeam').innerHTML=slaRow('KR1.1 FRT — 1ª respuesta',w.frtMed,w.frtAvg,SLA.frt)+slaRow('KR1.2 ART — Tiempo medio'+(artFor(w).fromMsgs?' (RT humano, mensajes)':''),artFor(w).med,artFor(w).avg,SLA.art)+slaRow('KR1.3 TTR — Resolución',w.ttrMed,w.ttrAvg,SLA.ttr);
   const ents=Object.entries(w.agents).filter(([n])=>n&&n!=='Sin agente').sort((a,b)=>b[1].count-a[1].count);
@@ -1456,7 +1456,7 @@ function renderTiempos(w){
       <div class="card-header"><div style="display:flex;align-items:center;gap:10px"><div class="av ${AV[i%4]}" style="width:38px;height:38px;font-size:13px">${ini(name)}</div><div><div class="card-title">${name}</div><div class="card-sub">${info.count} consultas hábiles</div></div></div></div>
       ${slaRow('KR1.1 FRT',info.frtMed,info.frtAvg,SLA.frt)}${slaRow('KR1.2 ART',info.artMed,info.artAvg,SLA.art)}${slaRow('KR1.3 TTR',info.ttrMed,info.ttrAvg,SLA.ttr)}
     </div>`).join('');
-  mkChart('cAgentTimes','bar',{labels:ents.map(([n])=>n),datasets:[{label:'FRT',data:ents.map(([,a])=>+a.frtAvg.toFixed(1)),backgroundColor:'#6366f1',borderRadius:4},{label:'ART',data:ents.map(([,a])=>+a.artAvg.toFixed(1)),backgroundColor:'#10b981',borderRadius:4},{label:'TTR',data:ents.map(([,a])=>+a.ttrAvg.toFixed(1)),backgroundColor:'#f59e0b',borderRadius:4}]},{scales:{y:{beginAtZero:true,grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#8a8a96',font:{size:10}}},x:{grid:{display:false},ticks:{color:'#3a3a42'}}}});
+  mkChart('cAgentTimes','bar',{labels:ents.map(([n])=>n),datasets:[{label:'FRT',data:ents.map(([,a])=>+a.frtMed.toFixed(1)),backgroundColor:'#6366f1',borderRadius:4},{label:'ART',data:ents.map(([,a])=>+a.artMed.toFixed(1)),backgroundColor:'#10b981',borderRadius:4},{label:'TTR',data:ents.map(([,a])=>+a.ttrMed.toFixed(1)),backgroundColor:'#f59e0b',borderRadius:4}]},{scales:{y:{beginAtZero:true,grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#8a8a96',font:{size:10}}},x:{grid:{display:false},ticks:{color:'#3a3a42'}}}});
 }
 
 // ── Capacidad ──
@@ -2032,7 +2032,7 @@ document.getElementById('fileConv').addEventListener('change',function(e){
     const isCSV=file.name.toLowerCase().endsWith('.csv');
     let rows;
     try{
-      if(isCSV){const txt=new TextDecoder('utf-8').decode(ev.target.result);const wb=XLSX.read(txt,{type:'string',raw:false,dateNF:'yyyy-mm-dd hh:mm:ss'});const ws=wb.Sheets[wb.SheetNames[0]];rows=XLSX.utils.sheet_to_json(ws,{header:1,raw:false,dateNF:'yyyy-mm-dd hh:mm:ss'});}
+      if(isCSV){const txt=new TextDecoder('utf-8').decode(ev.target.result);const wb=XLSX.read(txt,{type:'string',raw:true});const ws=wb.Sheets[wb.SheetNames[0]];rows=XLSX.utils.sheet_to_json(ws,{header:1,raw:true,defval:''});} // raw:true evita que SheetJS convierta fechas y las corra por zona horaria
       else{const wb=XLSX.read(new Uint8Array(ev.target.result),{type:'array',raw:false,dateNF:'yyyy-mm-dd hh:mm:ss'});const ws=wb.Sheets[wb.SheetNames[0]];rows=XLSX.utils.sheet_to_json(ws,{header:1,raw:false,dateNF:'yyyy-mm-dd hh:mm:ss'});}
     }catch(err){toast('Error leyendo archivo: '+err.message,true);return;}
     if(!rows||rows.length<2){toast('No se pudieron leer datos.',true);return;}
@@ -2060,9 +2060,9 @@ document.getElementById('fileMsgs').addEventListener('change',function(e){
     let rows;
     try{
       const txt=new TextDecoder('utf-8').decode(ev.target.result);
-      const wb=XLSX.read(txt,{type:'string',raw:false,dateNF:'yyyy-mm-dd hh:mm:ss'});
+      const wb=XLSX.read(txt,{type:'string',raw:true});
       const ws=wb.Sheets[wb.SheetNames[0]];
-      rows=XLSX.utils.sheet_to_json(ws,{header:1,raw:false,dateNF:'yyyy-mm-dd hh:mm:ss'});
+      rows=XLSX.utils.sheet_to_json(ws,{header:1,raw:true,defval:''});
     }catch(err){toast('Error: '+err.message,true);return;}
     if(!rows||rows.length<2){toast('Archivo inválido.',true);return;}
     const hdrs=rows[0].map(h=>String(h||'').trim());
