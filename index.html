@@ -685,10 +685,12 @@ const AV=['a0','a1','a2','a3'];
 const EQ_INT=new Set([318356816,315475410,295606873,340645465,318432393,318432542,318434168,331566697,316942904,318426014,343325858]);
 const EXCLUDE_CONTACTS=new Set(['338590743','326485789','415320204','405053937','395503910','411238335','389076205','324881294','395227721','411989881','330931132','387753916','332109842','411340452','321809883','332384170','318794941','354666100','354839550','321951367','332005827','341076424','351182784']);
 const CLOSED_BY={906585:'Mateo Lopez',906580:'Pablo Moreno',906560:'María Rosino',949998:'Camila Fernandez'};
+const BOT_AGENTS=['varys']; // agente de IA: cuenta como bot, no como agente humano
 const EMAIL_AGENTS={'mateo.lopez':'Mateo Lopez','pablo.moreno':'Pablo Moreno','maria.rosino':'María Rosino','camila.fernandez':'Camila Fernandez','pablo.delucca':'Pablo De Lucca'};
 // Acepta ID numérico (sistema viejo) o email (sistema nuevo)
 function agentName(v){
   const s=String(v==null?'':v).trim();if(!s)return '';
+  if(BOT_AGENTS.includes(s.toLowerCase()))return '';
   if(/^\d+(\.0)?$/.test(s))return CLOSED_BY[parseInt(s)]||'';
   if(s.includes('@')){const k=s.split('@')[0].toLowerCase();return EMAIL_AGENTS[k]||k.split('.').map(x=>x.charAt(0).toUpperCase()+x.slice(1)).join(' ');}
   return s;
@@ -831,7 +833,9 @@ function computeWeek(rows,hols,actAgents){
     const isWE=dow===0||dow===6,isFer=hols.has(f),inH=h>=9&&h<18;
     const habTime=!isWE&&!isFer&&inH;
     const cid=parseInt(r[iCID]);
-    const isInt=EQ_INT.has(cid);const agent=agentName(r[iCB]);
+    const isOut=String(r[iCat]||'').trim()==='outbound_delivery';
+    const isInt=EQ_INT.has(cid)||isOut;const agent=agentName(r[iCB]);
+    const _m=String(r[iS]||'').match(/(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/);const tm=_m?Date.UTC(+_m[1],+_m[2]-1,+_m[3],+_m[4],+_m[5])/60000:null;
     const src=String(r[iSrc]||'').trim();
     const hasBot=String(r[iNote]||'').toLowerCase().includes('workflow');
     const numA=parseInt(r[iNA])||0;
@@ -842,17 +846,22 @@ function computeWeek(rows,hols,actAgents){
     const contactId=String(r[iCID]||'').trim();
     const rawCh=r[iOpenedByChannel];
     const channelId=rawCh?String(rawCh).trim().replace('.0',''):'0';
-    return{f,h,channelId,ds:DN[dow],dow,isInt,agent,habTime,catN:normCat(r[iCat]),
+    return{f,h,tm,isOut,channelId,ds:DN[dow],dow,isInt,agent,habTime,catN:normCat(r[iCat]),
       frt:(iFR>=0&&r[iFR]&&bizMin(r[iS],r[iFR],hols)!=null)?bizMin(r[iS],r[iFR],hols):pm(r[iFRT]),art:pm(r[iART]),ttr:(r[iRes]&&bizMin(r[iS],r[iRes],hols)!=null)?bizMin(r[iS],r[iRes],hols):pm(r[iTTR]),tta:pm(r[iTTA]),
       src,hasBot,reassigned:numA>1,sameDay,totalMsgs,aiClosed,contactId,
       botSrc:['ai_agent','workflow','api'].includes(String(r[iCBS]||'').trim()),
       inM:parseInt(r[iMI])||0,outM:parseInt(r[iMO])||0,
-      cbEmpty:(!String(r[iCB]||'').trim()||String(r[iCB]).trim()==='0'),
+      cbEmpty:(!String(r[iCB]||'').trim()||String(r[iCB]).trim()==='0'||BOT_AGENTS.includes(String(r[iCB]).trim().toLowerCase())),
       frtRaw:pm(r[iFRT]),hasFR:((iFR>=0&&String(r[iFR]||'').trim()!=='')||pm(r[iFRT])!=null),
       resolved:(String(r[iRes]||'').trim()!==''||pm(r[iTTR])!=null),
       zone:habTime?'hab':((isWE||isFer)?'finde':'noche'),chLabel:chLabelOf(rawCh)};
   });
 
+  // Difusiones masivas: ≥12 conversaciones iniciadas en una ventana de ±3 min. El reloj de FRT/TTR arranca en el envío,
+  // no en la respuesta del cliente, así que esas conversaciones no entran en los tiempos (sí en el volumen).
+  {const tms=processed.map(r=>r.tm).filter(t=>t!=null).sort((a,b)=>a-b);
+   processed.forEach(r=>{r.burst=false;if(r.tm==null)return;let c=0;for(let i=0;i<tms.length;i++){if(tms[i]>r.tm+3)break;if(tms[i]>=r.tm-3)c++;}
+     if(c>=12){r.burst=true;r.frt=null;r.ttr=null;r.frtRaw=null;}});}
     const internalCount=processed.filter(r=>r.isInt).length;
   const allR=processed.filter(r=>!r.isInt&&r.f);
   const habAll=processed.filter(r=>r.habTime&&!r.isInt); // todas las hábiles (incluye cerradas por bot/sin agente)
@@ -868,7 +877,7 @@ function computeWeek(rows,hols,actAgents){
   rows.slice(1).forEach(r=>{
     const cid=parseInt(String(r[iCID]||'').trim())||0;
     if(EQ_INT.has(cid))return;
-    const raw=String(r[iCat]||'').trim();
+    const raw=String(r[iCat]||'').trim();if(raw==='outbound_delivery')return;
     if(raw==='Otra'||raw.startsWith('Otros')){otrosRaw[raw]=(otrosRaw[raw]||0)+1;}
   });
   Object.entries(cats).forEach(([cat,cnt])=>{
@@ -930,7 +939,7 @@ function computeWeek(rows,hols,actAgents){
   const opsHab=opsRows.filter(r=>r.zone==='hab');
   const pc=(n,d)=>d>0?+(n/d*100).toFixed(1):0;
   const m1=a=>+med(a).toFixed(1), a1=a=>+avg(a).toFixed(1);
-  const ops={total:opsRows.length};
+  const ops={total:opsRows.length,outbound:processed.filter(r=>r.isOut).length,burst:opsRows.filter(r=>r.burst).length};
   ops.zones={hab:opsHab.length,noche:opsRows.filter(r=>r.zone==='noche').length,finde:opsRows.filter(r=>r.zone==='finde').length};
   ops.bot={n:opsRows.filter(r=>r.bot).length};ops.bot.pct=pc(ops.bot.n,ops.total);
   ops.bot.hab=opsHab.filter(r=>r.bot).length;ops.bot.habPct=pc(ops.bot.hab,opsHab.length);
@@ -1147,7 +1156,7 @@ function renderOps(w){
   const sinRows=Object.entries(o.sinRespCat).sort((a,b)=>b[1]-a[1]).slice(0,8).map(([c,n])=>[c,n,P(n,w.cats[c]||0)]);
   const chRows=Object.entries(o.chan).sort((a,b)=>b[1].n-a[1].n).map(([c,v])=>[c,v.n,P(v.n,o.total),v.hab,P(v.bot,v.n),P(v.sin,v.n),v.frtMed?fmtM(v.frtMed):'—',v.ttrMed?fmtM(v.ttrMed):'—']);
   el.innerHTML=`
-  <div class="card" style="background:var(--s2)"><div class="card-sub" style="margin:0;line-height:1.7"><b>Cómo leer esta pestaña.</b> Base: <b>${o.total}</b> conversaciones (sin contactos internos, todos los horarios) = <b>${z.hab}</b> hábiles (lun-vie 9-18, sin feriados) + <b>${z.noche}</b> de noche + <b>${z.finde}</b> de fin de semana/feriado. "Bot" = conversación cerrada sin agente humano. Tiempos en horas hábiles (se descuentan noches, fines de semana y feriados). No usa el filtro de agente.</div></div>
+  <div class="card" style="background:var(--s2)"><div class="card-sub" style="margin:0;line-height:1.7"><b>Cómo leer esta pestaña.</b> Base: <b>${o.total}</b> conversaciones (sin contactos internos, todos los horarios) = <b>${z.hab}</b> hábiles (lun-vie 9-18, sin feriados) + <b>${z.noche}</b> de noche + <b>${z.finde}</b> de fin de semana/feriado. "Bot" = conversación cerrada sin agente humano. Tiempos en horas hábiles (se descuentan noches, fines de semana y feriados). No usa el filtro de agente.${o.outbound?' Se excluyeron <b>'+o.outbound+'</b> envíos masivos (outbound_delivery).':''}${o.burst?' <b>'+o.burst+'</b> conversaciones nacieron de una difusión masiva: cuentan en el volumen pero no en FRT/TTR, porque el reloj arranca en el envío y no en la respuesta del cliente.':''}</div></div>
   <div class="mc-grid">
     ${mc('accent','Resolución sin humano',o.bot.pct+'%',o.bot.n+' de '+o.total+(po?vs(o.bot.pct,po.bot.pct,' pp',false):''))}
     ${mc('amber','Sin respuesta',o.sinResp.pct+'%',o.sinResp.n+' de '+o.total+(po?vs(o.sinResp.pct,po.sinResp.pct,' pp',true):''))}
