@@ -1205,7 +1205,7 @@ function renderOps(w){
 
 // ── Weekly: deck para presentar a otros equipos ──
 const SYSTEM_CHANGE='2026-10-05'; // desde esta fecha el export incluye respuestas del bot en la 1ª respuesta
-let wkSlides=[],wkIdx=0;
+let wkSlides=[],wkIdx=0,wkMsgMissing=false;
 function wkKey(w){return 'wkNotes:'+(w.week||w.ws);}
 function wkGetNotes(w){try{const v=JSON.parse(localStorage.getItem(wkKey(w))||'null');return Array.isArray(v)?v:[];}catch(e){return[];}}
 function wkSetNotes(w,n){try{localStorage.setItem(wkKey(w),JSON.stringify(n));}catch(e){}}
@@ -1301,17 +1301,27 @@ function buildWeeklySlides(w){
         <div class="wk-card a"><div class="l">Clientes únicos</div><div class="v">${cr.uniqueClients}</div></div></div></div>`);
     }
   }
-  // 5. Bot (solo si hay ops)
-  if(o){
-    const bc=Object.entries(o.botCat).filter(([c,v])=>v.t>=5&&!/outbound/i.test(c)).map(([c,v])=>[c,v.t,v.b,Math.round(v.b/v.t*100)]).sort((a,b)=>b[3]-a[3]);
-    const hi=bc.slice(0,3),lo=bc.slice(-3).reverse();
-    slides.push(`<div class="wk-slide"><div class="wk-eyebrow">Operaciones — Automatización</div><div class="wk-h">Cuánto se resuelve sin agente</div><div class="wk-sub">Conversaciones cerradas sin un agente humano, por categoría (mínimo 5 conversaciones).</div>
-      <div class="wk-cards"><div class="wk-card p"><div class="l">Cierre sin agente</div><div class="v">${o.bot.pct}%</div><div class="s">${o.bot.n} de ${o.total}</div></div>
-      <div class="wk-card a"><div class="l">Sin respuesta</div><div class="v">${o.sinResp.pct}%</div><div class="s">${o.sinResp.n} conversaciones sin primera respuesta</div></div>
-      <div class="wk-card"><div class="l">Mensajes por conversación</div><div class="v">${o.msgs.avg}</div><div class="s">bot ${o.msgs.avgBot} · agente ${o.msgs.avgHum}</div></div></div>
-      <div class="wk-g2" style="margin-top:1.4em"><div><div style="font-weight:600;margin-bottom:.4em">Más cerradas sin agente</div>${hi.map(x=>`<div class="wk-mini"><span style="grid-column:1/2">${wkEsc(x[0])}</span><div class="wk-bar"><i style="width:${x[3]}%;background:var(--purple)"></i></div><span style="text-align:right">${x[3]}%</span></div>`).join('')}</div>
-      <div><div style="font-weight:600;margin-bottom:.4em">Siempre llegan a una persona</div>${lo.map(x=>`<div class="wk-mini"><span>${wkEsc(x[0])}</span><div class="wk-bar"><i style="width:${x[3]}%;background:var(--purple)"></i></div><span style="text-align:right">${x[3]}%</span></div>`).join('')}</div></div>
-      <div class="wk-note">“Sin agente” incluye cierres automáticos (API/workflow): el export actual no distingue si lo resolvió el bot o se cerró solo.</div></div>`);
+  // 5. Automatización: sale del reporte de mensajes (más confiable que el cierre de la conversación)
+  const dms=x=>new Date(x+'T12:00:00').getTime(),TOL=4*86400000;
+  const mr=(typeof msgReports!=='undefined'?msgReports:[]).find(r=>r.start&&r.end&&Math.abs(dms(r.start)-dms(w.ws))<=TOL&&Math.abs(dms(r.end)-dms(w.we))<=TOL)||null;
+  wkMsgMissing=!mr;
+  if(mr){
+    const fs=mr.flowStats||{};const fT=(fs.botHuman||0)+(fs.aiOnly||0)+(fs.humanOnly||0)||1;
+    const pf=n=>Math.round((n||0)/fT*100);
+    const sm=[['Agentes',mr.humanMsgs,'var(--accent)'],['IA',mr.botMsgs,'var(--green)'],['Workflows',mr.workflowMsgs,'var(--amber)'],['Difusiones',mr.broadcastMsgs,'var(--purple)'],['n8n',mr.n8nMsgs,'var(--ink4)']].filter(x=>x[1]>0);
+    const smT=sm.reduce((t,x)=>t+x[1],0)||1;
+    slides.push(`<div class="wk-slide"><div class="wk-eyebrow">Operaciones — Automatización</div><div class="wk-h">Qué hace la IA y qué llega a una persona</div><div class="wk-sub">Basado en los mensajes del período (${mr.totalMsgs.toLocaleString('es')} mensajes).</div>
+      <div class="wk-cards">
+        <div class="wk-card g"><div class="l">Resueltas solo por la IA</div><div class="v">${pf(fs.aiOnly)}%</div><div class="s">${(fs.aiOnly||0).toLocaleString('es')} conversaciones sin intervención humana</div></div>
+        <div class="wk-card a"><div class="l">Escalan a una persona</div><div class="v">${mr.escalationRate}%</div><div class="s">${(fs.botHuman||0).toLocaleString('es')} conversaciones pasan del bot a un agente</div></div>
+        <div class="wk-card"><div class="l">Tiempo de respuesta (mediana)</div><div class="v">${mr.aiRtMed}m <span style="font-size:.45em;color:var(--ink3)">IA</span></div><div class="s">agentes: ${mr.humanRtMed}m</div></div>
+      </div>
+      <div class="wk-g2" style="margin-top:1.4em">
+        <div><div style="font-weight:600;margin-bottom:.4em">Cómo se atendieron las conversaciones</div>
+          ${[['Solo IA',fs.aiOnly,'var(--green)'],['Bot y luego agente',fs.botHuman,'var(--accent)'],['Directo a un agente',fs.humanOnly,'var(--amber)']].map(x=>`<div class="wk-mini" style="grid-template-columns:9em 1fr 3em"><span>${x[0]}</span><div class="wk-bar"><i style="width:${pf(x[1])}%;background:${x[2]}"></i></div><span style="text-align:right">${pf(x[1])}%</span></div>`).join('')}</div>
+        <div><div style="font-weight:600;margin-bottom:.4em">Quién envía los mensajes</div>
+          ${sm.map(x=>`<div class="wk-mini" style="grid-template-columns:9em 1fr 3em"><span>${x[0]}</span><div class="wk-bar"><i style="width:${Math.round(x[1]/smT*100)}%;background:${x[2]}"></i></div><span style="text-align:right">${Math.round(x[1]/smT*100)}%</span></div>`).join('')}</div>
+      </div></div>`);
   }
   // 6. Resumen desde Operaciones (editable)
   const notes=wkGetNotes(w).filter(n=>(n.t||'').trim()||(n.d||'').trim());
@@ -1327,6 +1337,7 @@ function renderWeekly(w){
   const prev=allWeeks.find((x,i)=>i>activeIdx&&x.pt===w.pt)||null;
   const notes=wkGetNotes(w);
   el.innerHTML=`<div class="wk-controls"><button class="wk-btn pri" onclick="wkOpen(0)">▶ Presentar</button><button class="wk-btn" onclick="window.print()">Imprimir / guardar PDF</button><span style="font-size:11px;color:var(--ink3)">Período activo: <b>${wkEsc(w.fl||w.week)}</b> · cambialo en la barra lateral. Flechas ← → y Esc en modo presentación.</span></div>
+  ${wkMsgMissing?'<div class="card-sub" style="margin:-6px 0 14px">Para incluir la slide de automatización (IA vs agentes), subí el CSV de mensajes de este período.</div>':''}
   ${wkSlides.join('')}
   <div class="card wk-editor"><div class="card-header"><div><div class="card-title">Resumen desde Operaciones (editable)</div><div class="card-sub">Lo que quieras destacar ${w.pt==='M'?'del mes':w.pt==='Q'?'de la quincena':'de la semana'} a mano. Se guarda en este navegador, por período, y aparece como última slide.</div></div></div>
     <div id="wkEd">${notes.map((n,i)=>`<div class="wk-ed-row"><input value="${wkEsc(n.t)}" placeholder="Título (ej: Confección de IIBB)" onchange="wkEdit(${i},'t',this.value)"><input value="${wkEsc(n.d)}" placeholder="Descripción" onchange="wkEdit(${i},'d',this.value)"><button class="wk-btn" onclick="wkDel(${i})">✕</button></div>`).join('')}</div>
