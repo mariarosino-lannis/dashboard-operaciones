@@ -533,6 +533,12 @@ body{font-family:'Inter',sans-serif;background:var(--paper);color:var(--ink);min
       </div>
       <div id="compContent"><div class="empty">Seleccioná al menos un período para comparar.</div></div>
       <div class="card" style="margin-top:16px">
+        <div class="card-header"><div><div class="card-title">Evolución</div><div class="card-sub" id="evoSub">Todos los períodos guardados del mismo tipo que el activo, sin necesidad de elegirlos</div></div></div>
+        <div style="display:flex;flex-wrap:wrap;gap:7px;margin-bottom:16px" id="evoSelector"></div>
+        <div class="ch" style="height:260px"><canvas id="cEvo"></canvas></div>
+        <div class="bo-note" id="evoNote"></div>
+      </div>
+      <div class="card" style="margin-top:16px">
         <div class="card-header">
           <div><div class="card-title">Histórico por categoría</div><div class="card-sub">Evolución de consultas en todos los períodos guardados — sin necesidad de seleccionar meses</div></div>
         </div>
@@ -2135,7 +2141,77 @@ function toggleMsgComp(id){
 
 
 // ── Comparativa ──
+// ── Comparativa: bloques de atención real, derivación, calidad, negocio, IA por categoría y evolución ──
+const cP=(n,d)=>d>0?n/d*100:null;
+const COMP_ROWS=[
+  ['Atención real (cruce con mensajes)',[
+    ['Resueltas solo por la IA',c=>{const R=c.ops&&c.ops.real;return R?cP(R.tipos.soloIA,R.total):null;},'pct','up'],
+    ['IA y luego agente',c=>{const R=c.ops&&c.ops.real;return R?cP(R.tipos.iaAgente,R.total):null;},'pct',''],
+    ['Solo agente',c=>{const R=c.ops&&c.ops.real;return R?cP(R.tipos.soloAgente,R.total):null;},'pct',''],
+    ['Solo respuesta automática',c=>{const R=c.ops&&c.ops.real;return R?cP(R.tipos.workflow,R.total):null;},'pct',''],
+    ['Primera respuesta de la IA',c=>{const o=c.ops;return o&&o.frb?cP(o.frb.ia,o.total):null;},'pct','up']]],
+  ['Derivación',[
+    ['Pase IA → agente (mediana)',c=>{const h=c.ops&&c.ops.real&&c.ops.real.handoff;return h&&h.n?h.med:null;},'min','down'],
+    ['Pases que esperaron más de 1 h',c=>{const h=c.ops&&c.ops.real&&c.ops.real.handoff;return h&&h.n?cP(h.over60,h.n):null;},'pct','down'],
+    ['Agente, una vez asignado (mediana)',c=>{const a=c.ops&&c.ops.a2fr;return a?a.med:null;},'min','down'],
+    ['Reasignadas 2 o más veces',c=>{const o=c.ops;return o&&o.reassign?cP(o.reassign.n2,o.total):null;},'pct','down']]],
+  ['Calidad',[
+    ['Vuelven en menos de 24 h',c=>{const o=c.ops;return o&&o.reopen?o.reopen.pct:null;},'pct','down'],
+    ['Sin respuesta',c=>c.ops&&c.ops.sinResp?c.ops.sinResp.pct:null,'pct','down'],
+    ['Resolución de más de 2 h',c=>c.ops&&c.ops.slow?c.ops.slow.d1Pct:null,'pct','down'],
+    ['Fuera de horario',c=>c.ops&&c.ops.off?c.ops.off.pct:null,'pct','']]],
+  ['Negocio (BO)',[
+    ['Facturas emitidas',c=>{const f=factPeriod(c);return f?f.tot:null;},'n','up'],
+    ['Clientes que facturaron',c=>{const f=factPeriod(c);return f?f.cl:null;},'n','up'],
+    ['Facturaron por WhatsApp con IA',c=>{const f=factPeriod(c);return f?cP(f.waCl,f.cl):null;},'pct','up'],
+    ['Clientes activos al cierre',c=>{const f=factPeriod(c);return f?f.activos:null;},'n','up'],
+    ['Consultas por cliente activo',c=>cpa(c,factPeriod(c)),'dec','down']]]
+];
+function compFmt(v,t){if(v==null||isNaN(v))return'—';if(t==='pct')return v.toFixed(1)+'%';if(t==='min')return fmtM(v);if(t==='dec')return fmt2(v);return Math.round(v).toLocaleString('es');}
+function compExtraHtml(cols,lbls){
+  const head=`<thead><tr><th>Métrica</th>${cols.map((c,i)=>`<th class="r" style="${i===0?'color:var(--accent);font-weight:700':''}">${lbls[i]}</th>`).join('')}<th class="r" style="color:var(--ink3)">Mejor si</th></tr></thead>`;
+  const td=(v,t,i,dir,base)=>{let col='';if(i>0&&v!=null&&base!=null&&dir){const better=dir==='up'?base>v:base<v;const eq=Math.abs(base-v)<1e-9;if(!eq)col=better?'var(--green)':'var(--red)';}
+    return`<td class="r"><span style="${i===0?'font-weight:600;color:var(--accent)':''}">${compFmt(v,t)}</span>${col&&i>0?`<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${col};margin-left:6px;vertical-align:middle" title="${col.includes('green')?'El período base está mejor':'El período base está peor'}"></span>`:''}</td>`;};
+  let miss=false;
+  const body=COMP_ROWS.map(([sec,rows])=>`<tr class="tbl-section"><td colspan="${cols.length+2}">${sec}</td></tr>`+rows.map(([l,fn,t,dir])=>{const vals=cols.map(c=>{try{return fn(c);}catch(e){return null;}});if(vals.some(v=>v==null))miss=true;
+    return`<tr><td>${l}</td>${vals.map((v,i)=>td(v,t,i,dir,vals[0])).join('')}<td class="r" style="color:var(--ink3)">${dir==='up'?'↑ más':dir==='down'?'↓ menos':'—'}</td></tr>`;}).join('')).join('');
+  // IA por categoría: temas principales del período base
+  const RB=cols[0].ops&&cols[0].ops.real;
+  const cats=RB?Object.entries(RB.byCat).filter(([,v])=>v.t>=5).sort((a,b)=>b[1].t-a[1].t).slice(0,10).map(([c])=>c):[];
+  const catBody=cats.map(cat=>{const vals=cols.map(c=>{const v=c.ops&&c.ops.real&&c.ops.real.byCat[cat];return v&&v.t?{p:v.soloIA/v.t*100,t:v.t}:null;});
+    return`<tr><td style="font-weight:500">${wkEsc(cat)}</td>${vals.map((v,i)=>`<td class="r">${v?`<span style="${i===0?'font-weight:600;color:var(--accent)':''}">${v.p.toFixed(0)}%</span> <span style="font-size:10px;color:var(--ink3)">de ${v.t}</span>`:'—'}</td>`).join('')}</tr>`;}).join('');
+  return `<div class="card"><div class="card-header"><div><div class="card-title">Atención, derivación, calidad y negocio</div><div class="card-sub">El punto de color indica si el período base (en violeta) está mejor <span style="color:var(--green)">●</span> o peor <span style="color:var(--red)">●</span> que cada período comparado</div></div></div>
+    <table class="tbl">${head}<tbody>${body}</tbody></table>
+    ${miss?'<div class="bo-note">“—” = sin dato para ese período: se cargó sin el CSV de mensajes o antes de que existieran estas métricas (volvé a subirlo con los dos CSV), o el BO no tiene ese mes o semana (guarda 6 meses y 12 semanas; las quincenas no tienen datos del BO).</div>':''}</div>
+  ${cats.length?`<div class="card"><div class="card-header"><div><div class="card-title">Qué resuelve la IA sola, por categoría</div><div class="card-sub">% de conversaciones de cada tema sin que escriba un agente · temas con 5 o más conversaciones en el período base</div></div></div>
+    <table class="tbl"><thead><tr><th>Categoría</th>${cols.map((c,i)=>`<th class="r" style="${i===0?'color:var(--accent);font-weight:700':''}">${lbls[i]}</th>`).join('')}</tr></thead><tbody>${catBody}</tbody></table></div>`:''}`;
+}
+const EVO=[
+  ['total','Consultas',c=>c.total,'n'],
+  ['soloIA','% solo IA',COMP_ROWS[0][1][0][1],'pct'],
+  ['hand','Pase IA → agente',COMP_ROWS[1][1][0][1],'min'],
+  ['reopen','Vuelven < 24 h',COMP_ROWS[2][1][0][1],'pct'],
+  ['slow','Resolución > 2 h',COMP_ROWS[2][1][2][1],'pct'],
+  ['ttr','TTR mediana',c=>c.ttrMed||null,'min'],
+  ['wa','% clientes por WhatsApp IA',COMP_ROWS[3][1][2][1],'pct'],
+  ['cpa','Consultas por cliente activo',COMP_ROWS[3][1][4][1],'dec']
+];
+function selEvo(k){window._evoMetric=k;renderEvo(getW());}
+function renderEvo(w){
+  const sel=document.getElementById('evoSelector');if(!sel||!w)return;
+  const k=window._evoMetric||'soloIA',m=EVO.find(x=>x[0]===k)||EVO[1];
+  const L=allWeeks.filter(x=>x.pt===w.pt).sort((a,b)=>String(a.ws).localeCompare(String(b.ws))).slice(-12);
+  sel.innerHTML=EVO.map(([kk,l])=>`<div class="comp-chip ${kk===m[0]?'on':''}" onclick="selEvo('${kk}')">${l}</div>`).join('');
+  const vals=L.map(c=>{try{const v=m[2](c);return v==null||isNaN(v)?null:+(+v).toFixed(m[3]==='n'?0:2);}catch(e){return null;}});
+  document.getElementById('evoSub').textContent=`Últimos ${L.length} períodos ${w.pt==='M'?'mensuales':w.pt==='Q'?'quincenales':'semanales'} guardados · sin necesidad de elegirlos`;
+  const nMiss=vals.filter(v=>v==null).length;
+  document.getElementById('evoNote').textContent=nMiss?`${nMiss} de ${L.length} períodos sin dato para esta métrica (se cargaron sin el CSV de mensajes, antes de estas métricas o fuera del rango del BO).`:'';
+  mkChart('cEvo','line',{labels:L.map(c=>c.fl||c.week),datasets:[{label:m[1],data:vals,borderColor:'#6366f1',backgroundColor:'rgba(99,102,241,.08)',fill:true,tension:.3,pointRadius:4,pointBackgroundColor:L.map(c=>c.id===w.id?'#6366f1':'#fff'),pointBorderColor:'#6366f1',spanGaps:true}]},
+    {plugins:{legend:{display:false},tooltip:{callbacks:{label:x=>m[1]+': '+compFmt(x.raw,m[3])}}},scales:{x:{grid:{display:false},ticks:{color:'#3a3a42',font:{size:10}}},y:{beginAtZero:true,grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#8a8a96',font:{size:10},callback:v=>m[3]==='pct'?v+'%':m[3]==='min'?fmtM(v):v}}}});
+}
+
 function renderComparativa(w){
+  renderEvo(w);
   const others=allWeeks.filter(x=>x.id!==w.id&&x.pt===w.pt);
   if(!compIds.length&&others.length)compIds=others.slice(0,2).map(x=>x.id);
   document.getElementById('compSelector').innerHTML=others.length?others.map(x=>`<div class="comp-chip ${compIds.includes(x.id)?'on':''}" onclick="toggleComp('${x.id}')">${x.fl||x.week.substring(0,10)}</div>`).join(''):'<span style="font-size:12px;color:var(--ink3)">No hay otros reportes.</span>';
@@ -2158,6 +2234,7 @@ function renderComparativa(w){
   <tr><td>Resolución mismo día</td>${cols.map((c,i)=>tdV(c.sdTotal?(((c.sdTotal/c.total)*100).toFixed(1)+'%'):'—',i===0)).join('')}<td class="r" style="color:var(--ink3)">—</td></tr>
   <tr><td>TTA mediana</td>${cols.map((c,i)=>tdV(fmtM(c.ttaMed),i===0)).join('')}<td class="r" style="color:var(--ink3)">—</td></tr>
   </tbody></table></div>`;
+  html+=compExtraHtml(cols,lbls);
   if(agNames.length){
     html+=`<div class="card"><div class="card-header"><div class="card-title">Por agente</div></div><table class="tbl"><thead><tr><th>Agente/Métrica</th>${cols.map((c,i)=>`<th class="r" style="${i===0?'color:var(--accent);font-weight:700':''}">${lbls[i]}</th>`).join('')}<th class="r" style="color:var(--ink3)">Obj</th></tr></thead><tbody>`;
     agNames.forEach(n=>{
@@ -2506,6 +2583,18 @@ function renderGlosario(){
         {term:'Cuentas nuevas',formula:'destinatarios de listas externas que crearon cuenta dentro de los 14 días posteriores al envío',desc:'Se cruza por email o CUIT del destinatario contra las cuentas de Lannis. Solo aplica a listas externas (personas que no tenían cuenta).'},
         {term:'Suscripciones',formula:'destinatarios que empezaron una suscripción dentro de los 14 días posteriores al envío',desc:'Aplica a listas externas y a cuentas existentes. Mientras la ventana está abierta el número puede seguir subiendo.'},
         {term:'Rebotes / spam / fallidos',formula:'con fecha de rebote, de queja (marcado como spam) o de falla',desc:'Rebotes altos en una lista externa indican emails viejos o mal cargados.'}
+      ]
+    },
+    {
+      title:'⚖️ Tab: Comparativa — bloques nuevos',
+      desc:'Comparan el período activo (columna violeta) contra los que elijas, todos del mismo tipo (semana con semana, mes con mes). El punto verde o rojo dice si el período activo está mejor o peor que cada uno, según la columna “Mejor si”. No aparecen en el Weekly ni en el Mensual.',
+      items:[
+        {term:'Atención real',formula:'igual que en Bot y demanda: quién escribió en cada conversación',desc:'Necesita que el período se haya cargado con los dos CSV (conversaciones + mensajes).'},
+        {term:'Derivación',formula:'pase IA → agente (reloj real), espera de más de 1 h, respuesta del agente una vez asignado, reasignaciones',desc:'Si el pase empeora pero el agente asignado sigue respondiendo rápido, el problema está en la asignación.'},
+        {term:'Calidad',formula:'vuelven en menos de 24 h, sin respuesta, resolución de más de 2 h hábiles, fuera de horario',desc:'Fuera de horario no tiene “mejor”: describe la demanda.'},
+        {term:'Negocio (BO)',formula:'facturas, clientes que facturaron, % por WhatsApp con IA, clientes activos, consultas por cliente activo',desc:'Sale de data/bo.json, que guarda 6 meses y 12 semanas.'},
+        {term:'IA por categoría',formula:'% de conversaciones del tema sin que escriba un agente',desc:'Sirve para ver si un cambio en el bot mejoró un tema puntual.'},
+        {term:'Evolución',formula:'una métrica a elegir en los últimos 12 períodos del mismo tipo',desc:'No hace falta seleccionar períodos; los que no tienen dato quedan como hueco.'}
       ]
     },
     {
