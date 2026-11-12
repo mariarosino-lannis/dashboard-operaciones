@@ -67,6 +67,7 @@ body{font-family:'Inter',sans-serif;background:var(--paper);color:var(--ink);min
 .wk-controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:16px}
 .wk-btn{padding:8px 14px;border-radius:var(--rs);font-size:12px;font-weight:500;cursor:pointer;border:1px solid var(--border2);background:var(--surface);color:var(--ink2)}
 .wk-btn.pri{background:var(--accent);color:#fff;border-color:var(--accent)}
+.wk-sel{padding:7px 10px;border-radius:var(--rs);font-size:12px;font-weight:500;border:1px solid var(--border2);background:var(--surface);color:var(--ink);font-family:inherit;cursor:pointer}
 .wk-slide{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:2em 2.4em;margin-bottom:16px;box-shadow:var(--shadow);font-size:13px;line-height:1.5}
 .wk-eyebrow{color:var(--accent);font-weight:600;text-transform:uppercase;letter-spacing:.06em;font-size:.85em}
 .wk-h{font-family:'Syne',sans-serif;font-size:2em;font-weight:700;letter-spacing:-0.02em;margin:.25em 0 .2em;color:var(--ink)}
@@ -97,7 +98,7 @@ body{font-family:'Inter',sans-serif;background:var(--paper);color:var(--ink);min
 #wkOv .wk-bar-nav{display:flex;justify-content:space-between;align-items:center;padding:10px 24px;border-top:1px solid var(--border);background:var(--surface)}
 .wk-ed-row{display:grid;grid-template-columns:1fr 2fr auto;gap:8px;margin-bottom:8px}
 .wk-ed-row input{padding:8px 10px;border:1px solid var(--border2);border-radius:var(--rs);font-family:inherit;font-size:12px}
-@media print{.sidebar,.tabs-bar,.main-header,.wk-controls,.wk-editor,#wkOv{display:none!important}.app{display:block!important}.tab-c{display:none!important}#tab-weekly{display:block!important}.wk-slide{break-inside:avoid;page-break-after:always;box-shadow:none}}
+@media print{.sidebar,.tabs-bar,.main-header,.wk-controls,.wk-editor,#wkOv{display:none!important}.app{display:block!important}.tab-c{display:none!important}#tab-weekly.on,#tab-mensual.on{display:block!important}.wk-slide{break-inside:avoid;page-break-after:always;box-shadow:none}}
 @media(max-width:900px){.wk-cards,.wk-g2{grid-template-columns:1fr}}
 
 /* ── BO: campañas y DDJJ ── */
@@ -283,6 +284,7 @@ body{font-family:'Inter',sans-serif;background:var(--paper);color:var(--ink);min
     <div class="nav-section-label" style="padding:0 0 4px">Análisis</div>
     <div class="nav-item on" onclick="showTab('resumen',this)"><svg class="ni" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>Resumen</div>
     <div class="nav-item" onclick="showTab('weekly',this)"><svg class="ni" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1.5" y="2.5" width="13" height="9" rx="1.5"/><path d="M5 14h6M8 11.5V14"/></svg>Weekly</div>
+    <div class="nav-item" onclick="showTab('mensual',this)"><svg class="ni" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="12" height="11" rx="1.5"/><path d="M2 6.5h12M5.5 1.5v3M10.5 1.5v3"/></svg>Mensual</div>
     <div class="nav-item" onclick="showTab('categorias',this)"><svg class="ni" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6"/><path d="M8 2v6l4 2"/></svg>Categorías</div>
     <div class="nav-item" onclick="showTab('tiempos',this)"><svg class="ni" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6"/><path d="M8 4v4l3 2"/></svg>Tiempos & SLA</div>
     <div class="nav-item" onclick="showTab('capacidad',this)"><svg class="ni" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 12h3V6H2zM6 12h3V3H6zM10 12h3V8h-3z"/></svg>Capacidad</div>
@@ -350,6 +352,7 @@ body{font-family:'Inter',sans-serif;background:var(--paper);color:var(--ink);min
   <div class="tabs-bar">
     <div class="tab-btn on" onclick="showTab('resumen',this)">Resumen</div>
     <div class="tab-btn" onclick="showTab('weekly',this)">Weekly</div>
+    <div class="tab-btn" onclick="showTab('mensual',this)">Mensual</div>
     <div class="tab-btn" onclick="showTab('categorias',this)">Categorías</div>
     <div class="tab-btn" onclick="showTab('tiempos',this)">Tiempos & SLA</div>
     <div class="tab-btn" onclick="showTab('capacidad',this)">Capacidad</div>
@@ -404,6 +407,7 @@ body{font-family:'Inter',sans-serif;background:var(--paper);color:var(--ink);min
 
     <!-- WEEKLY -->
     <div id="tab-weekly" class="tab-c"><div id="wkContent"></div></div>
+    <div id="tab-mensual" class="tab-c"><div id="mnContent"></div></div>
     <div id="wkOv"><div class="wk-stage" id="wkStage"></div><div class="wk-bar-nav"><button class="wk-btn" onclick="wkStep(-1)">← Anterior</button><span id="wkCount" style="font-size:12px;color:var(--ink3)"></span><span><button class="wk-btn" onclick="wkStep(1)">Siguiente →</button> <button class="wk-btn" onclick="wkClose()">Salir (Esc)</button></span></div></div>
 
     <!-- BOT Y DEMANDA -->
@@ -1182,7 +1186,7 @@ async function delMsg(id,label){
   await fetchMsgReports();
 }
 
-function selPeriod(i){activeIdx=i;compIds=[];renderPills();buildAgentChips();renderAll();}
+function selPeriod(i){activeIdx=i;if(allWeeks[i])DECK[deckKind(allWeeks[i])].sel=null;compIds=[];renderPills();buildAgentChips();renderAll();}
 
 async function delPeriod(i,wl){
   if(!confirm('¿Eliminar "'+wl+'"?'))return;
@@ -1217,14 +1221,14 @@ function getW(){
 
 // ── Render ALL ──
 function renderAll(){
-  if(!allWeeks.length){document.getElementById('pageTitle').textContent='Dashboard Operaciones';document.getElementById('pageMeta').textContent='Cargá el primer reporte para comenzar';return;}
+  if(!allWeeks.length){document.getElementById('pageTitle').textContent='Dashboard Operaciones';document.getElementById('pageMeta').textContent='Cargá el primer reporte para comenzar';renderDecks();return;}
   const w=getW();
   const badge=w.pt==='M'?'<span class="hbadge m">Mensual</span>':w.pt==='Q'?'<span class="hbadge m" style="background:var(--amberbg);color:var(--amber)">Quincenal</span>':'<span class="hbadge w">Semanal</span>';
   document.getElementById('pageTitle').textContent=w.fl||w.week;
   document.getElementById('pageMeta').textContent=w.total+' consultas · '+w.totalH+' hábiles'+(w.internalCount?' · '+w.internalCount+' excluidas (envíos masivos e internos)':'')+(w.by?' · '+w.by:'');
   document.getElementById('headerBadge').innerHTML=badge;
   renderResumen(w);renderCategorias(w);renderTiempos(w);renderCapacidad(w);
-  renderConversaciones(w);renderClientes(w);renderBot();renderOps(w);renderWeekly(w);renderComparativa(w);if(boData)renderFacturacion();
+  renderConversaciones(w);renderClientes(w);renderBot();renderOps(w);renderDecks();renderComparativa(w);if(boData)renderFacturacion();
   renderCapAvanzada(w);renderGlosario();
 }
 
@@ -1367,7 +1371,7 @@ async function fetchBO(){
   try{const r=await fetch('data/bo.json?v='+Date.now(),{cache:'no-store'});if(!r.ok)throw new Error('HTTP '+r.status);boData=await r.json();}
   catch(e){boData=null;}
   renderCampanias();renderDdjj();renderFacturacion();
-  if(allWeeks.length)renderWeekly(getW());
+  if(allWeeks.length)renderDecks();
 }
 function boMissing(){return`<div class="card"><div class="card-title">Sin datos del BO</div><div class="card-sub" style="margin-top:6px">No se pudo leer <code>data/bo.json</code>. Lo genera la tarea programada que consulta el BO de Lannis (ver <code>scripts/bo/README.md</code> en el repo).</div></div>`;}
 
@@ -1578,7 +1582,7 @@ function wkDelta(cur,pv,unit,lowGood,label){
   return'<div class="wk-d '+(good?'up':'dn')+'">'+(d>0?'▲ +':'▼ ')+d.toLocaleString('es')+unit+' vs '+label+'</div>';
 }
 function buildWeeklySlides(w){
-  const prev=allWeeks.find((x,i)=>i>activeIdx&&x.pt===w.pt)||null;
+  const prev=deckPrev(w);
   const word=w.pt==='M'?'mes':w.pt==='Q'?'quincena':'semana';
   const elp=w.pt==='M'?'el mes':'la '+word,dlp=w.pt==='M'?'del mes':'de la '+word;
   const pl=prev?(w.pt==='M'?'el mes anterior':w.pt==='Q'?'la quincena anterior':'la semana anterior'):'';
@@ -1803,23 +1807,35 @@ function buildWeeklySlides(w){
     ${notes.map((n,i)=>`<div class="wk-bul"><div class="bar" style="background:var(--${COL[i%4]})"></div><div><b>${wkEsc(n.t)}</b><span class="t">${wkEsc(n.d)}</span></div></div>`).join('')}</div>`);
   return slides;
 }
-function renderWeekly(w){
-  const el=document.getElementById('wkContent');if(!el||!w)return;
-  wkSlides=buildWeeklySlides(w);
-  const prev=allWeeks.find((x,i)=>i>activeIdx&&x.pt===w.pt)||null;
-  const notes=wkGetNotes(w);
-  el.innerHTML=`<div class="wk-controls"><button class="wk-btn pri" onclick="wkOpen(0)">▶ Presentar</button><button class="wk-btn" onclick="window.print()">Imprimir / guardar PDF</button><span style="font-size:11px;color:var(--ink3)">Período activo: <b>${wkEsc(w.fl||w.week)}</b> · cambialo en la barra lateral. Flechas ← → y Esc en modo presentación.</span></div>
-  ${wkMsgMissing?'<div class="card-sub" style="margin:-6px 0 14px">Para incluir la slide de automatización (IA vs agentes), subí el CSV de mensajes de este período.</div>':''}
-  ${wkSlides.join('')}
+// Dos presentaciones: Weekly (períodos semanales y quincenales) y Mensual (períodos mensuales).
+// Cada una muestra el período elegido en su lista; por defecto, el de la barra lateral si es de su tipo, o el más reciente.
+const DECK={S:{el:'wkContent',sel:null,word:'semanal',none:'Todavía no hay ningún período semanal cargado. Subí el CSV de conversaciones de una semana (junto con el de mensajes) con “Cargar conversaciones”: el dashboard detecta solo que es semanal.'},
+            M:{el:'mnContent',sel:null,word:'mensual',none:'Todavía no hay ningún período mensual cargado. Subí el CSV de conversaciones de un mes (junto con el de mensajes) con “Cargar conversaciones”: el dashboard detecta solo que es mensual.'}};
+const deckSlides={S:[],M:[]};
+function deckKind(w){return w&&w.pt==='M'?'M':'S';}
+function deckPeriods(k){return allWeeks.filter(w=>deckKind(w)===k).sort((a,b)=>String(b.ws).localeCompare(String(a.ws)));}
+function deckW(k){const L=deckPeriods(k);if(!L.length)return null;const a=allWeeks[activeIdx];return L.find(w=>String(w.id)===String(DECK[k].sel))||(a&&deckKind(a)===k?a:L[0]);}
+function deckPrev(w){return allWeeks.filter(x=>x!==w&&x.pt===w.pt&&String(x.ws)<String(w.ws)).sort((a,b)=>String(b.ws).localeCompare(String(a.ws)))[0]||null;}
+function setDeck(k,id){DECK[k].sel=id;renderDeck(k);}
+function renderDecks(){renderDeck('S');renderDeck('M');}
+function renderDeck(k){
+  const D=DECK[k],el=document.getElementById(D.el);if(!el)return;
+  const w=deckW(k);
+  if(!w){deckSlides[k]=[];el.innerHTML=`<div class="card"><div class="card-title">Sin períodos de tipo ${D.word}</div><div class="card-sub" style="margin-top:6px">${D.none}</div></div>`;return;}
+  const slides=buildWeeklySlides(w);deckSlides[k]=slides;const miss=wkMsgMissing;
+  const prev=deckPrev(w),notes=wkGetNotes(w),L=deckPeriods(k);
+  el.innerHTML=`<div class="wk-controls"><select class="wk-sel" onchange="setDeck('${k}',this.value)" title="Período">${L.map(x=>`<option value="${wkEsc(x.id)}" ${x===w?'selected':''}>${wkEsc(x.fl||x.week)}</option>`).join('')}</select><button class="wk-btn pri" onclick="wkOpen('${k}',0)">▶ Presentar</button><button class="wk-btn" onclick="window.print()">Imprimir / guardar PDF</button><span style="font-size:11px;color:var(--ink3)">Presentación ${D.word} · ${slides.length} slides. Flechas ← → y Esc en modo presentación.</span></div>
+  ${miss?'<div class="card-sub" style="margin:-6px 0 14px">Para incluir la slide de automatización (IA vs agentes), subí el CSV de mensajes de este período.</div>':''}
+  ${slides.join('')}
   <div class="card wk-editor"><div class="card-header"><div><div class="card-title">Resumen desde Operaciones (editable)</div><div class="card-sub">Lo que quieras destacar ${w.pt==='M'?'del mes':w.pt==='Q'?'de la quincena':'de la semana'} a mano. Se guarda en este navegador, por período, y aparece como última slide.</div></div></div>
-    <div id="wkEd">${notes.map((n,i)=>`<div class="wk-ed-row"><input value="${wkEsc(n.t)}" placeholder="Título (ej: Confección de IIBB)" onchange="wkEdit(${i},'t',this.value)"><input value="${wkEsc(n.d)}" placeholder="Descripción" onchange="wkEdit(${i},'d',this.value)"><button class="wk-btn" onclick="wkDel(${i})">✕</button></div>`).join('')}</div>
-    <div style="display:flex;gap:8px;margin-top:6px"><button class="wk-btn" onclick="wkAdd()">+ Agregar punto</button>${prev&&wkGetNotes(prev).length&&!notes.length?'<button class="wk-btn" onclick="wkCopyPrev()">Copiar del período anterior</button>':''}</div></div>`;
+    <div>${notes.map((n,i)=>`<div class="wk-ed-row"><input value="${wkEsc(n.t)}" placeholder="Título (ej: Confección de IIBB)" onchange="wkEdit('${k}',${i},'t',this.value)"><input value="${wkEsc(n.d)}" placeholder="Descripción" onchange="wkEdit('${k}',${i},'d',this.value)"><button class="wk-btn" onclick="wkDel('${k}',${i})">✕</button></div>`).join('')}</div>
+    <div style="display:flex;gap:8px;margin-top:6px"><button class="wk-btn" onclick="wkAdd('${k}')">+ Agregar punto</button>${prev&&wkGetNotes(prev).length&&!notes.length?`<button class="wk-btn" onclick="wkCopyPrev('${k}')">Copiar del período anterior</button>`:''}</div></div>`;
 }
-function wkEdit(i,k,v){const w=getW();const n=wkGetNotes(w);if(!n[i])return;n[i][k]=v;wkSetNotes(w,n);renderWeekly(w);}
-function wkAdd(){const w=getW();const n=wkGetNotes(w);n.push({t:'',d:''});wkSetNotes(w,n);renderWeekly(w);}
-function wkDel(i){const w=getW();const n=wkGetNotes(w);n.splice(i,1);wkSetNotes(w,n);renderWeekly(w);}
-function wkCopyPrev(){const w=getW();const prev=allWeeks.find((x,i)=>i>activeIdx&&x.pt===w.pt);if(!prev)return;wkSetNotes(w,wkGetNotes(prev));renderWeekly(w);}
-function wkOpen(i){wkIdx=i;document.getElementById('wkOv').classList.add('on');wkShow();}
+function wkEdit(k,i,f,v){const w=deckW(k);if(!w)return;const n=wkGetNotes(w);if(!n[i])return;n[i][f]=v;wkSetNotes(w,n);renderDeck(k);}
+function wkAdd(k){const w=deckW(k);if(!w)return;const n=wkGetNotes(w);n.push({t:'',d:''});wkSetNotes(w,n);renderDeck(k);}
+function wkDel(k,i){const w=deckW(k);if(!w)return;const n=wkGetNotes(w);n.splice(i,1);wkSetNotes(w,n);renderDeck(k);}
+function wkCopyPrev(k){const w=deckW(k);const prev=w&&deckPrev(w);if(!prev)return;wkSetNotes(w,wkGetNotes(prev));renderDeck(k);}
+function wkOpen(k,i){wkSlides=deckSlides[k]||[];if(!wkSlides.length)return;wkIdx=i;document.getElementById('wkOv').classList.add('on');wkShow();}
 function wkClose(){document.getElementById('wkOv').classList.remove('on');}
 function wkShow(){wkIdx=Math.max(0,Math.min(wkSlides.length-1,wkIdx));document.getElementById('wkStage').innerHTML=wkSlides[wkIdx];document.getElementById('wkCount').textContent=(wkIdx+1)+' / '+wkSlides.length;}
 function wkStep(d){wkIdx+=d;wkShow();}
