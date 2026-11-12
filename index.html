@@ -1143,10 +1143,10 @@ async function confirmUpload(){
   };
   try{
     p.ops_metrics=result.ops;
-    let{error}=await db.from('weekly_reports').upsert(p,{onConflict:'week_label'});
+    let{error}=await db.from('weekly_reports').upsert(cleanForDb(p),{onConflict:'week_label'});
     if(error&&/ops_metrics/i.test(error.message||'')){
       delete p.ops_metrics;
-      ({error}=await db.from('weekly_reports').upsert(p,{onConflict:'week_label'}));
+      ({error}=await db.from('weekly_reports').upsert(cleanForDb(p),{onConflict:'week_label'}));
       if(!error)toast('Guardado SIN las métricas de Bot y demanda: falta la columna ops_metrics en Supabase (ver SQL en el glosario).',true);
     }else if(!error){toast('✓ Reporte guardado');}
     if(error){toast('Error: '+error.message,true);}
@@ -2710,6 +2710,18 @@ document.getElementById('fileMsgs').addEventListener('change',function(e){
   };
   reader.readAsArrayBuffer(file);e.target.value='';
 });
+// Templates de WhatsApp: se agrupan por tipo de mensaje. El texto trae nombres, montos, razones sociales y CUITs
+// de clientes, así que nunca se guarda: solo el tipo.
+const TPL_TIPOS=[[/recordamos que el vencimiento de tu monotributo/,'Recordatorio de vencimiento de monotributo'],[/recordarte que hoy[\s\S]*vence/,'Recordatorio de vencimiento (día de vencimiento)'],
+  [/te acercamos tu factura/,'Envío de factura'],[/te vamos a ejecutar tu factura/,'Factura recurrente programada'],[/pendiente confirmar tu factura/,'Factura recurrente pendiente de confirmar'],
+  [/factura de prueba/,'Factura de prueba'],[/continuemos por ac/,'Seguir facturando'],[/hace unos d[ií]as nos escribiste/,'Seguimiento de lead'],
+  [/actualizaci[oó]n sobre tu caso/,'Actualización de caso'],[/verificamos tu clave fiscal/,'Clave fiscal verificada'],[/cuenta arca ya est[aá] conectada/,'Cuenta ARCA conectada'],
+  [/no pudimos cobrar tu suscripci/,'Pago de suscripción rechazado'],[/por cada amigo/,'Referidos']];
+function tplTipo(txt){const t=String(txt||'').toLowerCase();const hit=TPL_TIPOS.find(([re])=>re.test(t));return hit?hit[1]:'Otro template';}
+// Corta por caracteres reales (no parte emojis) y saca caracteres que Supabase rechaza
+const safeCut=(x,n)=>Array.from(String(x||'')).slice(0,n).join('');
+function cleanForDb(v){if(typeof v==='string'){const w=v.toWellFormed?v.toWellFormed():v.replace(/[\ud800-\udfff]/g,'');return w.replace(/\u0000/g,'');}
+  if(Array.isArray(v))return v.map(cleanForDb);if(v&&typeof v==='object'){const o={};Object.entries(v).forEach(([k,x])=>{o[cleanForDb(k)]=cleanForDb(x);});return o;}return v;}
 // Procesa el CSV de mensajes: guarda el reporte de mensajes y lo deja en memoria para cruzarlo con el de conversaciones
 async function processMsgRows(rows){
     const hdrs=rows[0].map(h=>String(h||'').replace(/^\uFEFF/,'').trim());
@@ -2778,7 +2790,7 @@ async function processMsgRows(rows){
     Object.values(byContact).forEach(msgs=>{const f=[...msgs].sort((a,b)=>a.ts-b.ts).find(m=>m.sender==='contact');if(!f)return;
       let t=f.content.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[¡!¿?.,]/g,'').trim();
       if(!t||greet.test(t))return;
-      const k=t.includes('generar factura')||t==='facturar'?'Generar factura':t.includes('mas informacion')||t.includes('quiero saber mas')?'Quiere más información':t.includes('generar qr')?'Generar QR':t.includes('reactivar')?'Reactivar':t.includes('onboarding')?'Ayuda con el onboarding':t.includes('consulta')?'Consulta':t.slice(0,32);
+      const k=t.includes('generar factura')||t==='facturar'?'Generar factura':t.includes('mas informacion')||t.includes('quiero saber mas')?'Quiere más información':t.includes('generar qr')?'Generar QR':t.includes('reactivar')?'Reactivar':t.includes('onboarding')?'Ayuda con el onboarding':t.includes('consulta')?'Consulta':safeCut(t.replace(/\d[\d\s.-]{4,}\d/g,'…'),32);
       intC[k]=(intC[k]||0)+1;});
     const topIntents=Object.entries(intC).sort((a,b)=>b[1]-a[1]).slice(0,8);
     const wfNames={},agMsgs={};
@@ -2799,7 +2811,7 @@ async function processMsgRows(rows){
         const k=r.subType.replace(' (es_AR) (MARKETING)','').replace(' (es_AR) (UTILITY)','').trim();
         templates[k]=(templates[k]||0)+1;
       }else if(r.ct==='whatsapp_template'){
-        const k=(r.content.split('\n')[0]||'Template sin texto').replace(/\*/g,'').trim().slice(0,60)||'Template sin texto';
+        const k=tplTipo(r.content);
         templates[k]=(templates[k]||0)+1;
       }
     });
@@ -2838,9 +2850,10 @@ async function processMsgRows(rows){
     p.escalation_gaps_dist=escalationGaps.slice(0,200);
     p.msgs_by_day=msgsByDay;
     try{
-      await db.from('message_reports').upsert(p,{onConflict:'period_label'});
+      const{error}=await db.from('message_reports').upsert(cleanForDb(p),{onConflict:'period_label'});
+      if(error){toast('No se guardaron los mensajes: '+error.message,true);return;}
       toast('✓ Mensajes guardados');await fetchMsgReports();
-    }catch(err){toast('Error: '+err.message,true);}
+    }catch(err){toast('No se guardaron los mensajes: '+err.message,true);}
 }
 
 // ── Contacts CSV handler ──
