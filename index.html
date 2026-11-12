@@ -308,7 +308,7 @@ body{font-family:'Inter',sans-serif;background:var(--paper);color:var(--ink);min
     <label class="upload-btn conv" style="cursor:pointer">
       <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 2v8M5 5l3-3 3 3"/><path d="M2 11v2a1 1 0 001 1h10a1 1 0 001-1v-2"/></svg>
       Cargar conversaciones
-      <input type="file" id="fileConv" accept=".xlsx,.csv" style="display:none">
+      <input type="file" id="fileConv" accept=".xlsx,.csv" multiple style="display:none">
     </label>
     <label class="upload-btn msgs" style="cursor:pointer">
       <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="2" width="10" height="9" rx="2"/><circle cx="6" cy="6" r="1" fill="currentColor"/><circle cx="10" cy="6" r="1" fill="currentColor"/></svg>
@@ -709,7 +709,7 @@ const EQ_INT=new Set([318356816,315475410,295606873,340645465,318432393,31843254
 const EXCLUDE_CONTACTS=new Set(['338590743','326485789','415320204','405053937','395503910','411238335','389076205','324881294','395227721','411989881','330931132','387753916','332109842','411340452','321809883','332384170','318794941','354666100','354839550','321951367','332005827','341076424','351182784']);
 const CLOSED_BY={906585:'Mateo Lopez',906580:'Pablo Moreno',906560:'María Rosino',949998:'Camila Fernandez'};
 const BOT_AGENTS=['varys']; // agente de IA: cuenta como bot, no como agente humano
-const EMAIL_AGENTS={'mateo.lopez':'Mateo Lopez','pablo.moreno':'Pablo Moreno','maria.rosino':'María Rosino','camila.fernandez':'Camila Fernandez','pablo.delucca':'Pablo De Lucca'};
+const EMAIL_AGENTS={'mateo.lopez':'Mateo Lopez','pablo.moreno':'Pablo Moreno','maria.rosino':'María Rosino','camila.fernandez':'Camila Fernandez','pablo.delucca':'Pablo De Lucca','joaquin':'Joaquín Paños'};
 // Acepta ID numérico (sistema viejo) o email (sistema nuevo)
 function agentName(v){
   const s=String(v==null?'':v).trim();if(!s)return '';
@@ -766,9 +766,67 @@ function dch(id){if(charts[id]){charts[id].destroy();delete charts[id];}}
 function mkChart(id,type,data,opts){dch(id);const ctx=document.getElementById(id);if(!ctx)return;charts[id]=new Chart(ctx,{type,data,options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},...opts}});}
 function exDH(raw){if(!raw||raw==='')return{f:'',h:-1};if(typeof raw==='number'){const d=XLSX.SSF.parse_date_code(raw);if(d)return{f:`${d.y}-${String(d.m).padStart(2,'0')}-${String(d.d).padStart(2,'0')}`,h:d.H||0};return{f:'',h:-1};}const s=String(raw);const m=s.match(/(\d{4}-\d{2}-\d{2})[\sT](\d{1,2}):/);if(m)return{f:m[1],h:parseInt(m[2],10)};const p=new Date(s);if(!isNaN(p))return{f:p.toISOString().substring(0,10),h:p.getHours()};return{f:'',h:-1};}
 
+// ── Export nuevo de conversaciones: notificaciones, quién respondió primero, cruce con mensajes ──
+function isNotifCat(v){return /notificaciones al mail/i.test(String(v||''));}
+function tsMin(t){const m=String(t||'').match(/(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?/);return m?Date.UTC(+m[1],+m[2]-1,+m[3],+m[4],+m[5],+(m[6]||0))/60000:null;}
+function pctl(a,q){const x=a.filter(v=>v!=null&&!isNaN(v)).sort((p,r)=>p-r);return x.length?x[Math.round(q*(x.length-1))]:0;}
+function convExtras(rows,msgRows){
+  const out={};
+  if(rows.some(r=>r.frb!=null)){ // columna First Response By (export nuevo)
+    const k=v=>!v?'sin':/^varys$/i.test(v)?'ia':v.includes('@')?'agente':'workflow';
+    out.frb={ia:0,agente:0,workflow:0,sin:0};rows.forEach(r=>out.frb[k(r.frb)]++);
+  }
+  // Vuelve a escribir: la misma persona abre otra conversación menos de 24 h después de que se resolvió la anterior
+  const byC={};rows.forEach(r=>{if(!r.contactId||r.contactId==='NaN'||r.tmS==null)return;(byC[r.contactId]=byC[r.contactId]||[]).push(r);});
+  let re24=0,same72=0;const reCat={};
+  Object.values(byC).forEach(a=>{a.sort((x,y)=>x.tmS-y.tmS);for(let i=1;i<a.length;i++){const p=a[i-1],c=a[i];if(p.rsTm==null)continue;const g=(c.tmS-p.rsTm)/60;
+    if(g>=0&&g<24){re24++;reCat[c.catN]=(reCat[c.catN]||0)+1;}if(g>=0&&g<72&&c.catN===p.catN)same72++;}});
+  out.reopen={n:re24,pct:rows.length?+(re24/rows.length*100).toFixed(1):0,same72,byCat:reCat};
+  out.reassign={n2:rows.filter(r=>r.numA>=2).length,n4:rows.filter(r=>r.numA>=4).length,max:Math.max(0,...rows.map(r=>r.numA||0))};
+  const a2=rows.map(r=>r.a2fr).filter(v=>v!=null);if(a2.length)out.a2fr={n:a2.length,med:+med(a2).toFixed(2),p90:+pctl(a2,.9).toFixed(1)};
+  if(msgRows&&msgRows.length>1){const real=realAttention(rows,msgRows);if(real)out.real=real;}
+  return out;
+}
+// Cruce conversación ↔ mensajes por contacto y ventana [inicio, resolución]: quién escribió de verdad en cada conversación
+function realAttention(rows,msgRows){
+  const h=msgRows[0].map(x=>String(x||'').replace(/^﻿/,'').trim().toLowerCase());const ix=n=>h.indexOf(n);
+  const iT=ix('date & time'),iST=ix('sender type'),iSID=ix('sender id'),iC=ix('contact id'),iCT=ix('content type'),iTx=ix('content');
+  if(iT<0||iST<0||iC<0)return null;
+  const byC={};let tot=0;
+  msgRows.slice(1).forEach(r=>{if(!r||!r[iT])return;const t=tsMin(r[iT]);if(t==null)return;tot++;const k=String(r[iC]||'').trim();
+    (byC[k]=byC[k]||[]).push({t,s:String(r[iST]||'').trim(),sid:iSID>=0?String(r[iSID]||'').trim():'',ct:iCT>=0?String(r[iCT]||'').trim():'',x:iTx>=0?String(r[iTx]||''):''});});
+  Object.values(byC).forEach(a=>a.sort((p,q)=>p.t-q.t));
+  const INV=/factura se gener|tu factura est[aá] en camino|^factura [a-z] - /i,DUP=/ya emitiste una factura igual/i,REM=/^(hola, te recordamos que el vencimiento|¡?hola!? paso a recordarte)/i;
+  const res={total:rows.length,msgs:tot,matched:0,tipos:{soloIA:0,iaAgente:0,soloAgente:0,workflow:0,sin:0},byCat:{},agents:{},inv:0,dup:0,att:0,factAI:0,factInv:0,factRem:0,cerradasAgente:0,cerradasSinEscribir:0,closers:{}};
+  const hand=[];
+  rows.forEach((r,ri)=>{
+    const a=byC[r.contactId];const end=r.rsTm!=null?r.rsTm:(r.tmS||0)+1440;
+    const ms=a&&r.tmS!=null?a.filter(m=>m.t>=r.tmS-1&&m.t<=end+1):[];
+    res.matched+=ms.length;
+    let hum=0,ai=0,wf=0,att=0,inv=false,dup=false,first=null,firstHum=null,lastBot=null;
+    ms.forEach(m=>{
+      if(m.s==='user'){hum++;if(firstHum==null)firstHum=m.t;const ag=agentName(m.sid)||m.sid||'Sin nombre';const o=res.agents[ag]||(res.agents[ag]={conv:new Set(),msgs:0});o.conv.add(r.convId||ri);o.msgs++;}
+      else if(m.s==='ai_agent'){ai++;if(firstHum==null)lastBot=m.t;if(INV.test(m.x))inv=true;if(DUP.test(m.x))dup=true;if(first==null)first=m.x;}
+      else if(m.s==='workflow'){wf++;if(firstHum==null)lastBot=m.t;}
+      else if(m.s==='contact'&&m.ct==='attachment')att++;
+    });
+    const tipo=hum&&(ai||wf)?'iaAgente':hum?'soloAgente':ai?'soloIA':wf?'workflow':'sin';
+    res.tipos[tipo]++;
+    const c=res.byCat[r.catN]||(res.byCat[r.catN]={t:0,soloIA:0,iaAgente:0,soloAgente:0,workflow:0,sin:0});c.t++;c[tipo]++;
+    if(firstHum!=null&&lastBot!=null)hand.push(firstHum-lastBot);
+    if(inv)res.inv++;if(dup)res.dup++;if(att)res.att++;
+    if(r.agent){res.cerradasAgente++;if(!hum)res.cerradasSinEscribir++;const o=res.closers[r.agent]||(res.closers[r.agent]={n:0,sin:0});o.n++;if(!hum)o.sin++;}
+    if(/^facturas ai$/i.test(r.catN)){res.factAI++;if(inv)res.factInv++;if(first&&REM.test(first))res.factRem++;}
+  });
+  res.handoff={n:hand.length,med:+med(hand).toFixed(1),p75:+pctl(hand,.75).toFixed(1),p90:+pctl(hand,.9).toFixed(1),over60:hand.filter(v=>v>60).length};
+  Object.values(res.agents).forEach(o=>{o.conv=o.conv.size;});
+  return res;
+}
+
 // ── State ──
 let allWeeks=[],activeIdx=0,charts={},curTab='resumen';
 let pendingRows=null,pendingHols=new Set(),pendingAgents=new Set();
+let pendingDates=[],lastMsg=null; // lastMsg = último CSV de mensajes leído en esta sesión {rows,start,end}, para cruzarlo con el de conversaciones
 let compIds=[],agentFilter='all',activeMsgIdx=0,msgCompIds=[];
 let callsReports=[],callsFeedback=[],activeCallsIdx=0,callsCompIds=[];
 let churnData=[],churnSelectedMonth='all';
@@ -831,7 +889,7 @@ async function fetchContacts(){
 }
 
 // ── Compute ──
-function computeWeek(rows,hols,actAgents){
+function computeWeek(rows,hols,actAgents,msgRows){
   const hdrs=rows[0].map(h=>String(h||'').trim());
   const col=n=>hdrs.findIndex(h=>h.toLowerCase().includes(n.toLowerCase()));
   const iS=col('DateTime Conversation Started'),iCID=col('Contact ID'),iCB=col('Closed By');
@@ -841,6 +899,7 @@ function computeWeek(rows,hols,actAgents){
   const iOpenedByChannel=col('Opened By Channel');
   const iMO=col('Number of Outgoing Messages'),iMI=col('Number of Incoming Messages');
   const iRes=col('DateTime Conversation Resolved'),iCBS=col('Closed By Source'),iFR=col('DateTime First Response');
+  const iCONV=col('Conversation ID'),iFRB=col('First Response By'),iA2FR=col('First Assignment to First Response Time');
 
   const data=rows.slice(1).filter(r=>r&&r.length>4&&r[iS]);
   const wDates=new Set();
@@ -855,9 +914,10 @@ function computeWeek(rows,hols,actAgents){
     const dt=new Date(f+'T12:00:00');const dow=dt.getDay();
     const isWE=dow===0||dow===6,isFer=hols.has(f),inH=h>=9&&h<18;
     const habTime=!isWE&&!isFer&&inH;
-    const cid=parseInt(r[iCID]);
+    const cid=/^\d+(\.0)?$/.test(String(r[iCID]||'').trim())?parseInt(r[iCID]):NaN; // el export nuevo trae UUID
     const isOut=String(r[iCat]||'').trim()==='outbound_delivery';
-    const isInt=EQ_INT.has(cid)||isOut;const agent=agentName(r[iCB]);
+    const isNotif=isNotifCat(r[iCat]); // emails reenviados ("Otros - otras notificaciones al mail"): no son consultas
+    const isInt=EQ_INT.has(cid)||isOut||isNotif;const agent=agentName(r[iCB]);
     const _m=String(r[iS]||'').match(/(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/);const tm=_m?Date.UTC(+_m[1],+_m[2]-1,+_m[3],+_m[4],+_m[5])/60000:null;
     const src=String(r[iSrc]||'').trim();
     const hasBot=String(r[iNote]||'').toLowerCase().includes('workflow');
@@ -869,7 +929,8 @@ function computeWeek(rows,hols,actAgents){
     const contactId=String(r[iCID]||'').trim();
     const rawCh=r[iOpenedByChannel];
     const channelId=rawCh?String(rawCh).trim().replace('.0',''):'0';
-    return{f,h,tm,isOut,channelId,ds:DN[dow],dow,isInt,agent,habTime,catN:normCat(r[iCat]),
+    const _r=String(r[iRes]||'').match(/(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?/);
+    return{f,h,tm,tmS:tsMin(r[iS]),rsTm:_r?tsMin(r[iRes]):null,convId:iCONV>=0?String(r[iCONV]||'').trim():'',frb:iFRB>=0?String(r[iFRB]||'').trim():null,a2fr:iA2FR>=0?pm(r[iA2FR]):null,numA:parseInt(r[iNA])||0,isOut,isNotif,channelId,ds:DN[dow],dow,isInt,agent,habTime,catN:normCat(r[iCat]),
       frt:(iFR>=0&&r[iFR]&&bizMin(r[iS],r[iFR],hols)!=null)?bizMin(r[iS],r[iFR],hols):pm(r[iFRT]),art:pm(r[iART]),ttr:(r[iRes]&&bizMin(r[iS],r[iRes],hols)!=null)?bizMin(r[iS],r[iRes],hols):pm(r[iTTR]),tta:pm(r[iTTA]),
       src,hasBot,reassigned:numA>1,sameDay,totalMsgs,aiClosed,contactId,
       botSrc:['ai_agent','workflow','api'].includes(String(r[iCBS]||'').trim()),
@@ -898,9 +959,9 @@ function computeWeek(rows,hols,actAgents){
   const otrosRaw={};
   // Iterate raw data rows (not processed) to get original category names
   rows.slice(1).forEach(r=>{
-    const cid=parseInt(String(r[iCID]||'').trim())||0;
+    const cid=/^\d+(\.0)?$/.test(String(r[iCID]||'').trim())?parseInt(r[iCID]):0;
     if(EQ_INT.has(cid))return;
-    const raw=String(r[iCat]||'').trim();if(raw==='outbound_delivery')return;
+    const raw=String(r[iCat]||'').trim();if(raw==='outbound_delivery'||isNotifCat(raw))return;
     if(raw==='Otra'||raw.startsWith('Otros')){otrosRaw[raw]=(otrosRaw[raw]||0)+1;}
   });
   Object.entries(cats).forEach(([cat,cnt])=>{
@@ -962,7 +1023,8 @@ function computeWeek(rows,hols,actAgents){
   const opsHab=opsRows.filter(r=>r.zone==='hab');
   const pc=(n,d)=>d>0?+(n/d*100).toFixed(1):0;
   const m1=a=>+med(a).toFixed(1), a1=a=>+avg(a).toFixed(1);
-  const ops={total:opsRows.length,outbound:processed.filter(r=>r.isOut).length,burst:opsRows.filter(r=>r.burst).length};
+  const ops={total:opsRows.length,outbound:processed.filter(r=>r.isOut).length,notif:processed.filter(r=>r.isNotif).length,burst:opsRows.filter(r=>r.burst).length};
+  Object.assign(ops,convExtras(opsRows,msgRows));
   ops.zones={hab:opsHab.length,noche:opsRows.filter(r=>r.zone==='noche').length,finde:opsRows.filter(r=>r.zone==='finde').length};
   ops.bot={n:opsRows.filter(r=>r.bot).length};ops.bot.pct=pc(ops.bot.n,ops.total);
   ops.bot.hab=opsHab.filter(r=>r.bot).length;ops.bot.habPct=pc(ops.bot.hab,opsHab.length);
@@ -1021,7 +1083,9 @@ function showModal(weekDates,detectedAgents){
   pendingHols=new Set();pendingAgents=new Set(detectedAgents);
   document.getElementById('uploadedBy').value='';
   const dates=[...weekDates].sort();
-  document.getElementById('modalDesc').textContent='Período: '+dates[0]+' al '+dates[dates.length-1]+' · '+dates.length+' días';
+  pendingDates=dates;
+  const mOk=msgFor(dates);
+  document.getElementById('modalDesc').innerHTML='Período: '+dates[0]+' al '+dates[dates.length-1]+' · '+dates.length+' días<br>'+(mOk?'<span style="color:var(--green)">✓ Se cruza con el CSV de mensajes ('+(mOk.length-1).toLocaleString('es')+' mensajes): se calcula quién atendió de verdad cada conversación.</span>':'<span style="color:var(--amber)">Sin CSV de mensajes de este período: no se calcula la atención real. Para incluirla, elegí los dos archivos juntos (conversaciones + mensajes).</span>');
   const grid=document.getElementById('dayGrid');grid.innerHTML='';
   dates.forEach(d=>{
     const dt=new Date(d+'T12:00:00');const dow=dt.getDay();
@@ -1046,7 +1110,7 @@ async function confirmUpload(){
   btn.disabled=true;btn.innerHTML='<span class="sp"></span> Procesando...';
   document.getElementById('modalOv').classList.remove('show');
   if(!pendingRows){btn.disabled=false;btn.innerHTML='Procesar y guardar';return;}
-  const result=computeWeek(pendingRows,pendingHols,pendingAgents);
+  const result=computeWeek(pendingRows,pendingHols,pendingAgents,msgFor(pendingDates));
   const reportName=document.getElementById('reportName').value.trim();
   const by=document.getElementById('uploadedBy').value.trim();
   pendingRows=null;
@@ -1179,21 +1243,22 @@ function renderOps(w){
   const sinRows=Object.entries(o.sinRespCat).sort((a,b)=>b[1]-a[1]).slice(0,8).map(([c,n])=>[c,n,P(n,w.cats[c]||0)]);
   const chRows=Object.entries(o.chan).sort((a,b)=>b[1].n-a[1].n).map(([c,v])=>[c,v.n,P(v.n,o.total),v.hab,P(v.bot,v.n),P(v.sin,v.n),v.frtMed?fmtM(v.frtMed):'—',v.ttrMed?fmtM(v.ttrMed):'—']);
   el.innerHTML=`
-  <div class="card" style="background:var(--s2)"><div class="card-sub" style="margin:0;line-height:1.7"><b>Cómo leer esta pestaña.</b> Base: <b>${o.total}</b> conversaciones (sin contactos internos, todos los horarios) = <b>${z.hab}</b> hábiles (lun-vie 9-18, sin feriados) + <b>${z.noche}</b> de noche + <b>${z.finde}</b> de fin de semana/feriado. "Bot" = conversación cerrada sin agente humano. Tiempos en horas hábiles (se descuentan noches, fines de semana y feriados). No usa el filtro de agente.${o.outbound?' Se excluyeron <b>'+o.outbound+'</b> envíos masivos (outbound_delivery).':''}${o.burst?' <b>'+o.burst+'</b> conversaciones nacieron de una difusión masiva: cuentan en el volumen pero no en FRT/TTR, porque el reloj arranca en el envío y no en la respuesta del cliente.':''}</div></div>
+  <div class="card" style="background:var(--s2)"><div class="card-sub" style="margin:0;line-height:1.7"><b>Cómo leer esta pestaña.</b> Base: <b>${o.total}</b> conversaciones (sin contactos internos, todos los horarios) = <b>${z.hab}</b> hábiles (lun-vie 9-18, sin feriados) + <b>${z.noche}</b> de noche + <b>${z.finde}</b> de fin de semana/feriado. "Bot" = conversación cerrada sin agente humano. Tiempos en horas hábiles (se descuentan noches, fines de semana y feriados). No usa el filtro de agente.${o.outbound?' Se excluyeron <b>'+o.outbound+'</b> envíos masivos (outbound_delivery).':''}${o.notif?' Se excluyeron <b>'+o.notif+'</b> notificaciones reenviadas por mail ("Otros - otras notificaciones al mail"): no son consultas.':''}${o.burst?' <b>'+o.burst+'</b> conversaciones nacieron de una difusión masiva: cuentan en el volumen pero no en FRT/TTR, porque el reloj arranca en el envío y no en la respuesta del cliente.':''}</div></div>
   <div class="mc-grid">
-    ${mc('accent','Resolución sin humano',o.bot.pct+'%',o.bot.n+' de '+o.total+(po?vs(o.bot.pct,po.bot.pct,' pp',false):''))}
+    ${o.real?mc('accent','Resueltas solo por la IA',P(o.real.tipos.soloIA,o.real.total),o.real.tipos.soloIA+' de '+o.real.total+' · ningún agente escribió'+(po&&po.real?vs(+(o.real.tipos.soloIA/o.real.total*100).toFixed(1),+(po.real.tipos.soloIA/po.real.total*100).toFixed(1),' pp',false):'')):mc('accent','Resolución sin humano',o.bot.pct+'%',o.bot.n+' de '+o.total+(po?vs(o.bot.pct,po.bot.pct,' pp',false):''))}
     ${mc('amber','Sin respuesta',o.sinResp.pct+'%',o.sinResp.n+' de '+o.total+(po?vs(o.sinResp.pct,po.sinResp.pct,' pp',true):''))}
     ${mc('purple','Fuera de horario',o.off.pct+'%',o.off.n+' de '+o.total+(po?vs(o.off.pct,po.off.pct,' pp',true):''))}
     ${mc('red','Resolución &gt; 2 hs (fuera de objetivo)',o.slow.d1Pct+'%',o.slow.d1+' de '+o.slow.base+' hábiles resueltas'+(po?vs(o.slow.d1Pct,po.slow.d1Pct,' pp',true):''))}
   </div>
+  ${realOpsHtml(o,po)}
 
-  <div class="g2">
+  ${o.real?'':`<div class="g2">
     <div class="card"><div class="card-header"><div><div class="card-title">Bot vs equipo — por categoría</div><div class="card-sub">Qué cierra el bot sola y qué siempre llega a una persona · top 12 por volumen</div></div></div>
       ${tbl(['Categoría','Total','Bot','% bot','Humano'],botRows)}</div>
     <div class="card"><div class="card-header"><div><div class="card-title">Primera respuesta: bot vs humano</div><div class="card-sub">Solo conversaciones hábiles con respuesta · horas hábiles</div></div></div>
       ${tbl(['Cerradas por','Con respuesta','Mediana','Promedio'],[['Bot',o.frtSplit.bot.n,fmtM(o.frtSplit.bot.med),fmtM(o.frtSplit.bot.avg)],['Agente',o.frtSplit.hum.n,fmtM(o.frtSplit.hum.med),fmtM(o.frtSplit.hum.avg)]])}
       <div class="card-sub" style="margin-top:10px">Resolución sin humano en horario hábil: <b>${o.bot.habPct}%</b> (${o.bot.hab} de ${z.hab}). Fuera de horario: <b>${P(o.bot.off,o.off.n)}</b> (${o.bot.off} de ${o.off.n}).</div></div>
-  </div>
+  </div>`}
 
   <div class="g2">
     <div class="card"><div class="card-header"><div><div class="card-title">Conversaciones sin respuesta</div><div class="card-sub">Sin fecha de primera respuesta · ${o.sinResp.n} de ${o.total}</div></div></div>
@@ -1221,10 +1286,61 @@ function renderOps(w){
     <div class="card"><div class="card-header"><div><div class="card-title">Por canal</div><div class="card-sub">Volumen, bot, sin respuesta y tiempos hábiles</div></div></div>
       ${tbl(['Canal','Conv.','% total','Hábiles','% bot','% sin resp.','FRT med.','TTR med.'],chRows)}</div>
   </div>`;
+  realOpsCharts(o);
   const b=o.msgs.b;
   mkChart('cOpsMsgs','bar',{labels:['1 mensaje','2-4','5-9','10+'],datasets:[{label:'Conversaciones',data:[b['1'],b['2-4'],b['5-9'],b['10+']],backgroundColor:'#6366f1',borderRadius:4}]},{plugins:{legend:{display:false}}});
 }
 
+
+// ── Atención real: cruce de conversaciones con mensajes (export nuevo de Respond) ──
+const REAL_TIPOS=[['soloIA','Solo IA','#10b981'],['iaAgente','IA y luego agente','#6366f1'],['soloAgente','Solo agente','#f59e0b'],['workflow','Solo respuesta automática','#8b5cf6'],['sin','Sin respuesta','#c4c4cc']];
+function realOpsHtml(o,po){
+  const R=o.real;
+  if(!R)return o.frb?'':`<div class="card" style="border-left:3px solid var(--amber)"><div class="card-title">Falta el cruce con mensajes</div><div class="card-sub" style="margin-top:6px">Para ver quién atendió de verdad cada conversación (IA, agente o los dos), subí juntos el CSV de conversaciones y el de mensajes del mismo período con el botón “Cargar conversaciones”.</div></div>`;
+  const P=(n,d)=>d>0?(n/d*100).toFixed(0)+'%':'—';
+  const tbl=(head,rows,cls)=>`<table class="tbl"><thead><tr>${head.map((h,i)=>`<th class="${i?'r':''}">${h}</th>`).join('')}</tr></thead><tbody>${rows.map(r=>`<tr>${r.map((c,i)=>`<td class="${i?'r':''}">${c}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
+  const T=R.total,h=R.handoff||{},fr=o.frb,re=o.reopen||{},ra=o.reassign||{},a2=o.a2fr;
+  const catRows=Object.entries(R.byCat).filter(([,v])=>v.t>=5).sort((a,b)=>b[1].t-a[1].t).slice(0,12)
+    .map(([c,v])=>[wkEsc(c),v.t,`<span style="white-space:nowrap"><span class="bo-pbar" style="width:60px"><i style="width:${Math.round(v.soloIA/v.t*100)}%;background:#10b981"></i></span>${P(v.soloIA,v.t)}</span>`,P(v.iaAgente+v.soloAgente,v.t),P(v.workflow,v.t)]);
+  const ags=Object.keys({...R.agents,...R.closers}).filter(a=>a&&a!=='Sin nombre');
+  const agRows=ags.map(a=>{const w=R.agents[a]||{conv:0,msgs:0},c=R.closers[a]||{n:0,sin:0};return[a,w.conv,w.msgs,c.n,c.sin?`<span style="color:var(--ink3)">${c.sin}</span>`:'—'];}).sort((x,y)=>y[1]-x[1]);
+  const reRows=Object.entries(re.byCat||{}).sort((a,b)=>b[1]-a[1]).slice(0,6).map(([c,n])=>[wkEsc(c),n]);
+  return `
+  <div class="card"><div class="card-header"><div><div class="card-title">Quién atendió de verdad cada conversación</div><div class="card-sub">Cruce con el CSV de mensajes: se mira quién escribió dentro de cada conversación, no quién la cerró · ${T} conversaciones</div></div></div>
+    <div class="ch" style="height:70px"><canvas id="cRealTipos"></canvas></div>
+    <div class="bo-legend" style="margin-top:8px">${REAL_TIPOS.map(([k,l,c])=>`<span><i style="background:${c}"></i>${l}: <b>${R.tipos[k]}</b> (${P(R.tipos[k],T)})</span>`).join('')}</div>
+    <div class="bo-note">De las <b>${R.cerradasAgente}</b> conversaciones cerradas por un agente, en <b>${R.cerradasSinEscribir}</b> (${P(R.cerradasSinEscribir,R.cerradasAgente)}) ningún agente escribió: la resolvió la IA o un workflow y el agente solo la cerró. Por eso el criterio anterior (“quién cerró”) subestimaba a la IA.</div></div>
+  <div class="mc-grid">
+    <div class="mc c-purple"><div class="mc-label">Primera respuesta</div><div class="mc-val">${fr?P(fr.ia,T):'—'}</div><div class="mc-sub">${fr?`la dio la IA · agente ${P(fr.agente,T)} · automática ${P(fr.workflow,T)} · sin respuesta ${P(fr.sin,T)}`:'sin dato en este export'}</div></div>
+    <div class="mc c-amber"><div class="mc-label">Pase IA → agente (mediana)</div><div class="mc-val">${h.n?fmtM(h.med):'—'}</div><div class="mc-sub">${h.n?`1 de cada 4 espera más de ${fmtM(h.p75)} · ${h.over60} de ${h.n} más de 1 h (reloj real)`:'sin pases en el período'}</div></div>
+    <div class="mc c-green"><div class="mc-label">Facturas por IA</div><div class="mc-val">${R.factAI?P(R.factInv,R.factAI):'—'}</div><div class="mc-sub">${R.factAI?`${R.factInv} de ${R.factAI} conversaciones de “Facturas AI” terminaron en factura emitida · ${R.dup} frenadas por factura duplicada`:'sin conversaciones de facturación por IA'}</div></div>
+    <div class="mc c-red"><div class="mc-label">Vuelven en menos de 24 h</div><div class="mc-val">${re.pct!=null?re.pct+'%':'—'}</div><div class="mc-sub">${re.n||0} conversaciones · ${re.same72||0} por el mismo tema en menos de 72 h${po&&po.reopen?vsTxt(re.pct,po.reopen.pct):''}</div></div>
+  </div>
+  <div class="g2">
+    <div class="card"><div class="card-header"><div><div class="card-title">Qué resuelve la IA sola, por categoría</div><div class="card-sub">Categorías con 5 o más conversaciones · muestra qué temas conviene automatizar después</div></div></div>
+      ${tbl(['Categoría','Conv.','Solo IA','Con agente','Automática'],catRows)}</div>
+    <div class="card"><div class="card-header"><div><div class="card-title">Carga real del equipo</div><div class="card-sub">Conversaciones en las que cada persona escribió, contra las que cerró</div></div></div>
+      ${tbl(['Persona','Escribió en','Mensajes','Cerró','Cerró sin escribir'],agRows)}
+      <div class="bo-note">“Cerró sin escribir” son conversaciones que resolvió la IA y la persona solo cerró. Para medir carga, la columna que importa es “Escribió en”.</div></div>
+  </div>
+  <div class="g2">
+    <div class="card"><div class="card-header"><div><div class="card-title">Dónde se traba la derivación</div><div class="card-sub">Del último mensaje de la IA al primero de un agente, en reloj real</div></div></div>
+      ${tbl(['Indicador','Valor'],[
+        ['Pases de IA a agente',h.n||0],['Mediana',h.n?fmtM(h.med):'—'],['1 de cada 4 espera más de',h.n?fmtM(h.p75):'—'],['1 de cada 10 espera más de',h.n?fmtM(h.p90):'—'],['Esperaron más de 1 h',h.n?h.over60+' ('+P(h.over60,h.n)+')':'—'],
+        ['Respuesta del agente una vez asignado (mediana)',a2?fmtM(a2.med):'—'],['Respuesta del agente una vez asignado (90%)',a2?'menos de '+fmtM(a2.p90):'—'],
+        ['Conversaciones reasignadas 2 o más veces',ra.n2!=null?ra.n2:'—'],['Reasignadas 4 o más veces',ra.n4!=null?ra.n4+(ra.max?' (máximo '+ra.max+')':''):'—']])}
+      <div class="bo-note">Si el agente responde rápido una vez asignado pero el pase tarda, la demora está en la derivación (asignación), no en los agentes.</div></div>
+    <div class="card"><div class="card-header"><div><div class="card-title">Vuelven a escribir en menos de 24 h</div><div class="card-sub">La misma persona abre otra conversación menos de 24 h después de que se resolvió la anterior</div></div></div>
+      ${tbl(['Categoría de la nueva conversación','Conv.'],reRows)}
+      <div class="bo-note">Puede ser una consulta nueva o que la primera respuesta no resolvió. ${re.same72||0} volvieron por la misma categoría en menos de 72 h. Clientes que mandaron archivos (comprobantes, constancias): <b>${R.att}</b> conversaciones.</div></div>
+  </div>`;
+}
+function vsTxt(c,p){if(p==null||c==null)return'';const d=+(c-p).toFixed(1);return d?` · <span style="color:var(--${d<0?'green':'red'})">${d>0?'+':''}${d} pp</span>`:'';}
+function realOpsCharts(o){
+  const R=o.real;if(!R||!document.getElementById('cRealTipos'))return;
+  mkChart('cRealTipos','bar',{labels:[''],datasets:REAL_TIPOS.map(([k,l,c])=>({label:l,data:[R.tipos[k]],backgroundColor:c,borderWidth:0,barThickness:28}))},
+    {indexAxis:'y',plugins:{legend:{display:false},tooltip:{callbacks:{label:x=>x.dataset.label+': '+x.raw+' ('+(x.raw/R.total*100).toFixed(1)+'%)'}}},scales:{x:{stacked:true,display:false,max:R.total},y:{stacked:true,display:false}}});
+}
 
 // ── BO de Lannis: campañas y DDJJ ──
 // Fuente: data/bo.json, que genera una tarea programada consultando el BO por MCP (ver scripts/bo/README.md).
@@ -1417,7 +1533,7 @@ function buildWeeklySlides(w){
       <div class="wk-card ${sla(w.frtMed,SLA.frt)}"><div class="l">FRT mediana</div><div class="v">${fmtM(w.frtMed)}</div><div class="s">objetivo &lt; ${SLA.frt}m</div>${prev&&!sysCross&&prev.frtMed?wkDelta(+w.frtMed.toFixed(1),+prev.frtMed.toFixed(1),' min',true,pl):''}</div>
       <div class="wk-card ${sla(w.ttrMed,SLA.ttr)}"><div class="l">TTR mediana</div><div class="v">${fmtM(w.ttrMed)}</div><div class="s">objetivo &lt; ${SLA.ttr/60}h</div>${prev&&prev.ttrMed?wkDelta(+w.ttrMed.toFixed(1),+prev.ttrMed.toFixed(1),' min',true,pl):''}</div>
     </div>
-    <div class="wk-note">Tiempos en horas hábiles (lun-vie 9-18, sin feriados).${w.ws>=SYSTEM_CHANGE?' Desde el cambio de sistema, la 1ª respuesta incluye al bot.':''}</div></div>`);
+    <div class="wk-note">Tiempos en horas hábiles (lun-vie 9-18, sin feriados).${w.ws>=SYSTEM_CHANGE?' Desde el cambio de sistema, la 1ª respuesta incluye al bot.':''}${o&&o.notif?' No incluye '+o.notif+' notificaciones reenviadas por mail.':''}</div></div>`);
   // 2. Categorías
   const ALW=new Set(['Facturación','Facturas AI','Impuestos','Impuestos provinciales','Deudas','SAS / RI','Sueldos','Baja servicios Lannis']);
   const tot=w.total||1;let otros=w.cats['Otros']||0;const main=[];
@@ -1485,10 +1601,43 @@ function buildWeeklySlides(w){
         <div class="wk-card a"><div class="l">Clientes únicos</div><div class="v">${cr.uniqueClients}</div></div></div></div>`);
     }
   }
-  // 5. Automatización: sale del reporte de mensajes (más confiable que el cierre de la conversación)
+  // 5. Automatización por conversación (cruce conversaciones + mensajes): reemplaza a la versión por cliente cuando está
+  const R=o&&o.real;
+  if(R){
+    const T=R.total,pf=n=>Math.round((n||0)/T*100),h=R.handoff||{},fr=o.frb;
+    const cats=Object.entries(R.byCat).filter(([,v])=>v.t>=10).sort((a,b)=>b[1].t-a[1].t).slice(0,6);
+    slides.push(`<div class="wk-slide"><div class="wk-eyebrow">Operaciones — Automatización</div><div class="wk-h">Qué resuelve la IA y qué llega a una persona</div><div class="wk-sub">${T.toLocaleString('es')} conversaciones ${dlp}, mirando quién escribió en cada una.</div>
+      <div class="wk-cards">
+        <div class="wk-card g"><div class="l">Resueltas solo por la IA</div><div class="v">${pf(R.tipos.soloIA)}%</div><div class="s">${R.tipos.soloIA.toLocaleString('es')} conversaciones sin que escriba un agente</div></div>
+        <div class="wk-card a"><div class="l">Pasaron a una persona</div><div class="v">${pf(R.tipos.iaAgente)}%</div><div class="s">${R.tipos.iaAgente} empezaron con la IA y siguió un agente</div></div>
+        <div class="wk-card"><div class="l">Facturas emitidas por la IA</div><div class="v">${R.factInv}</div><div class="s">${R.factAI?Math.round(R.factInv/R.factAI*100)+'% de las conversaciones de facturación por IA':''}</div></div>
+      </div>
+      <div class="wk-g2" style="margin-top:1.4em">
+        <div><div style="font-weight:600;margin-bottom:.4em">Cómo se atendió cada conversación</div>
+          ${REAL_TIPOS.map(([k,l,c])=>`<div class="wk-mini" style="grid-template-columns:12em 1fr 3em"><span>${l}</span><div class="wk-bar"><i style="width:${pf(R.tipos[k])}%;background:${c}"></i></div><span style="text-align:right">${pf(R.tipos[k])}%</span></div>`).join('')}</div>
+        <div><div style="font-weight:600;margin-bottom:.4em">La IA sola, por tema</div>
+          ${cats.map(([c,v])=>`<div class="wk-mini" style="grid-template-columns:12em 1fr 3em"><span>${wkEsc(c)}</span><div class="wk-bar"><i style="width:${Math.round(v.soloIA/v.t*100)}%;background:var(--green)"></i></div><span style="text-align:right">${Math.round(v.soloIA/v.t*100)}%</span></div>`).join('')}</div>
+      </div>
+      <div class="wk-note">${fr?'La primera respuesta la dio la IA en el '+pf(fr.ia)+'% de las conversaciones. ':''}En ${R.cerradasSinEscribir} de las ${R.cerradasAgente} conversaciones cerradas por un agente, el agente no escribió: las resolvió la IA.</div></div>`);
+    if(h.n){
+      const re=o.reopen||{},ra=o.reassign||{},a2=o.a2fr;
+      slides.push(`<div class="wk-slide"><div class="wk-eyebrow">Operaciones — Derivación</div><div class="wk-h">Dónde se traba el pase a una persona</div><div class="wk-sub">Tiempo desde el último mensaje de la IA hasta el primero de un agente, en reloj real.</div>
+        <div class="wk-cards">
+          <div class="wk-card ${h.med<=10?'g':'a'}"><div class="l">Pase IA → agente (mediana)</div><div class="v">${fmtM(h.med)}</div><div class="s">${h.n} pases ${dlp}</div></div>
+          <div class="wk-card ${h.over60/h.n>.2?'r':'a'}"><div class="l">Esperaron más de 1 hora</div><div class="v">${Math.round(h.over60/h.n*100)}%</div><div class="s">${h.over60} de ${h.n} · 1 de cada 4 espera más de ${fmtM(h.p75)}</div></div>
+          <div class="wk-card g"><div class="l">Agente, una vez asignado</div><div class="v">${a2?fmtM(a2.med):'—'}</div><div class="s">${a2?'mediana · 90% en menos de '+fmtM(a2.p90):''}</div></div>
+        </div>
+        <div class="wk-g2" style="margin-top:1.4em">
+          <div class="wk-bul" style="margin:0"><div class="bar" style="background:var(--purple)"></div><div><b>Vuelven en menos de 24 h: ${re.pct||0}%</b><span class="t">${re.n||0} conversaciones; ${re.same72||0} por el mismo tema en menos de 72 h. Puede indicar que la primera respuesta no resolvió.</span></div></div>
+          <div class="wk-bul" style="margin:0"><div class="bar" style="background:var(--amber)"></div><div><b>Reasignadas 2 o más veces: ${ra.n2||0}</b><span class="t">${ra.n4||0} pasaron por 4 o más asignaciones${ra.max?' (máximo '+ra.max+')':''}.</span></div></div>
+        </div>
+        <div class="wk-note">Cuando el agente responde rápido una vez asignado pero el pase tarda, la demora está en la derivación, no en el equipo.</div></div>`);
+    }
+  }
+  // 5b. Automatización por cliente: sale del reporte de mensajes (se usa si no hay cruce por conversación)
   const dms=x=>new Date(x+'T12:00:00').getTime(),TOL=4*86400000;
   const mr=(typeof msgReports!=='undefined'?msgReports:[]).find(r=>r.start&&r.end&&Math.abs(dms(r.start)-dms(w.ws))<=TOL&&Math.abs(dms(r.end)-dms(w.we))<=TOL)||null;
-  wkMsgMissing=!mr;
+  wkMsgMissing=!mr&&!R;
   if(mr){
     const fs=mr.flowStats||{};const cT=fs.total||((fs.aiOnly||0)+(fs.botHuman||0)+(fs.humanOnly||0))||1;
     const pf=n=>Math.round((n||0)/cT*100);
@@ -1497,7 +1646,7 @@ function buildWeeklySlides(w){
     const pO=(n,t)=>t?Math.round(n/t*100):0;
     const third=fs.invoices?`<div class="wk-card"><div class="l">Facturas emitidas por la IA</div><div class="v">${fs.invoices.toLocaleString('es')}</div><div class="s">para ${fs.invoiceClients} clientes</div></div>`
       :`<div class="wk-card"><div class="l">Respuesta (mediana)</div><div class="v">${mr.aiRtMed}m <span style="font-size:.45em;color:var(--ink3)">IA</span></div><div class="s">agentes: ${mr.humanRtMed}m</div></div>`;
-    slides.push(`<div class="wk-slide"><div class="wk-eyebrow">Operaciones — Automatización</div><div class="wk-h">Qué hace la IA y qué llega a una persona</div><div class="wk-sub">${cT.toLocaleString('es')} clientes escribieron en el período · ${mr.totalMsgs.toLocaleString('es')} mensajes.</div>
+    if(!R)slides.push(`<div class="wk-slide"><div class="wk-eyebrow">Operaciones — Automatización</div><div class="wk-h">Qué hace la IA y qué llega a una persona</div><div class="wk-sub">${cT.toLocaleString('es')} clientes escribieron en el período · ${mr.totalMsgs.toLocaleString('es')} mensajes.</div>
       <div class="wk-cards">
         <div class="wk-card g"><div class="l">Resueltos solo por la IA</div><div class="v">${pf(fs.aiOnly)}%</div><div class="s">${(fs.aiOnly||0).toLocaleString('es')} clientes, sin intervención humana</div></div>
         <div class="wk-card a"><div class="l">Pasaron a una persona</div><div class="v">${pf(fs.botHuman)}%</div><div class="s">${(fs.botHuman||0).toLocaleString('es')} clientes: primero bot, luego agente</div></div>
@@ -2309,17 +2458,28 @@ function showTab(t,el){
 }
 
 // ── File handlers ──
-document.getElementById('fileConv').addEventListener('change',function(e){
-  const file=e.target.files[0];if(!file)return;
-  const reader=new FileReader();
-  reader.onload=ev=>{
-    const isCSV=file.name.toLowerCase().endsWith('.csv');
-    let rows;
-    try{
-      if(isCSV){const txt=new TextDecoder('utf-8').decode(ev.target.result);const wb=XLSX.read(txt,{type:'string',raw:true});const ws=wb.Sheets[wb.SheetNames[0]];rows=XLSX.utils.sheet_to_json(ws,{header:1,raw:true,defval:''});} // raw:true evita que SheetJS convierta fechas y las corra por zona horaria
-      else{const wb=XLSX.read(new Uint8Array(ev.target.result),{type:'array',raw:false,dateNF:'yyyy-mm-dd hh:mm:ss'});const ws=wb.Sheets[wb.SheetNames[0]];rows=XLSX.utils.sheet_to_json(ws,{header:1,raw:false,dateNF:'yyyy-mm-dd hh:mm:ss'});}
-    }catch(err){toast('Error leyendo archivo: '+err.message,true);return;}
-    if(!rows||rows.length<2){toast('No se pudieron leer datos.',true);return;}
+function readRowsFile(file){
+  return new Promise((ok,ko)=>{const reader=new FileReader();
+    reader.onload=ev=>{try{
+      if(file.name.toLowerCase().endsWith('.csv')){const txt=new TextDecoder('utf-8').decode(ev.target.result);const wb=XLSX.read(txt,{type:'string',raw:true});ok(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,raw:true,defval:''}));} // raw:true evita que SheetJS convierta fechas y las corra por zona horaria
+      else{const wb=XLSX.read(new Uint8Array(ev.target.result),{type:'array',raw:false,dateNF:'yyyy-mm-dd hh:mm:ss'});ok(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,raw:false,dateNF:'yyyy-mm-dd hh:mm:ss'}));}
+    }catch(err){ko(err);}};
+    reader.onerror=()=>ko(reader.error);reader.readAsArrayBuffer(file);});
+}
+const isMsgCsv=rows=>{const h=(rows&&rows[0]||[]).map(x=>String(x||'').replace(/^\uFEFF/,'').trim().toLowerCase());return h.includes('date & time')&&h.includes('sender type');};
+// Mensajes que corresponden al período de conversaciones (se superponen al menos en parte)
+function msgFor(dates){if(!lastMsg||!dates||!dates.length)return null;const a=dates[0],b=dates[dates.length-1];return lastMsg.start<=b&&lastMsg.end>=a?lastMsg.rows:null;}
+document.getElementById('fileConv').addEventListener('change',async function(e){
+  const files=[...e.target.files];e.target.value='';if(!files.length)return;
+  let rows=null;
+  for(const f of files){
+    let r;try{r=await readRowsFile(f);}catch(err){toast('Error leyendo '+f.name+': '+err.message,true);return;}
+    if(!r||r.length<2)continue;
+    if(isMsgCsv(r))await processMsgRows(r); // también guarda el reporte de mensajes
+    else rows=r;
+  }
+  if(!rows){if(files.length>1||!lastMsg)toast('No encontré el CSV de conversaciones entre los archivos.',true);return;}
+  {
     pendingRows=rows;
     const hdrs=rows[0].map(h=>String(h||'').trim());
     const iS=hdrs.findIndex(h=>h.toLowerCase().includes('datetime conversation started'));
@@ -2332,8 +2492,7 @@ document.getElementById('fileConv').addEventListener('change',function(e){
     });
     if(!wDates.size){toast('No se detectaron fechas válidas.',true);return;}
     showModal(wDates,[...agSet].sort());
-  };
-  reader.readAsArrayBuffer(file);e.target.value='';
+  }
 });
 
 // ── Messages CSV handler ──
@@ -2349,17 +2508,24 @@ document.getElementById('fileMsgs').addEventListener('change',function(e){
       rows=XLSX.utils.sheet_to_json(ws,{header:1,raw:true,defval:''});
     }catch(err){toast('Error: '+err.message,true);return;}
     if(!rows||rows.length<2){toast('Archivo inválido.',true);return;}
-    const hdrs=rows[0].map(h=>String(h||'').trim());
+    await processMsgRows(rows);
+  };
+  reader.readAsArrayBuffer(file);e.target.value='';
+});
+// Procesa el CSV de mensajes: guarda el reporte de mensajes y lo deja en memoria para cruzarlo con el de conversaciones
+async function processMsgRows(rows){
+    const hdrs=rows[0].map(h=>String(h||'').replace(/^\uFEFF/,'').trim());
     const col=n=>hdrs.findIndex(h=>h.toLowerCase().includes(n.toLowerCase()));
-    const iTS=col('Date & Time'),iSender=col('Sender Type'),iCont=col('Contact ID');
+    const iTS=col('Date & Time'),iSender=col('Sender Type'),iCont=col('Contact ID'),iCT=col('Content Type');
     const iMsgType=col('Message Type'),iSubType=col('Sub Type');
     const iSID=hdrs.findIndex(h=>h.toLowerCase()==='sender id'),iCnt=hdrs.findIndex(h=>h.replace(/^\uFEFF/,'').toLowerCase()==='content');
     const data=rows.slice(1).filter(r=>r&&r[iTS]);
     if(!data.length){toast('Sin datos de mensajes.',true);return;}
-    const parsed=data.map(r=>{const ts=new Date(r[iTS]);return{ts,sender:String(r[iSender]||'').trim(),cid:String(r[iCont]||''),msgType:String(r[iMsgType]||'').trim(),subType:String(r[iSubType]||'').trim(),sid:iSID>=0?String(r[iSID]||'').trim():'',content:iCnt>=0?String(r[iCnt]||''):'',hora:ts.getHours()};}).filter(r=>!isNaN(r.ts));
+    const parsed=data.map(r=>{const ts=new Date(r[iTS]);return{ts,sender:String(r[iSender]||'').trim(),cid:String(r[iCont]||''),msgType:String(r[iMsgType]||'').trim(),subType:iSubType>=0?String(r[iSubType]||'').trim():'',ct:iCT>=0?String(r[iCT]||'').trim():'',sid:iSID>=0?String(r[iSID]||'').trim():'',content:iCnt>=0?String(r[iCnt]||''):'',hora:ts.getHours()};}).filter(r=>!isNaN(r.ts));
     const dates=parsed.map(r=>r.ts);
     const start=new Date(Math.min(...dates));const end=new Date(Math.max(...dates));
     const lIso=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); // fecha local (toISOString corre el día por zona horaria)
+    lastMsg={rows,start:lIso(start),end:lIso(end)};
     const startStr=lIso(start).substring(5).replace('-','/');
     const endStr=lIso(end).substring(5).replace('-','/');
     const diffDays=Math.round((end-start)/(1000*60*60*24))+1;
@@ -2407,7 +2573,7 @@ document.getElementById('fileMsgs').addEventListener('change',function(e){
         const b=offHrs[isOff(m.ts)?'off':'hab'];b.in++;
         const nx=so.slice(i+1).find(x=>x.msgType==='outgoing');
         b[!nx?'sin':nx.sender==='ai_agent'?'ia':nx.sender==='workflow'?'workflow':'agente']++;}});
-    const inv=parsed.filter(r=>r.sender==='ai_agent'&&/^factura [a-z] - /i.test(r.content));
+    const inv=parsed.filter(r=>r.sender==='ai_agent'&&/factura se gener|tu factura est[aá] en camino|^factura [a-z] - /i.test(r.content));
     const invCount=inv.length,invClients=new Set(inv.map(r=>r.cid)).size;
     const greet=/^(hola|buenas|buen dia|buenos dias|buenas tardes|buenas noches|hey)\b[\s\w]{0,14}$/;
     const intC={};
@@ -2433,6 +2599,9 @@ document.getElementById('fileMsgs').addEventListener('change',function(e){
     parsed.filter(r=>r.sender==='workflow'||r.sender==='ai_agent').forEach(r=>{
       if(r.subType&&r.subType.length>2&&r.subType!=='undefined'){
         const k=r.subType.replace(' (es_AR) (MARKETING)','').replace(' (es_AR) (UTILITY)','').trim();
+        templates[k]=(templates[k]||0)+1;
+      }else if(r.ct==='whatsapp_template'){
+        const k=(r.content.split('\n')[0]||'Template sin texto').replace(/\*/g,'').trim().slice(0,60)||'Template sin texto';
         templates[k]=(templates[k]||0)+1;
       }
     });
@@ -2474,9 +2643,7 @@ document.getElementById('fileMsgs').addEventListener('change',function(e){
       await db.from('message_reports').upsert(p,{onConflict:'period_label'});
       toast('✓ Mensajes guardados');await fetchMsgReports();
     }catch(err){toast('Error: '+err.message,true);}
-  };
-  reader.readAsArrayBuffer(file);e.target.value='';
-});
+}
 
 // ── Contacts CSV handler ──
 document.getElementById('fileCons').addEventListener('change',function(e){
