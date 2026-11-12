@@ -735,7 +735,11 @@ function agentName(v){
 }
 // Tipo de período según duración: S=semanal (≤10d), Q=quincenal (11-20d), M=mensual (>20d)
 function periodType(days){return days<=10?'S':days<=20?'Q':'M';}
-function periodLabel(pt,from,startStr,endStr){return pt==='M'?MONTHS[from.getMonth()]+' '+from.getFullYear():(pt==='Q'?'Quinc. ':'Sem. ')+startStr+' – '+endStr;}
+// Un período mensual se nombra por el mes que ocupa la mayor parte (el del medio), no por el primer día:
+// el export de Respond a veces trae alguna conversación del último día del mes anterior.
+function midDate(a,b){return b&&!isNaN(b)?new Date((a.getTime()+b.getTime())/2):a;}
+function periodLabel(pt,from,startStr,endStr,to){const d=pt==='M'?midDate(from,to):from;return pt==='M'?MONTHS[d.getMonth()]+' '+d.getFullYear():(pt==='Q'?'Quinc. ':'Sem. ')+startStr+' – '+endStr;}
+function monthKeyOf(w){const a=new Date((w.ws||'2000-01-01')+'T12:00:00'),b=new Date((w.we||w.ws||'2000-01-01')+'T12:00:00'),d=midDate(a,b);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');}
 const CHLBL={'contact':'Cliente inició','user':'Equipo inició','ctc_ads':'Anuncio','':'Desconocido'};
 
 // ── Helpers ──
@@ -856,7 +860,7 @@ async function fetchWeeks(){
     const to=new Date((r.week_end||r.week_start||'2000-01-01')+'T12:00:00');
     const diff=Math.round((to-from)/(1000*60*60*24))+1;
     const pt=periodType(diff);const isM=pt==='M';
-    const fl=periodLabel(pt,from,(r.week_start||'').substring(5).replace('-','/'),(r.week_end||'').substring(5).replace('-','/'));
+    const fl=periodLabel(pt,from,(r.week_start||'').substring(5).replace('-','/'),(r.week_end||'').substring(5).replace('-','/'),to);
     return{id:r.id,week:r.week_label,fl,isM,pt,ws:r.week_start,we:r.week_end,
       total:r.total||0,totalH:r.total_habil||0,workDays:r.working_days||0,availHrs:r.available_hours||0,
       frtMed:r.frt_med||0,frtAvg:r.frt_avg||0,artMed:r.art_med||0,artAvg:r.art_avg||0,ttrMed:r.ttr_med||0,ttrAvg:r.ttr_avg||0,
@@ -1080,7 +1084,7 @@ function computeWeek(rows,hols,actAgents,msgRows){
   Object.values(agents).forEach(a=>{a.cph=aH>0?+(a.count/aH).toFixed(2):0;});
 
   const from=new Date(sd[0]+'T12:00:00');const diff=Math.round((e-s)/(1000*60*60*24))+1;const pt=periodType(diff);const isM=pt==='M';
-  const fl=periodLabel(pt,from,sd[0].substring(5).replace('-','/'),sd[sd.length-1].substring(5).replace('-','/'));
+  const fl=periodLabel(pt,from,sd[0].substring(5).replace('-','/'),sd[sd.length-1].substring(5).replace('-','/'),e);
   const allFRT=habR.map(r=>r.frt),allART=habR.map(r=>r.art),allTTR=habR.map(r=>r.ttr);
 
   return{week:sd[0]+' al '+sd[sd.length-1],ws:sd[0],we:sd[sd.length-1],fl,isM,pt,
@@ -1394,7 +1398,7 @@ function factNow(){const d=boData?new Date(boData.generado):new Date();return{m:
 function factPeriod(w){
   const F=boData&&boData.facturacion;if(!F||!w||!w.ws)return null;
   const L=w.pt==='M'?F.meses:w.pt==='S'?F.semanas:null;if(!L)return null;
-  const k=w.pt==='M'?w.ws.substring(0,7):boMonday(w.ws);const i=L.findIndex(r=>r[0]===k);if(i<0)return null;
+  const k=w.pt==='M'?monthKeyOf(w):boMonday(w.ws);const i=L.findIndex(r=>r[0]===k);if(i<0)return null;
   const cur=factRow(L[i]),n=factNow();cur.prev=factRow(L[i-1]);cur.pt=w.pt;cur.partial=w.pt==='M'?k===n.m:k===n.w;return cur;
 }
 const cpa=(w,f)=>f&&f.activos?w.total/f.activos:null; // consultas por cliente activo
@@ -1407,7 +1411,7 @@ function renderFacturacion(){
   const lbl=r=>M?MONTHS[+r.key.substring(5)-1].substring(0,3)+' '+r.key.substring(2,4):wkDmy(r.key);
   const isPart=r=>M?r.key===n.m:r.key===n.w;
   const closed=L.filter(r=>!isPart(r)),last=closed[closed.length-1],prev=closed[closed.length-2];
-  const upl=r=>allWeeks.find(x=>x.pt===(M?'M':'S')&&(M?x.ws.substring(0,7)===r.key:boMonday(x.ws)===r.key));
+  const upl=r=>allWeeks.find(x=>x.pt===(M?'M':'S')&&(M?monthKeyOf(x)===r.key:boMonday(x.ws)===r.key));
   const d=(c,p,inv)=>p==null||!p?'':(()=>{const x=Math.round((c-p)/p*100);return x?`<div class="mc-delta ${(inv?x<0:x>0)?'up':'dn'}">${x>0?'↑':'↓'} ${Math.abs(x)}% vs ${M?'mes':'semana'} anterior</div>`:'';})();
   const lw=last?upl(last):null,pw=prev?upl(prev):null;
   el.innerHTML=`
@@ -2739,7 +2743,7 @@ async function processMsgRows(rows){
     const startStr=lIso(start).substring(5).replace('-','/');
     const endStr=lIso(end).substring(5).replace('-','/');
     const diffDays=Math.round((end-start)/(1000*60*60*24))+1;
-    const label=periodLabel(periodType(diffDays),start,startStr,endStr)+(periodType(diffDays)==='M'?' mensajes':' mensajes');
+    const label=periodLabel(periodType(diffDays),start,startStr,endStr,end)+(periodType(diffDays)==='M'?' mensajes':' mensajes');
     const totalMsgs=parsed.length;
     const humanMsgs=parsed.filter(r=>r.sender==='user').length;
     const botMsgs=parsed.filter(r=>r.sender==='ai_agent').length;
