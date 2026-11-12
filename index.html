@@ -1764,8 +1764,9 @@ function buildWeeklySlides(w){
       const mN=movIn(inW),mP=prevW.length?movIn(prevW):null;
       const snap=D.snapshot||[],open=snap.filter(r=>(DDJJ_STATUS_STAGE[r[2]]??0)<3);
       const byF={};pr.forEach(r=>{byF[r[1]]=(byF[r[1]]||0)+r[3];});const fE=Object.entries(byF).sort((a,b)=>b[1]-a[1]);const fM=Math.max(1,...fE.map(x=>x[1]));
-      const tm={};(D.team||[]).filter(r=>inW.includes(r[0])).forEach(r=>{const n=teamName(r[1]);tm[n]=(tm[n]||0)+r[2];});const tE=Object.entries(tm).filter(x=>x[1]).sort((a,b)=>b[1]-a[1]);const tM=Math.max(1,...tE.map(x=>x[1]));
-      const prevLbl=w.pt==='S'?'la semana anterior':'el período anterior';
+      // Sin presentar por impuesto (foto de hoy). El detalle por persona queda en la pestaña DDJJ, no en la presentación.
+      const oF={};open.forEach(r=>{const o=oF[r[0]]||(oF[r[0]]={n:0,v7:0,venc:0});o.n+=r[3];o.v7+=r[5];o.venc+=r[4];});const oE=Object.entries(oF).sort((a,b)=>b[1].n-a[1].n);const oM=Math.max(1,...oE.map(x=>x[1].n));
+      const prevLbl=w.pt==='S'?'la semana anterior':w.pt==='M'?'el mes anterior':'el período anterior';
       slides.push(`<div class="wk-slide"><div class="wk-eyebrow">Operaciones — DDJJ e impuestos</div><div class="wk-h">Cómo avanzaron las DDJJ ${elp}</div><div class="wk-sub">Clientes propios de Lannis (RI, SAS y Monotributo plus). Fuente: BO, al ${boFecha()}.</div>
         <div class="wk-cards">
           <div class="wk-card g"><div class="l">Presentadas</div><div class="v">${pN}</div><div class="s">llegaron a presentada o más</div>${pP!=null?wkDelta(pN,pP,'',false,prevLbl):''}</div>
@@ -1774,7 +1775,7 @@ function buildWeeklySlides(w){
         </div>
         <div class="wk-g2" style="margin-top:1.4em">
           <div><div style="font-weight:600;margin-bottom:.4em">Presentadas por impuesto</div>${fE.length?fE.map(([f,n])=>`<div class="wk-mini" style="grid-template-columns:9em 1fr 3em"><span>${wkEsc(f)}</span><div class="wk-bar"><i style="width:${Math.round(n/fM*100)}%;background:var(--green)"></i></div><span style="text-align:right">${n}</span></div>`).join(''):'<div class="wk-note" style="margin:0">No hubo presentaciones en el período.</div>'}</div>
-          <div><div style="font-weight:600;margin-bottom:.4em">Movimientos por persona</div>${tE.length?tE.map(([n,c])=>`<div class="wk-mini" style="grid-template-columns:9em 1fr 3em"><span>${wkEsc(n)}</span><div class="wk-bar"><i style="width:${Math.round(c/tM*100)}%"></i></div><span style="text-align:right">${c}</span></div>`).join(''):'<div class="wk-note" style="margin:0">Sin movimientos del equipo en el período.</div>'}</div>
+          <div><div style="font-weight:600;margin-bottom:.4em">Sin presentar hoy, por impuesto</div>${oE.length?oE.map(([f,o])=>`<div class="wk-mini" style="grid-template-columns:9em 1fr 7em"><span>${wkEsc(f)}</span><div class="wk-bar"><i style="width:${Math.round(o.n/oM*100)}%;background:${o.venc?'var(--red)':o.v7?'var(--amber)':'var(--accent)'}"></i></div><span style="text-align:right">${o.n}${o.v7?' · <span style="color:var(--amber)">'+o.v7+' vencen</span>':''}${o.venc?' · <span style="color:var(--red)">'+o.venc+' venc.</span>':''}</span></div>`).join(''):'<div class="wk-note" style="margin:0">Nada pendiente de presentar.</div>'}</div>
         </div>
         <div class="wk-note">“Sin presentar hoy” es la foto al momento de la actualización, no al cierre del período. No incluye clientes de estudios contables.</div></div>`);
     }
