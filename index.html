@@ -100,6 +100,16 @@ body{font-family:'Inter',sans-serif;background:var(--paper);color:var(--ink);min
 @media print{.sidebar,.tabs-bar,.main-header,.wk-controls,.wk-editor,#wkOv{display:none!important}.app{display:block!important}.tab-c{display:none!important}#tab-weekly{display:block!important}.wk-slide{break-inside:avoid;page-break-after:always;box-shadow:none}}
 @media(max-width:900px){.wk-cards,.wk-g2{grid-template-columns:1fr}}
 
+/* ── BO: campañas y DDJJ ── */
+.bo-bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:16px}
+.bo-meta{font-size:11px;color:var(--ink3);margin-left:auto;font-family:'JetBrains Mono',monospace}
+.bo-note{font-size:11px;color:var(--ink3);line-height:1.7;margin-top:12px}
+.bo-legend{display:flex;flex-wrap:wrap;gap:12px;font-size:11px;color:var(--ink3);margin-bottom:10px}
+.bo-legend i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+.bo-pbar{display:inline-block;width:80px;height:6px;background:var(--s3);border-radius:3px;overflow:hidden;vertical-align:middle;margin-right:8px}
+.bo-pbar>i{display:block;height:100%;border-radius:3px}
+.tbl td.c,.tbl th.c{text-align:center}
+
 /* ── Main ── */
 .main{min-width:0;overflow:auto;display:flex;flex-direction:column}
 .main-header{background:var(--surface);border-bottom:1px solid var(--border);padding:18px 32px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10}
@@ -147,6 +157,8 @@ body{font-family:'Inter',sans-serif;background:var(--paper);color:var(--ink);min
 .g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:16px}
 .g4{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:16px}
 .ch{position:relative;width:100%}
+.g2>*,.g3>*,.g4>*,.mc-grid>*{min-width:0}
+.card{overflow-x:auto}
 
 /* ── Tables ── */
 .tbl{width:100%;border-collapse:collapse}
@@ -284,6 +296,9 @@ body{font-family:'Inter',sans-serif;background:var(--paper);color:var(--ink);min
     <div class="nav-section-label" style="padding:10px 0 4px">Negocio</div>
     <div class="nav-item" onclick="showTab('llamadas',this)"><svg class="ni" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 3h3l1.5 3.5-2 1.5a9 9 0 004.5 4.5l1.5-2L15 12v3a1 1 0 01-1 1C6 16 0 10 0 3a1 1 0 011-1h2z"/></svg>Llamadas</div>
     <div class="nav-item" onclick="showTab('suscripciones',this)"><svg class="ni" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 2a6 6 0 100 12A6 6 0 008 2z"/><path d="M8 5v3l2 2"/><path d="M5 1l-3 3M11 1l3 3"/></svg>Suscripciones</div>
+    <div class="nav-section-label" style="padding:10px 0 4px">BO Lannis</div>
+    <div class="nav-item" onclick="showTab('campanias',this)"><svg class="ni" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1.5" y="3" width="13" height="10" rx="1.5"/><path d="M2 4l6 5 6-5"/></svg>Campañas</div>
+    <div class="nav-item" onclick="showTab('ddjj',this)"><svg class="ni" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 1.5h5.5L13 5v9.5H4z"/><path d="M9 1.5V5h4M6.5 9l1.5 1.5 3-3"/></svg>DDJJ e impuestos</div>
     <div class="nav-section-label" style="padding:10px 0 4px">Modelos</div>
     <div class="nav-item" onclick="showTab('capacidad-avanzada',this)"><svg class="ni" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 14l4-8 3 5 2-3 3 6"/></svg>Cap. Avanzada</div>
     <div class="nav-item" onclick="showTab('glosario',this)"><svg class="ni" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="1" width="12" height="14" rx="1"/><path d="M5 5h6M5 8h6M5 11h4"/></svg>Glosario</div>
@@ -344,6 +359,8 @@ body{font-family:'Inter',sans-serif;background:var(--paper);color:var(--ink);min
     <div class="tab-btn" onclick="showTab('comparativa',this)">Comparativa</div>
     <div class="tab-btn" onclick="showTab('llamadas',this)">Llamadas</div>
     <div class="tab-btn" onclick="showTab('suscripciones',this)">Suscripciones</div>
+    <div class="tab-btn" onclick="showTab('campanias',this)">Campañas</div>
+    <div class="tab-btn" onclick="showTab('ddjj',this)">DDJJ</div>
     <div class="tab-btn" onclick="showTab('capacidad-avanzada',this)">Cap. Avanzada</div>
     <div class="tab-btn" onclick="showTab('glosario',this)">Glosario</div>
   </div>
@@ -617,6 +634,12 @@ body{font-family:'Inter',sans-serif;background:var(--paper);color:var(--ink);min
         </div>
       </div>
     </div>
+
+    <!-- CAMPAÑAS (BO) -->
+    <div id="tab-campanias" class="tab-c"><div id="campContent"><div class="empty">Cargando datos del BO…</div></div></div>
+
+    <!-- DDJJ (BO) -->
+    <div id="tab-ddjj" class="tab-c"><div id="ddjjContent"><div class="empty">Cargando datos del BO…</div></div></div>
 
     <!-- CAPACIDAD AVANZADA -->
     <div id="tab-capacidad-avanzada" class="tab-c">
@@ -1203,6 +1226,167 @@ function renderOps(w){
 }
 
 
+// ── BO de Lannis: campañas y DDJJ ──
+// Fuente: data/bo.json, que genera una tarea programada consultando el BO por MCP (ver scripts/bo/README.md).
+// Solo trae agregados: nada de CUITs, emails ni nombres de clientes.
+let boData=null,boCampGroup=0,ddjjSeg='all';
+const DDJJ_STAGES=['Por empezar','En preparación','Borrador','Presentada / a pagar','Cerrada'];
+const DDJJ_STAGE_COL=['#c4c4cc','#f59e0b','#8b5cf6','#6366f1','#10b981'];
+const DDJJ_STAGE_HELP=['Pendiente, información pendiente','Pendiente de revisión, en curso, revisión solicitada','Borrador a revisar, borrador aprobado','Presentada, pendiente de pago, pago informado','Pagada, completada'];
+const DDJJ_STATUS_STAGE={PENDIENTE:0,INFORMACION_PENDIENTE:0,PENDIENTE_REVISION:1,EN_CURSO:1,REVISION_SOLICITADA:1,BORRADOR_A_REVISAR:2,BORRADOR_APROBADO:2,PRESENTADA:3,PENDIENTE_PAGO:3,PAGO_INFORMADO:3,PAGADA:4,COMPLETADA:4};
+const DDJJ_STATUS_LBL={PENDIENTE:'Pendiente',INFORMACION_PENDIENTE:'Información pendiente',PENDIENTE_REVISION:'Pendiente de revisión',EN_CURSO:'En curso',REVISION_SOLICITADA:'Revisión solicitada',BORRADOR_A_REVISAR:'Borrador a revisar',BORRADOR_APROBADO:'Borrador aprobado',PRESENTADA:'Presentada',PENDIENTE_PAGO:'Pendiente de pago',PAGO_INFORMADO:'Pago informado',PAGADA:'Pagada',COMPLETADA:'Completada'};
+const DDJJ_SEG_LBL={RI:'RI',SAS:'SAS',Mono:'Monotributo plus',Otro:'Otros'};
+const sumC=(rows,i)=>rows.reduce((s,r)=>s+(+r[i]||0),0);
+const pctS=(n,d,dec=0)=>d>0?(n/d*100).toFixed(dec)+'%':'—';
+function boFecha(){if(!boData)return'';const d=new Date(boData.generado);return isNaN(d)?String(boData.generado):d.toLocaleDateString('es-AR',{day:'numeric',month:'numeric'})+' '+d.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit',hour12:false})+' hs';}
+function teamName(n){const k=String(n||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').trim();const hit=Object.values(EMAIL_AGENTS).find(v=>v.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'')===k);return hit||n;}
+function boMonday(iso){const d=new Date(iso+'T12:00:00');d.setDate(d.getDate()-((d.getDay()+6)%7));return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+
+async function fetchBO(){
+  try{const r=await fetch('data/bo.json?v='+Date.now(),{cache:'no-store'});if(!r.ok)throw new Error('HTTP '+r.status);boData=await r.json();}
+  catch(e){boData=null;}
+  renderCampanias();renderDdjj();
+  if(allWeeks.length)renderWeekly(getW());
+}
+function boMissing(){return`<div class="card"><div class="card-title">Sin datos del BO</div><div class="card-sub" style="margin-top:6px">No se pudo leer <code>data/bo.json</code>. Lo genera la tarea programada que consulta el BO de Lannis (ver <code>scripts/bo/README.md</code> en el repo).</div></div>`;}
+
+// Campañas
+function campRows(gi){
+  const g=(boData&&boData.campanias&&boData.campanias.grupos||[])[gi];if(!g)return[];
+  const F={};(boData.campanias.funnel||[]).forEach(r=>{F[r[0]]=r;});
+  return g.templates.map(t=>{const r=F[t.template]||[];return{...t,d0:r[1]||null,n:r[2]||0,dl:r[3]||0,op:r[4]||0,cl:r[5]||0,bo:r[6]||0,co:r[7]||0,fa:r[8]||0,pv:r[9]||0,rg:r[10]||0,sb:r[11]||0};});
+}
+function campTotals(rows){
+  const t={n:0,dl:0,op:0,cl:0,bo:0,co:0,fa:0,rg:0,sb:0,ext:0};
+  rows.forEach(r=>{['n','dl','op','cl','bo','co','fa','rg','sb'].forEach(k=>t[k]+=r[k]);if(r.tipo==='externa')t.ext+=r.n;});
+  t.d0=rows.map(r=>r.d0).filter(Boolean).sort()[0]||null;
+  t.dias=t.d0&&boData?Math.max(1,Math.floor((new Date(boData.generado)-new Date(t.d0+'T00:00:00-03:00'))/86400000)+1):0;
+  return t;
+}
+function setCampGroup(i){boCampGroup=i;renderCampanias();}
+function renderCampanias(){
+  const el=document.getElementById('campContent');if(!el)return;
+  if(!boData||!boData.campanias){el.innerHTML=boMissing();return;}
+  const C=boData.campanias,gs=C.grupos||[],win=C.ventanaDias||14;
+  if(!gs.length){el.innerHTML='<div class="card"><div class="empty">No hay campañas configuradas en scripts/bo/campanias.json.</div></div>';return;}
+  if(boCampGroup>=gs.length)boCampGroup=0;
+  const rows=campRows(boCampGroup),t=campTotals(rows),g=gs[boCampGroup];
+  const enCurso=t.dias&&t.dias<win;
+  el.innerHTML=`
+  <div class="bo-bar">${gs.map((x,i)=>`<div class="comp-chip ${i===boCampGroup?'on':''}" onclick="setCampGroup(${i})">${x.nombre}</div>`).join('')}
+    <span class="bo-meta">Datos del BO al ${boFecha()}</span></div>
+  <div class="mc-grid">
+    <div class="mc c-accent"><div class="mc-label">Enviados</div><div class="mc-val">${t.n.toLocaleString('es')}</div><div class="mc-sub">${t.dl.toLocaleString('es')} entregados (${pctS(t.dl,t.n)})${t.d0?' · desde el '+wkDmy(t.d0):''}</div></div>
+    <div class="mc c-purple"><div class="mc-label">Apertura</div><div class="mc-val">${pctS(t.op,t.dl)}</div><div class="mc-sub">${t.op.toLocaleString('es')} abrieron, sobre entregados</div></div>
+    <div class="mc c-amber"><div class="mc-label">Clics</div><div class="mc-val">${t.cl}</div><div class="mc-sub">${pctS(t.cl,t.dl,1)} de los entregados · ${pctS(t.cl,t.op)} de los que abrieron</div></div>
+    <div class="mc c-green"><div class="mc-label">Suscripciones</div><div class="mc-val">${t.sb}</div><div class="mc-sub">${t.rg} cuentas nuevas desde listas externas · ${enCurso?'día '+t.dias+' de '+win:'ventana de '+win+' días cerrada'}</div></div>
+  </div>
+  <div class="g2">
+    <div class="card"><div class="card-header"><div><div class="card-title">Embudo</div><div class="card-sub">Personas únicas por etapa · ${g.nombre}</div></div></div><div class="ch" style="height:220px"><canvas id="cCampFunnel"></canvas></div></div>
+    <div class="card"><div class="card-header"><div><div class="card-title">Apertura y clics por segmento</div><div class="card-sub">% sobre entregados</div></div></div><div class="ch" style="height:220px"><canvas id="cCampSeg"></canvas></div></div>
+  </div>
+  <div class="card"><div class="card-header"><div><div class="card-title">Resultado por segmento</div><div class="card-sub">Lista externa = personas que no tenían cuenta · Cuentas = usuarios existentes</div></div></div>
+    <table class="tbl"><thead><tr><th>Segmento</th><th>Tipo</th><th class="r">Enviados</th><th class="r">Entregados</th><th class="r">Abrieron</th><th class="r">Clics</th><th class="r">Rebotes / spam</th><th class="r">Cuentas nuevas</th><th class="r">Suscripciones</th></tr></thead><tbody>
+    ${rows.map(r=>`<tr><td><div style="font-weight:500">${wkEsc(r.segmento)}</div><div style="font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--ink3)">${wkEsc(r.template)}</div></td>
+      <td><span class="${r.tipo==='externa'?'badge-pur':'badge-neu'}">${r.tipo==='externa'?'Lista externa':'Cuentas'}</span></td>
+      <td class="r">${r.n}</td><td class="r">${r.dl} <span style="color:var(--ink3)">${pctS(r.dl,r.n)}</span></td>
+      <td class="r">${r.op} <span style="color:var(--ink3)">${pctS(r.op,r.dl)}</span></td><td class="r">${r.cl} <span style="color:var(--ink3)">${pctS(r.cl,r.dl,1)}</span></td>
+      <td class="r" style="color:${r.bo+r.co+r.fa?'var(--red)':'var(--ink3)'}">${r.bo}${r.co?' + '+r.co+' spam':''}${r.fa?' + '+r.fa+' fallido':''}</td>
+      <td class="r">${r.tipo==='externa'?r.rg:'<span style="color:var(--ink4)">—</span>'}</td><td class="r" style="font-weight:600">${r.sb}</td></tr>`).join('')}
+    <tr style="background:var(--s2)"><td style="font-weight:600">Total</td><td></td><td class="r" style="font-weight:600">${t.n}</td><td class="r">${t.dl} <span style="color:var(--ink3)">${pctS(t.dl,t.n)}</span></td><td class="r">${t.op} <span style="color:var(--ink3)">${pctS(t.op,t.dl)}</span></td><td class="r">${t.cl}</td><td class="r">${t.bo}${t.co?' + '+t.co+' spam':''}${t.fa?' + '+t.fa+' fallido':''}</td><td class="r">${t.rg}</td><td class="r" style="font-weight:600">${t.sb}</td></tr>
+    </tbody></table>
+    <div class="bo-note">Conversión: cuentas nuevas = la persona creó una cuenta en Lannis dentro de los ${win} días posteriores al envío (solo listas externas). Suscripciones = empezó una suscripción en ese plazo; se cruza por email o CUIT del destinatario. El código de descuento no queda asociado al envío en el BO, por eso no se mide por canjes.${enCurso?' <b>La ventana sigue abierta</b>: estos números van a crecer hasta el '+wkDmy(new Date(new Date(t.d0+'T12:00:00').getTime()+win*86400000).toISOString().substring(0,10))+'.':''}</div></div>
+  <div class="card"><div class="card-header"><div><div class="card-title">Día a día</div><div class="card-sub">Aperturas, clics y conversiones según el día en que ocurrieron</div></div></div><div class="ch" style="height:220px"><canvas id="cCampDaily"></canvas></div></div>`;
+  const conv=t.sb+t.rg;
+  mkChart('cCampFunnel','bar',{labels:['Enviados','Entregados','Abrieron','Clics','Cuenta nueva o suscripción'],datasets:[{data:[t.n,t.dl,t.op,t.cl,conv],backgroundColor:['#c4c4cc','#6366f1','#8b5cf6','#f59e0b','#10b981'],borderRadius:4}]},
+    {indexAxis:'y',plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.raw.toLocaleString('es')+(c.dataIndex?' · '+pctS(c.raw,t.n,1)+' de los enviados':'')}}},scales:{x:{beginAtZero:true,grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#8a8a96',font:{size:10}}},y:{grid:{display:false},ticks:{color:'#3a3a42',font:{size:11}}}}});
+  mkChart('cCampSeg','bar',{labels:rows.map(r=>r.corto||r.segmento),datasets:[
+    {label:'Apertura %',data:rows.map(r=>r.dl?+(r.op/r.dl*100).toFixed(1):0),backgroundColor:'#8b5cf6',borderRadius:4},
+    {label:'Clics %',data:rows.map(r=>r.dl?+(r.cl/r.dl*100).toFixed(1):0),backgroundColor:'#f59e0b',borderRadius:4}]},
+    {plugins:{legend:{display:true,position:'bottom',labels:{boxWidth:10,font:{size:10}}},tooltip:{callbacks:{label:c=>c.dataset.label+': '+c.raw+'%'}}},scales:{y:{beginAtZero:true,grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#8a8a96',font:{size:10},callback:v=>v+'%'}},x:{grid:{display:false},ticks:{color:'#3a3a42',font:{size:10}}}}});
+  const tset=new Set(rows.map(r=>r.template)),D={};
+  (C.daily||[]).filter(r=>tset.has(r[0])).forEach(r=>{const o=D[r[1]]||(D[r[1]]={se:0,op:0,cl:0,cv:0});o.se+=r[2];o.op+=r[3];o.cl+=r[4];o.cv+=r[5]+r[6];});
+  const days=Object.keys(D).sort();
+  mkChart('cCampDaily','bar',{labels:days.map(wkDmy),datasets:[
+    {label:'Abrieron',data:days.map(d=>D[d].op),backgroundColor:'#8b5cf6',borderRadius:3},
+    {label:'Clics',data:days.map(d=>D[d].cl),backgroundColor:'#f59e0b',borderRadius:3},
+    {label:'Cuenta nueva o suscripción',data:days.map(d=>D[d].cv),backgroundColor:'#10b981',borderRadius:3}]},
+    {plugins:{legend:{display:true,position:'bottom',labels:{boxWidth:10,font:{size:10}}}},scales:{y:{beginAtZero:true,grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#8a8a96',font:{size:10},precision:0}},x:{grid:{display:false},ticks:{color:'#3a3a42',font:{size:10}}}}});
+}
+
+// DDJJ
+function setDdjjSeg(s){ddjjSeg=s;renderDdjj();}
+function ddjjWeeks(D){return[...new Set((D.stagesBySeg||[]).map(r=>r[0]))].sort();}
+function renderDdjj(){
+  const el=document.getElementById('ddjjContent');if(!el)return;
+  if(!boData||!boData.ddjj){el.innerHTML=boMissing();return;}
+  const D=boData.ddjj,S=ddjjSeg,ok=s=>S==='all'||s===S;
+  const segs=[...new Set((D.snapshot||[]).map(r=>r[1]))].sort((a,b)=>['RI','SAS','Mono','Otro'].indexOf(a)-['RI','SAS','Mono','Otro'].indexOf(b));
+  const snap=(D.snapshot||[]).filter(r=>ok(r[1]));
+  const openRows=snap.filter(r=>(DDJJ_STATUS_STAGE[r[2]]??0)<3);
+  const abiertas=sumC(openRows,3),total=sumC(snap,3),venc=sumC(snap,4),v7=sumC(snap,5),tr7=sumC(snap,6),tr14=sumC(snap,7);
+  const weeks=ddjjWeeks(D),lastW=weeks[weeks.length-1],prevW=weeks[weeks.length-2];
+  const presW=w=>(D.presentadas||[]).filter(r=>r[0]===w&&ok(r[2])).reduce((s,r)=>s+r[3],0);
+  const movW=w=>(D.moves||[]).filter(r=>r[0]===w&&r[1]==='accountant').reduce((s,r)=>s+r[3],0);
+  const pl=presW(lastW),pp=prevW?presW(prevW):null,ml=movW(lastW),mp=prevW?movW(prevW):null;
+  const dlt=(c,p)=>p==null?'':(c===p?'<div class="mc-delta" style="background:var(--s2);color:var(--ink3)">= semana anterior</div>':`<div class="mc-delta ${c>p?'up':'dn'}">${c>p?'↑':'↓'} ${Math.abs(c-p)} vs semana anterior</div>`);
+  // Estado actual por impuesto
+  const fams={};snap.forEach(r=>{const f=fams[r[0]]||(fams[r[0]]={st:[0,0,0,0,0],n:0,venc:0,v7:0,tr:0,det:{}});const e=DDJJ_STATUS_STAGE[r[2]]??0;f.st[e]+=r[3];f.n+=r[3];f.venc+=r[4];f.v7+=r[5];f.tr+=r[6];f.det[r[2]]=(f.det[r[2]]||0)+r[3];});
+  const famRows=Object.entries(fams).sort((a,b)=>b[1].n-a[1].n);
+  // Equipo
+  const tw=weeks.slice(-6),team={};
+  (D.team||[]).filter(r=>tw.includes(r[0])).forEach(r=>{const n=teamName(r[1]);const o=team[n]||(team[n]={});const c=o[r[0]]||(o[r[0]]=[0,0]);c[0]+=r[2];c[1]+=r[3];});
+  const teamRows=Object.entries(team).sort((a,b)=>Object.values(b[1]).reduce((s,c)=>s+c[0],0)-Object.values(a[1]).reduce((s,c)=>s+c[0],0));
+  // Períodos
+  const per=(D.periodos||[]);
+  const perLbl=p=>p%100===0?'Anual '+Math.floor(p/100):String(p%100).padStart(2,'0')+'/'+Math.floor(p/100);
+  const ex=D.excluidas||{};
+  el.innerHTML=`
+  <div class="card" style="background:var(--s2)"><div class="card-sub" style="margin:0;line-height:1.7"><b>Qué se mide.</b> Obligaciones de clientes propios de Lannis que trabaja el equipo de Ops: IVA, IIBB, Ganancias, Bienes Personales, SICORE y F.931. No entran Monotributo, Autónomos ni anticipos (son pagos), ni las ${(ex.estudios||0).toLocaleString('es')} obligaciones de clientes de estudios contables ni las ${ex.free||0} de cuentas free. El avance semanal sale del historial de cambios de estado del BO: si algo se presenta por fuera del BO, acá no aparece.</div></div>
+  <div class="bo-bar"><div class="comp-chip ${S==='all'?'on':''}" onclick="setDdjjSeg('all')">Todos</div>${segs.map(s=>`<div class="comp-chip ${S===s?'on':''}" onclick="setDdjjSeg('${s}')">${DDJJ_SEG_LBL[s]||s}</div>`).join('')}<span class="bo-meta">Datos del BO al ${boFecha()}</span></div>
+  <div class="mc-grid">
+    <div class="mc c-accent"><div class="mc-label">Sin presentar</div><div class="mc-val">${abiertas}</div><div class="mc-sub">de ${total} obligaciones${tr7?' · '+tr7+' sin moverse hace más de 7 días':''}</div></div>
+    <div class="mc c-${v7?'amber':'green'}"><div class="mc-label">Vencen en 7 días</div><div class="mc-val">${v7}</div><div class="mc-sub">todavía sin presentar</div></div>
+    <div class="mc c-${venc?'red':'green'}"><div class="mc-label">Vencidas sin presentar</div><div class="mc-val">${venc}</div><div class="mc-sub">${venc?'revisar en el BO':'nada vencido'}${tr14?' · '+tr14+' trabadas hace más de 14 días':''}</div></div>
+    <div class="mc c-green"><div class="mc-label">Presentadas esta semana</div><div class="mc-val">${pl}</div><div class="mc-sub">${ml} cambios de estado del equipo (todos los segmentos)</div>${dlt(pl,pp)}</div>
+  </div>
+  <div class="card"><div class="card-header"><div><div class="card-title">Avance semana a semana</div><div class="card-sub">En qué etapa estaba cada obligación al cierre de cada semana${S==='all'?'':' · '+(DDJJ_SEG_LBL[S]||S)}</div></div></div>
+    <div class="bo-legend">${DDJJ_STAGES.map((s,i)=>`<span title="${DDJJ_STAGE_HELP[i]}"><i style="background:${DDJJ_STAGE_COL[i]}"></i>${s}</span>`).join('')}</div>
+    <div class="ch" style="height:260px"><canvas id="cDdjjStages"></canvas></div></div>
+  <div class="g2">
+    <div class="card"><div class="card-header"><div><div class="card-title">Presentadas por semana</div><div class="card-sub">Obligaciones que llegaron a presentada (o más) por primera vez, por impuesto</div></div></div><div class="ch" style="height:220px"><canvas id="cDdjjPres"></canvas></div></div>
+    <div class="card"><div class="card-header"><div><div class="card-title">Movimientos por semana</div><div class="card-sub">Cambios de estado hechos por el equipo y por el cliente · todos los segmentos</div></div></div><div class="ch" style="height:220px"><canvas id="cDdjjMoves"></canvas></div></div>
+  </div>
+  <div class="card"><div class="card-header"><div><div class="card-title">Estado actual por impuesto</div><div class="card-sub">Pasá el mouse por un número para ver el estado exacto</div></div></div>
+    <table class="tbl"><thead><tr><th>Impuesto</th>${DDJJ_STAGES.map((s,i)=>`<th class="r" title="${DDJJ_STAGE_HELP[i]}">${s}</th>`).join('')}<th class="r">Vencen 7 días</th><th class="r">Vencidas</th><th class="r">Trabadas +7 días</th></tr></thead><tbody>
+    ${famRows.map(([f,o])=>`<tr><td style="font-weight:500">${wkEsc(f)}</td>${o.st.map((n,i)=>`<td class="r" style="color:${n?'var(--ink)':'var(--ink4)'}" title="${Object.entries(o.det).filter(([s])=>(DDJJ_STATUS_STAGE[s]??0)===i).map(([s,c])=>(DDJJ_STATUS_LBL[s]||s)+': '+c).join(' · ')}">${n||'—'}</td>`).join('')}<td class="r">${o.v7?'<span class="badge-mid">'+o.v7+'</span>':'—'}</td><td class="r">${o.venc?'<span class="badge-fail">'+o.venc+'</span>':'—'}</td><td class="r">${o.tr?'<span class="badge-mid">'+o.tr+'</span>':'—'}</td></tr>`).join('')||'<tr><td colspan="9" class="empty">Sin obligaciones para este segmento</td></tr>'}
+    </tbody></table></div>
+  <div class="g2">
+    <div class="card"><div class="card-header"><div><div class="card-title">Avance por período fiscal</div><div class="card-sub">Presentadas o más sobre el total · todos los segmentos</div></div></div>
+      <table class="tbl"><thead><tr><th>Período</th><th>Impuesto</th><th class="r">Obligaciones</th><th class="r">Presentadas</th><th>Avance</th></tr></thead><tbody>
+      ${per.map(r=>{const p=r[2]?r[3]/r[2]:0;const col=p>=1?'var(--green)':p>=.5?'var(--amber)':'var(--accent)';return`<tr><td style="font-family:'JetBrains Mono',monospace;font-size:11px">${perLbl(r[0])}</td><td>${wkEsc(r[1])}</td><td class="r">${r[2]}</td><td class="r">${r[3]}</td><td style="white-space:nowrap"><span class="bo-pbar"><i style="width:${Math.round(p*100)}%;background:${col}"></i></span><span style="font-family:'JetBrains Mono',monospace;font-size:11px">${Math.round(p*100)}%</span></td></tr>`;}).join('')||'<tr><td colspan="5" class="empty">Sin datos</td></tr>'}
+      </tbody></table></div>
+    <div class="card"><div class="card-header"><div><div class="card-title">Equipo de Ops</div><div class="card-sub">Cambios de estado por persona en las últimas ${tw.length} semanas · el número chico son otras acciones (documentos, revisiones de filas)</div></div></div>
+      <table class="tbl"><thead><tr><th>Persona</th>${tw.map(w=>`<th class="c">${wkDmy(w)}</th>`).join('')}<th class="r">Total</th></tr></thead><tbody>
+      ${teamRows.map(([n,o])=>{const tot=Object.values(o).reduce((s,c)=>s+c[0],0);return`<tr><td style="font-weight:500">${wkEsc(n)}</td>${tw.map(w=>{const c=o[w];return`<td class="c">${c?`<b>${c[0]}</b>${c[1]?` <span style="font-size:10px;color:var(--ink3)">+${c[1]}</span>`:''}`:'<span style="color:var(--ink4)">·</span>'}</td>`;}).join('')}<td class="r" style="font-weight:600">${tot}</td></tr>`;}).join('')||`<tr><td colspan="${tw.length+2}" class="empty">Sin actividad del equipo en estas semanas</td></tr>`}
+      </tbody></table></div>
+  </div>
+  ${(D.historial||[]).length>=2?'<div class="card"><div class="card-header"><div><div class="card-title">Pendientes y vencidas en el tiempo</div><div class="card-sub">Foto semanal guardada en cada actualización · todos los segmentos</div></div></div><div class="ch" style="height:200px"><canvas id="cDdjjHist"></canvas></div></div>':''}`;
+  // Gráficos
+  const st=weeks.map(w=>{const a=[0,0,0,0,0];(D.stagesBySeg||[]).filter(r=>r[0]===w&&ok(r[1])).forEach(r=>{for(let i=0;i<5;i++)a[i]+=r[2+i];});return a;});
+  mkChart('cDdjjStages','bar',{labels:weeks.map(wkDmy),datasets:DDJJ_STAGES.map((s,i)=>({label:s,data:st.map(a=>a[i]),backgroundColor:DDJJ_STAGE_COL[i],borderRadius:2,stack:'s'}))},
+    {plugins:{legend:{display:false},tooltip:{mode:'index',callbacks:{title:c=>'Semana del '+c[0].label}}},scales:{x:{stacked:true,grid:{display:false},ticks:{color:'#3a3a42',font:{size:10}}},y:{stacked:true,beginAtZero:true,grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#8a8a96',font:{size:10},precision:0}}}});
+  const pf=[...new Set((D.presentadas||[]).filter(r=>ok(r[2])).map(r=>r[1]))].sort();
+  mkChart('cDdjjPres','bar',{labels:weeks.map(wkDmy),datasets:pf.map((f,i)=>({label:f,data:weeks.map(w=>(D.presentadas||[]).filter(r=>r[0]===w&&r[1]===f&&ok(r[2])).reduce((s,r)=>s+r[3],0)),backgroundColor:PAL[i%PAL.length],borderRadius:2,stack:'p'}))},
+    {plugins:{legend:{display:true,position:'bottom',labels:{boxWidth:10,font:{size:10}}}},scales:{x:{stacked:true,grid:{display:false},ticks:{color:'#3a3a42',font:{size:10}}},y:{stacked:true,beginAtZero:true,grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#8a8a96',font:{size:10},precision:0}}}});
+  const mv=a=>weeks.map(w=>(D.moves||[]).filter(r=>r[0]===w&&r[1]===a).reduce((s,r)=>s+r[3],0));
+  mkChart('cDdjjMoves','bar',{labels:weeks.map(wkDmy),datasets:[{label:'Equipo',data:mv('accountant'),backgroundColor:'#6366f1',borderRadius:3},{label:'Cliente',data:mv('user'),backgroundColor:'#c4c4cc',borderRadius:3}]},
+    {plugins:{legend:{display:true,position:'bottom',labels:{boxWidth:10,font:{size:10}}}},scales:{x:{grid:{display:false},ticks:{color:'#3a3a42',font:{size:10}}},y:{beginAtZero:true,grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#8a8a96',font:{size:10},precision:0}}}});
+  if((D.historial||[]).length>=2){const H=D.historial;
+    mkChart('cDdjjHist','line',{labels:H.map(h=>wkDmy(h.semana)),datasets:[{label:'Sin presentar',data:H.map(h=>h.abiertas),borderColor:'#6366f1',tension:.3,pointRadius:3},{label:'Vencidas',data:H.map(h=>h.vencidas),borderColor:'#ef4444',tension:.3,pointRadius:3},{label:'Vencen en 7 días',data:H.map(h=>h.vencen7),borderColor:'#f59e0b',tension:.3,pointRadius:3}]},
+      {plugins:{legend:{display:true,position:'bottom',labels:{boxWidth:10,font:{size:10}}}},scales:{x:{grid:{display:false},ticks:{color:'#3a3a42',font:{size:10}}},y:{beginAtZero:true,grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#8a8a96',font:{size:10},precision:0}}}});}
+}
+
 // ── Weekly: deck para presentar a otros equipos ──
 const SYSTEM_CHANGE='2026-10-05'; // desde esta fecha el export incluye respuestas del bot en la 1ª respuesta
 let wkSlides=[],wkIdx=0,wkMsgMissing=false;
@@ -1334,6 +1518,53 @@ function buildWeeklySlides(w){
         ${fs.intents.slice(0,7).map(x=>`<div class="wk-mini" style="grid-template-columns:16em 1fr 3em"><span>${wkEsc(x[0])}</span><div class="wk-bar"><i style="width:${Math.round(x[1]/im*100)}%;background:var(--accent)"></i></div><span style="text-align:right">${x[1]}</span></div>`).join('')}
         ${fs.recurring?`<div class="wk-note" style="margin-top:1.4em"><b>${Math.round(fs.recurring/cT*100)}%</b> de los clientes volvió a escribir en más de un día del período.</div>`:''}</div>`);
     }
+  }
+  // 5c. DDJJ e impuestos (BO): presentadas y movimientos del equipo en las semanas del período
+  if(boData&&boData.ddjj&&(boData.ddjj.stagesBySeg||[]).length){
+    const D=boData.ddjj,weeks=ddjjWeeks(D),from=boMonday(w.ws);
+    const inW=weeks.filter(x=>x>=from&&x<=w.we);
+    if(inW.length){
+      const i0=weeks.indexOf(inW[0]),prevW=i0>=inW.length?weeks.slice(i0-inW.length,i0):[];
+      const presIn=ws=>(D.presentadas||[]).filter(r=>ws.includes(r[0]));
+      const movIn=ws=>(D.moves||[]).filter(r=>ws.includes(r[0])&&r[1]==='accountant').reduce((s,r)=>s+r[3],0);
+      const pr=presIn(inW),pN=pr.reduce((s,r)=>s+r[3],0),pP=prevW.length?presIn(prevW).reduce((s,r)=>s+r[3],0):null;
+      const mN=movIn(inW),mP=prevW.length?movIn(prevW):null;
+      const snap=D.snapshot||[],open=snap.filter(r=>(DDJJ_STATUS_STAGE[r[2]]??0)<3);
+      const byF={};pr.forEach(r=>{byF[r[1]]=(byF[r[1]]||0)+r[3];});const fE=Object.entries(byF).sort((a,b)=>b[1]-a[1]);const fM=Math.max(1,...fE.map(x=>x[1]));
+      const tm={};(D.team||[]).filter(r=>inW.includes(r[0])).forEach(r=>{const n=teamName(r[1]);tm[n]=(tm[n]||0)+r[2];});const tE=Object.entries(tm).filter(x=>x[1]).sort((a,b)=>b[1]-a[1]);const tM=Math.max(1,...tE.map(x=>x[1]));
+      const prevLbl=w.pt==='S'?'la semana anterior':'el período anterior';
+      slides.push(`<div class="wk-slide"><div class="wk-eyebrow">Operaciones — DDJJ e impuestos</div><div class="wk-h">Cómo avanzaron las DDJJ ${elp}</div><div class="wk-sub">Clientes propios de Lannis (RI, SAS y Monotributo plus). Fuente: BO, al ${boFecha()}.</div>
+        <div class="wk-cards">
+          <div class="wk-card g"><div class="l">Presentadas</div><div class="v">${pN}</div><div class="s">llegaron a presentada o más</div>${pP!=null?wkDelta(pN,pP,'',false,prevLbl):''}</div>
+          <div class="wk-card"><div class="l">Cambios de estado del equipo</div><div class="v">${mN}</div><div class="s">movimientos en el BO</div>${mP!=null?wkDelta(mN,mP,'',false,prevLbl):''}</div>
+          <div class="wk-card ${sumC(snap,4)?'r':sumC(snap,5)?'a':'g'}"><div class="l">Sin presentar hoy</div><div class="v">${sumC(open,3)}</div><div class="s">${sumC(snap,5)} vencen en 7 días · ${sumC(snap,4)} vencida${sumC(snap,4)===1?'':'s'}</div></div>
+        </div>
+        <div class="wk-g2" style="margin-top:1.4em">
+          <div><div style="font-weight:600;margin-bottom:.4em">Presentadas por impuesto</div>${fE.length?fE.map(([f,n])=>`<div class="wk-mini" style="grid-template-columns:9em 1fr 3em"><span>${wkEsc(f)}</span><div class="wk-bar"><i style="width:${Math.round(n/fM*100)}%;background:var(--green)"></i></div><span style="text-align:right">${n}</span></div>`).join(''):'<div class="wk-note" style="margin:0">No hubo presentaciones en el período.</div>'}</div>
+          <div><div style="font-weight:600;margin-bottom:.4em">Movimientos por persona</div>${tE.length?tE.map(([n,c])=>`<div class="wk-mini" style="grid-template-columns:9em 1fr 3em"><span>${wkEsc(n)}</span><div class="wk-bar"><i style="width:${Math.round(c/tM*100)}%"></i></div><span style="text-align:right">${c}</span></div>`).join(''):'<div class="wk-note" style="margin:0">Sin movimientos del equipo en el período.</div>'}</div>
+        </div>
+        <div class="wk-note">“Sin presentar hoy” es la foto al momento de la actualización, no al cierre del período. No incluye clientes de estudios contables.</div></div>`);
+    }
+  }
+  // 5d. Campañas de email del BO activas en el período (primer envío dentro del período o con la ventana de conversión abierta)
+  if(boData&&boData.campanias){
+    const C=boData.campanias,win=C.ventanaDias||14;
+    (C.grupos||[]).forEach((g,gi)=>{
+      const rows=campRows(gi).filter(r=>r.n>0);if(!rows.length)return;
+      const t=campTotals(rows);if(!t.d0)return;
+      const d0=dms(t.d0);if(d0>dms(w.we)||d0<dms(w.ws)-win*86400000)return;
+      const mx=Math.max(1,...rows.map(r=>r.dl?r.op/r.dl:0));
+      slides.push(`<div class="wk-slide"><div class="wk-eyebrow">Operaciones — Campañas</div><div class="wk-h">${wkEsc(g.nombre)}: cómo respondieron</div><div class="wk-sub">${t.n.toLocaleString('es')} emails enviados desde el ${wkDmy(t.d0)} · datos del BO al ${boFecha()}${t.dias<win?' · día '+t.dias+' de '+win+' de la ventana de conversión':''}.</div>
+        <div class="wk-cards" style="grid-template-columns:repeat(4,1fr)">
+          <div class="wk-card"><div class="l">Entregados</div><div class="v">${pctS(t.dl,t.n)}</div><div class="s">${t.dl.toLocaleString('es')} de ${t.n.toLocaleString('es')}</div></div>
+          <div class="wk-card p"><div class="l">Apertura</div><div class="v">${pctS(t.op,t.dl)}</div><div class="s">${t.op.toLocaleString('es')} personas</div></div>
+          <div class="wk-card a"><div class="l">Clics</div><div class="v">${t.cl}</div><div class="s">${pctS(t.cl,t.dl,1)} de los entregados</div></div>
+          <div class="wk-card g"><div class="l">Suscripciones</div><div class="v">${t.sb}</div><div class="s">${t.rg} cuentas nuevas</div></div>
+        </div>
+        <div style="margin-top:1.4em"><div style="font-weight:600;margin-bottom:.4em">Apertura por segmento</div>
+          ${rows.map(r=>`<div class="wk-mini" style="grid-template-columns:12em 1fr 13em"><span>${wkEsc(r.corto||r.segmento)}</span><div class="wk-bar"><i style="width:${Math.round((r.dl?r.op/r.dl:0)/mx*100)}%;background:var(--purple)"></i></div><span style="text-align:right;font-family:'JetBrains Mono',monospace;font-size:.9em">${pctS(r.op,r.dl)} · ${r.cl} clics · ${r.sb} susc.</span></div>`).join('')}</div>
+        <div class="wk-note">Conversión: la persona creó una cuenta o se suscribió dentro de los ${win} días posteriores al envío (cruce por email o CUIT).</div></div>`);
+    });
   }
   // 6. Resumen desde Operaciones (editable)
   const notes=wkGetNotes(w).filter(n=>(n.t||'').trim()||(n.d||'').trim());
@@ -1787,7 +2018,7 @@ function renderCapAvanzada(w){
   }catch(e){cats=[];}
 
   if(!cats.length){
-    document.getElementById('cCvCat').parentElement.innerHTML='<div class="empty">Sin datos de categorías</div>';
+    dch('cCvCat');const cvEl=document.getElementById('cCvCat');if(cvEl){const cx=cvEl.getContext('2d');cx.clearRect(0,0,cvEl.width,cvEl.height);}
     document.getElementById('simSelector').innerHTML='';
     document.getElementById('autoBody').innerHTML='';
     return;
@@ -2017,6 +2248,32 @@ function renderGlosario(){
         {term:'Cancelado sin aviso',formula:'cancelados que NO están en typeform NI tienen conversación de baja',desc:'Clientes que se cancelaron sin ningún contacto previo. Probable falta de pago o cancelación administrativa.'},
         {term:'NPS de cancelados',formula:'Campo "¿Qué tan probable es que recomiendes Lannis?" del typeform (escala 0-10)',desc:'Promotores: 9-10 / Pasivos: 7-8 / Detractores: 0-6. Tabla filtrable por mes con email, score y segmento.'},
         {term:'Motivos de baja',formula:'Campo "¿Por qué decidiste dejar de usar Lannis?" del typeform',desc:'Respuestas literales de los clientes que completaron el typeform. Filtradas por mes seleccionado.'},
+      ]
+    },
+    {
+      title:'📧 Tab: Campañas (BO)',
+      desc:'Campañas de email que salen del BO de Lannis. Los datos no se cargan a mano: una tarea programada consulta el BO por MCP y actualiza data/bo.json en el repo. Las campañas que se siguen se eligen en scripts/bo/campanias.json.',
+      items:[
+        {term:'Enviados / entregados',formula:'personas únicas por template en EmailSend; entregados = con fecha de entrega',desc:'Si una persona recibió el mismo template dos veces, cuenta una vez.'},
+        {term:'Apertura',formula:'abrieron ÷ entregados',desc:'Se calcula sobre entregados, no sobre enviados, para que los rebotes no la bajen. Algunos clientes de email bloquean el píxel de apertura, así que es un mínimo.'},
+        {term:'Clics',formula:'hicieron clic ÷ entregados',desc:'También se muestra sobre los que abrieron.'},
+        {term:'Cuentas nuevas',formula:'destinatarios de listas externas que crearon cuenta dentro de los 14 días posteriores al envío',desc:'Se cruza por email o CUIT del destinatario contra las cuentas de Lannis. Solo aplica a listas externas (personas que no tenían cuenta).'},
+        {term:'Suscripciones',formula:'destinatarios que empezaron una suscripción dentro de los 14 días posteriores al envío',desc:'Aplica a listas externas y a cuentas existentes. Mientras la ventana está abierta el número puede seguir subiendo.'},
+        {term:'Rebotes / spam / fallidos',formula:'con fecha de rebote, de queja (marcado como spam) o de falla',desc:'Rebotes altos en una lista externa indican emails viejos o mal cargados.'}
+      ]
+    },
+    {
+      title:'🧾 Tab: DDJJ e impuestos (BO)',
+      desc:'Avance de las obligaciones impositivas que trabaja el equipo de Ops en el BO. Mismo origen que Campañas (data/bo.json).',
+      items:[
+        {term:'Universo',formula:'clientes propios (sin estudio_client ni free) · IVA, IIBB, Ganancias, Bienes Personales, SICORE, F.931',desc:'No entran Monotributo, Autónomos ni anticipos, porque son pagos y no DDJJ. Tampoco los clientes de estudios contables: los gestiona cada estudio, no Ops.'},
+        {term:'Etapas',formula:'Por empezar · En preparación · Borrador · Presentada / a pagar · Cerrada',desc:'Agrupan los 12 estados del BO. En la tabla por impuesto, el tooltip de cada número muestra el estado exacto.'},
+        {term:'Avance semana a semana',formula:'estado de cada obligación al cierre de cada semana (lunes a domingo)',desc:'Se reconstruye con el historial de cambios de estado del BO (ObligationAuditLog), por eso se ve hacia atrás aunque la pestaña sea nueva.'},
+        {term:'Presentadas',formula:'obligaciones que llegaron a presentada, pendiente de pago, pago informado, pagada o completada por primera vez esa semana',desc:'Cuenta cada obligación una sola vez, en la semana en que se presentó.'},
+        {term:'Vencidas sin presentar / vencen en 7 días',formula:'fecha de vencimiento de presentación pasada (o dentro de 7 días) y estado anterior a presentada',desc:'Es la foto al momento de la actualización.'},
+        {term:'Trabadas',formula:'sin presentar, ya empezadas, y sin cambio de estado hace más de 7 (o 14) días',desc:'No incluye las que siguen en Pendiente: esas todavía no se empezaron.'},
+        {term:'Equipo de Ops',formula:'cambios hechos con perfil de contador en el BO (performedBy = accountant)',desc:'Los cambios que hace el cliente desde la app se muestran aparte. "Otras acciones" son subidas de documentos y revisiones de filas.'},
+        {term:'Limitación',formula:'solo lo que pasa dentro del flujo del BO',desc:'Si una DDJJ se presenta por fuera del BO y no se actualiza el estado, no aparece como presentada.'}
       ]
     },
     {
@@ -2723,6 +2980,7 @@ fetchMsgReports();
 fetchContacts();
 fetchCalls();
 fetchChurn();
+fetchBO();
 renderGlosario();
 </script>
 </body>

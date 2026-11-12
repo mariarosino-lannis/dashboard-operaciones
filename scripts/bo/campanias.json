@@ -1,0 +1,17 @@
+{
+  "_comentario": "Campañas de email del BO que sigue el dashboard. Para sumar una, agregá un grupo o un template. 'tipo': 'externa' = lista de no usuarios (conversión = se registró o se suscribió); 'cuentas' = usuarios existentes (conversión = se suscribió).",
+  "ventanaConversionDias": 14,
+  "grupos": [
+    {
+      "nombre": "Black Friday",
+      "templates": [
+        {"template": "black-friday-50-off-monotributistas-con-categoria", "segmento": "Lista externa: Monotributistas · con categoría", "corto": "Mono con categoría", "tipo": "externa"},
+        {"template": "black-friday-50-off-monotributistas-1", "segmento": "Lista externa: Monotributistas · sin categoría", "corto": "Mono sin categoría", "tipo": "externa"},
+        {"template": "black-friday-50-off-ri", "segmento": "Lista externa: Responsables Inscriptos", "corto": "RI (lista externa)", "tipo": "externa"},
+        {"template": "black-friday-50-off-sin-regimen", "segmento": "Lista externa: Régimen a confirmar", "corto": "Régimen a confirmar", "tipo": "externa"},
+        {"template": "black-friday-cuentas-monotributo", "segmento": "Black Friday · cuentas monotributo", "corto": "Cuentas monotributo", "tipo": "cuentas"},
+        {"template": "black-friday-cuentas-sin-regimen", "segmento": "Black Friday · cuentas sin dato", "corto": "Cuentas sin dato", "tipo": "cuentas"}
+      ]
+    }
+  ]
+}
