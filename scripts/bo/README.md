@@ -11,6 +11,9 @@ Solo agregados: conteos por campaña, por impuesto, por segmento y por persona d
 - `campanias`: embudo por template (enviados → entregados → abiertos → clics → registros / suscripciones)
   y serie diaria. La conversión se mide cruzando destinatario con cuentas de Lannis dentro de la ventana
   de `campanias.json` (14 días por defecto).
+- `facturacion`: facturas emitidas desde Lannis por canal (WhatsApp con IA, app web, MCP, integraciones…) y
+  cuántos clientes facturaron por cada uno, por semana y por mes, más los clientes activos al cierre de cada
+  período (para "consultas por cliente activo"). Sin facturas importadas.
 - `ddjj`: estado actual, avance por período fiscal, evolución semanal reconstruida desde el historial de
   cambios, movimientos por quién los hizo y actividad del equipo. `historial` guarda una foto semanal de
   vencidas y abiertas (eso no se puede reconstruir hacia atrás).

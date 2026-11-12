@@ -22,7 +22,7 @@ ROOT = Path(__file__).resolve().parents[2]
 BO = ROOT / "scripts" / "bo"
 OUT = BO / "out"
 DATA = ROOT / "data" / "bo.json"
-QUERIES = ["campanias", "ddjj_estado", "ddjj_semanal"]
+QUERIES = ["campanias", "ddjj_estado", "ddjj_semanal", "facturacion"]
 ART = timezone(timedelta(hours=-3))
 
 
@@ -60,13 +60,15 @@ def load(q):
 
 def build():
     cfg = config()
-    camp, est, sem = (load(q) for q in QUERIES)
+    camp, est, sem, fac = (load(q) for q in QUERIES)
     for k in ("funnel", "daily"):
         assert isinstance(camp.get(k), (list, type(None))), f"campanias.{k} inválido"
     for k in ("snapshot", "periodos", "excluidas"):
         assert k in est, f"ddjj_estado sin {k}"
     for k in ("stagesBySeg", "stagesByFam", "presentadas", "moves", "team"):
         assert k in sem, f"ddjj_semanal sin {k}"
+    for k in ("semanas", "meses", "activosHoy"):
+        assert k in fac, f"facturacion sin {k}"
 
     now = datetime.now(ART)
     prev = {}
@@ -99,6 +101,7 @@ def build():
             "daily": camp.get("daily") or [],
         },
         "ddjj": {**est, **sem, "historial": hist},
+        "facturacion": fac,
     }
     DATA.parent.mkdir(parents=True, exist_ok=True)
     DATA.write_text(json.dumps(out, ensure_ascii=False, separators=(",", ":")) + "\n", encoding="utf-8")

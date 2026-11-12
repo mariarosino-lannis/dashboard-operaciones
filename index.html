@@ -298,6 +298,7 @@ body{font-family:'Inter',sans-serif;background:var(--paper);color:var(--ink);min
     <div class="nav-item" onclick="showTab('suscripciones',this)"><svg class="ni" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 2a6 6 0 100 12A6 6 0 008 2z"/><path d="M8 5v3l2 2"/><path d="M5 1l-3 3M11 1l3 3"/></svg>Suscripciones</div>
     <div class="nav-section-label" style="padding:10px 0 4px">BO Lannis</div>
     <div class="nav-item" onclick="showTab('campanias',this)"><svg class="ni" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1.5" y="3" width="13" height="10" rx="1.5"/><path d="M2 4l6 5 6-5"/></svg>Campañas</div>
+    <div class="nav-item" onclick="showTab('facturacion',this)"><svg class="ni" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3.5 1.5h9v13l-2-1.2-2.5 1.2-2.5-1.2-2 1.2z"/><path d="M6 5.5h4M6 8h4"/></svg>Facturación</div>
     <div class="nav-item" onclick="showTab('ddjj',this)"><svg class="ni" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 1.5h5.5L13 5v9.5H4z"/><path d="M9 1.5V5h4M6.5 9l1.5 1.5 3-3"/></svg>DDJJ e impuestos</div>
     <div class="nav-section-label" style="padding:10px 0 4px">Modelos</div>
     <div class="nav-item" onclick="showTab('capacidad-avanzada',this)"><svg class="ni" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 14l4-8 3 5 2-3 3 6"/></svg>Cap. Avanzada</div>
@@ -360,6 +361,7 @@ body{font-family:'Inter',sans-serif;background:var(--paper);color:var(--ink);min
     <div class="tab-btn" onclick="showTab('llamadas',this)">Llamadas</div>
     <div class="tab-btn" onclick="showTab('suscripciones',this)">Suscripciones</div>
     <div class="tab-btn" onclick="showTab('campanias',this)">Campañas</div>
+    <div class="tab-btn" onclick="showTab('facturacion',this)">Facturación</div>
     <div class="tab-btn" onclick="showTab('ddjj',this)">DDJJ</div>
     <div class="tab-btn" onclick="showTab('capacidad-avanzada',this)">Cap. Avanzada</div>
     <div class="tab-btn" onclick="showTab('glosario',this)">Glosario</div>
@@ -637,6 +639,9 @@ body{font-family:'Inter',sans-serif;background:var(--paper);color:var(--ink);min
 
     <!-- CAMPAÑAS (BO) -->
     <div id="tab-campanias" class="tab-c"><div id="campContent"><div class="empty">Cargando datos del BO…</div></div></div>
+
+    <!-- FACTURACIÓN (BO) -->
+    <div id="tab-facturacion" class="tab-c"><div id="factContent"><div class="empty">Cargando datos del BO…</div></div></div>
 
     <!-- DDJJ (BO) -->
     <div id="tab-ddjj" class="tab-c"><div id="ddjjContent"><div class="empty">Cargando datos del BO…</div></div></div>
@@ -1219,7 +1224,7 @@ function renderAll(){
   document.getElementById('pageMeta').textContent=w.total+' consultas · '+w.totalH+' hábiles'+(w.internalCount?' · '+w.internalCount+' excluidas (envíos masivos e internos)':'')+(w.by?' · '+w.by:'');
   document.getElementById('headerBadge').innerHTML=badge;
   renderResumen(w);renderCategorias(w);renderTiempos(w);renderCapacidad(w);
-  renderConversaciones(w);renderClientes(w);renderBot();renderOps(w);renderWeekly(w);renderComparativa(w);
+  renderConversaciones(w);renderClientes(w);renderBot();renderOps(w);renderWeekly(w);renderComparativa(w);if(boData)renderFacturacion();
   renderCapAvanzada(w);renderGlosario();
 }
 
@@ -1361,10 +1366,65 @@ function boMonday(iso){const d=new Date(iso+'T12:00:00');d.setDate(d.getDate()-(
 async function fetchBO(){
   try{const r=await fetch('data/bo.json?v='+Date.now(),{cache:'no-store'});if(!r.ok)throw new Error('HTTP '+r.status);boData=await r.json();}
   catch(e){boData=null;}
-  renderCampanias();renderDdjj();
+  renderCampanias();renderDdjj();renderFacturacion();
   if(allWeeks.length)renderWeekly(getW());
 }
 function boMissing(){return`<div class="card"><div class="card-title">Sin datos del BO</div><div class="card-sub" style="margin-top:6px">No se pudo leer <code>data/bo.json</code>. Lo genera la tarea programada que consulta el BO de Lannis (ver <code>scripts/bo/README.md</code> en el repo).</div></div>`;}
+
+// Facturación por canal y clientes activos (semanal y mensual)
+const FACT_CANAL=[['varys','WhatsApp con IA','#10b981'],['mcp_external','IA externa (MCP)','#14b8a6'],['dashboard','App web','#6366f1'],['integ','Integraciones','#f59e0b'],['bulk_upload','Carga masiva','#8b5cf6'],['recurring','Recurrentes','#ec4899'],['backoffice','Equipo (backoffice)','#a1a1aa'],['otro','Sin dato de canal','#d4d4d8']];
+const FACT_SRC={varys:'varys',mcp_external:'mcp_external',dashboard:'dashboard',mercadolibre:'integ',tiendanube:'integ',mercadopago:'integ',bulk_upload:'bulk_upload',recurring:'recurring',backoffice:'backoffice'};
+const FACT_INTEG={mercadolibre:'Mercado Libre',tiendanube:'Tiendanube',mercadopago:'Mercado Pago'};
+let factMode='M';
+function factGroups(obj){const g={};Object.entries(obj||{}).forEach(([s,v])=>{const k=FACT_SRC[s]||'otro';const o=g[k]||(g[k]={n:0,cl:0,det:{}});o.n+=v[0];o.cl+=v[1];if(k==='integ')o.det[FACT_INTEG[s]||s]=v;});return g;}
+function factRow(r){if(!r)return null;const g=factGroups(r[2]);const tot=Object.values(g).reduce((s,o)=>s+o.n,0);const v=g.varys||{n:0,cl:0},m=g.mcp_external||{n:0,cl:0};
+  return{key:r[0],activos:r[1],g,tot,cl:r[3],waCl:v.cl,iaN:v.n+m.n};}
+function factNow(){const d=boData?new Date(boData.generado):new Date();return{m:d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'),w:boMonday(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'))};}
+// Período del dashboard → fila del BO (mes para mensuales, semana para semanales; las quincenas no tienen dato)
+function factPeriod(w){
+  const F=boData&&boData.facturacion;if(!F||!w||!w.ws)return null;
+  const L=w.pt==='M'?F.meses:w.pt==='S'?F.semanas:null;if(!L)return null;
+  const k=w.pt==='M'?w.ws.substring(0,7):boMonday(w.ws);const i=L.findIndex(r=>r[0]===k);if(i<0)return null;
+  const cur=factRow(L[i]),n=factNow();cur.prev=factRow(L[i-1]);cur.pt=w.pt;cur.partial=w.pt==='M'?k===n.m:k===n.w;return cur;
+}
+const cpa=(w,f)=>f&&f.activos?w.total/f.activos:null; // consultas por cliente activo
+const fmt2=v=>v==null?'—':v.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2});
+function setFactMode(m){factMode=m;renderFacturacion();}
+function renderFacturacion(){
+  const el=document.getElementById('factContent');if(!el)return;
+  if(!boData||!boData.facturacion){el.innerHTML=boMissing();return;}
+  const F=boData.facturacion,M=factMode==='M',L=(M?F.meses:F.semanas).map(factRow),n=factNow();
+  const lbl=r=>M?MONTHS[+r.key.substring(5)-1].substring(0,3)+' '+r.key.substring(2,4):wkDmy(r.key);
+  const isPart=r=>M?r.key===n.m:r.key===n.w;
+  const closed=L.filter(r=>!isPart(r)),last=closed[closed.length-1],prev=closed[closed.length-2];
+  const upl=r=>allWeeks.find(x=>x.pt===(M?'M':'S')&&(M?x.ws.substring(0,7)===r.key:boMonday(x.ws)===r.key));
+  const d=(c,p,inv)=>p==null||!p?'':(()=>{const x=Math.round((c-p)/p*100);return x?`<div class="mc-delta ${(inv?x<0:x>0)?'up':'dn'}">${x>0?'↑':'↓'} ${Math.abs(x)}% vs ${M?'mes':'semana'} anterior</div>`:'';})();
+  const lw=last?upl(last):null,pw=prev?upl(prev):null;
+  el.innerHTML=`
+  <div class="bo-bar"><div class="comp-chip ${M?'on':''}" onclick="setFactMode('M')">Mensual</div><div class="comp-chip ${M?'':'on'}" onclick="setFactMode('S')">Semanal</div><span class="bo-meta">Datos del BO al ${boFecha()}</span></div>
+  ${last?`<div class="mc-grid">
+    <div class="mc c-accent"><div class="mc-label">Facturas emitidas · ${lbl(last)}</div><div class="mc-val">${last.tot.toLocaleString('es')}</div><div class="mc-sub">desde Lannis, autorizadas</div>${d(last.tot,prev&&prev.tot)}</div>
+    <div class="mc c-purple"><div class="mc-label">Clientes que facturaron</div><div class="mc-val">${last.cl}</div><div class="mc-sub">de ${last.activos} clientes activos (${pctS(last.cl,last.activos)})</div>${d(last.cl,prev&&prev.cl)}</div>
+    <div class="mc c-green"><div class="mc-label">Facturaron por WhatsApp con IA</div><div class="mc-val">${pctS(last.waCl,last.cl)}</div><div class="mc-sub">${last.waCl} de ${last.cl} clientes que facturaron</div></div>
+    <div class="mc c-amber"><div class="mc-label">Consultas por cliente activo</div><div class="mc-val">${lw?fmt2(cpa(lw,last)):'—'}</div><div class="mc-sub">${lw?lw.total+' consultas / '+last.activos+' clientes activos':'falta cargar las conversaciones de '+(M?'ese mes':'esa semana')}</div>${lw&&pw&&prev?d(cpa(lw,last),cpa(pw,prev),true):''}</div>
+  </div>`:''}
+  <div class="g2">
+    <div class="card"><div class="card-header"><div><div class="card-title">Facturas por canal</div><div class="card-sub">${M?'Últimos 6 meses':'Últimas 12 semanas'} · el último ${M?'mes':'período'} puede estar en curso</div></div></div><div class="ch" style="height:240px"><canvas id="cFactCanal"></canvas></div></div>
+    <div class="card"><div class="card-header"><div><div class="card-title">Clientes que facturaron</div><div class="card-sub">Total y por WhatsApp con IA, contra clientes activos</div></div></div><div class="ch" style="height:240px"><canvas id="cFactCl"></canvas></div></div>
+  </div>
+  <div class="card"><div class="card-header"><div><div class="card-title">Detalle por ${M?'mes':'semana'}</div><div class="card-sub">Las consultas salen de los CSV cargados; si ${M?'ese mes':'esa semana'} no está cargado, queda vacío</div></div></div>
+    <table class="tbl"><thead><tr><th>${M?'Mes':'Semana'}</th><th class="r">Clientes activos</th><th class="r">Facturas</th><th class="r">Clientes que facturaron</th><th class="r">Por WhatsApp IA</th><th class="r">Facturas con IA</th><th class="r">Consultas</th><th class="r">Consultas por cliente activo</th></tr></thead><tbody>
+    ${[...L].reverse().map(r=>{const u=upl(r);return`<tr><td>${lbl(r)}${isPart(r)?' <span class="badge-neu">en curso</span>':''}</td><td class="r">${r.activos}</td><td class="r">${r.tot}</td><td class="r">${r.cl}</td><td class="r">${pctS(r.waCl,r.cl)}</td><td class="r">${pctS(r.iaN,r.tot)}</td><td class="r">${u?u.total:'—'}</td><td class="r">${u?fmt2(cpa(u,r)):'—'}</td></tr>`;}).join('')}
+    </tbody></table>
+    <div class="bo-note">Facturas emitidas desde Lannis y autorizadas por ARCA; no incluye las importadas. “Facturas con IA” = WhatsApp con IA + IA externa por MCP. Las integraciones (Mercado Libre, Tiendanube) y la carga masiva emiten muchas facturas para pocos clientes: por eso conviene mirar también “clientes que facturaron”. Clientes activos al cierre de cada período, reconstruidos con inicio y baja de la suscripción (hoy: ${F.activosHoy} exactos). Consultas por cliente activo = consultas del período ÷ clientes activos; incluye consultas de personas sin suscripción, así que sirve para ver la tendencia, no como “consultas de cada cliente”.</div></div>`;
+  mkChart('cFactCanal','bar',{labels:L.map(lbl),datasets:FACT_CANAL.filter(([k])=>L.some(r=>r.g[k])).map(([k,l,c])=>({label:l,data:L.map(r=>r.g[k]?r.g[k].n:0),backgroundColor:c,borderRadius:2,stack:'f'}))},
+    {plugins:{legend:{display:true,position:'bottom',labels:{boxWidth:10,font:{size:10}}},tooltip:{mode:'index',callbacks:{footer:x=>'Total: '+x.reduce((s,i)=>s+i.raw,0)}}},scales:{x:{stacked:true,grid:{display:false},ticks:{color:'#3a3a42',font:{size:10}}},y:{stacked:true,beginAtZero:true,grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#8a8a96',font:{size:10},precision:0}}}});
+  mkChart('cFactCl','bar',{labels:L.map(lbl),datasets:[
+    {type:'line',label:'Clientes activos',data:L.map(r=>r.activos),borderColor:'#a1a1aa',borderDash:[4,4],pointRadius:0,tension:.3},
+    {label:'Clientes que facturaron',data:L.map(r=>r.cl),backgroundColor:'#6366f1',borderRadius:3},
+    {label:'Por WhatsApp con IA',data:L.map(r=>r.waCl),backgroundColor:'#10b981',borderRadius:3}]},
+    {plugins:{legend:{display:true,position:'bottom',labels:{boxWidth:10,font:{size:10}}}},scales:{x:{grid:{display:false},ticks:{color:'#3a3a42',font:{size:10}}},y:{beginAtZero:true,grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#8a8a96',font:{size:10},precision:0}}}});
+}
 
 // Campañas
 function campRows(gi){
@@ -1526,12 +1586,15 @@ function buildWeeklySlides(w){
   const sysCross=prev&&prev.ws<SYSTEM_CHANGE&&w.ws>=SYSTEM_CHANGE; // FRT no comparable entre sistemas
   // 1. Números
   const sla=(v,obj)=>v<=obj?'g':'r';
+  const FP=factPeriod(w),PFP=prev?factPeriod(prev):null,cW=cpa(w,FP),cP=prev&&PFP?cpa(prev,PFP):null;
+  const cpaCard=cW!=null?`<div class="wk-card p"><div class="l">Consultas por cliente activo</div><div class="v">${fmt2(cW)}</div><div class="s">${FP.activos} clientes activos${FP.partial?' (período en curso)':''}</div>${cP!=null?wkDelta(+cW.toFixed(2),+cP.toFixed(2),'',true,pl):''}</div>`:'';
   slides.push(`<div class="wk-slide"><div class="wk-eyebrow">Operaciones — Resumen</div>
     <div class="wk-h">Los números que resumen ${elp}</div><div class="wk-sub">Consultas totales y tiempos de respuesta · ${wkEsc(w.fl||w.week)}</div>
-    <div class="wk-cards">
+    <div class="wk-cards"${cpaCard?' style="grid-template-columns:repeat(4,1fr)"':''}>
       <div class="wk-card"><div class="l">Consultas totales</div><div class="v">${w.total.toLocaleString('es')}</div><div class="s">${w.totalH.toLocaleString('es')} en horario hábil</div>${prev?wkDelta(w.total,prev.total,'',false,pl):''}</div>
       <div class="wk-card ${sla(w.frtMed,SLA.frt)}"><div class="l">FRT mediana</div><div class="v">${fmtM(w.frtMed)}</div><div class="s">objetivo &lt; ${SLA.frt}m</div>${prev&&!sysCross&&prev.frtMed?wkDelta(+w.frtMed.toFixed(1),+prev.frtMed.toFixed(1),' min',true,pl):''}</div>
       <div class="wk-card ${sla(w.ttrMed,SLA.ttr)}"><div class="l">TTR mediana</div><div class="v">${fmtM(w.ttrMed)}</div><div class="s">objetivo &lt; ${SLA.ttr/60}h</div>${prev&&prev.ttrMed?wkDelta(+w.ttrMed.toFixed(1),+prev.ttrMed.toFixed(1),' min',true,pl):''}</div>
+      ${cpaCard}
     </div>
     <div class="wk-note">Tiempos en horas hábiles (lun-vie 9-18, sin feriados).${w.ws>=SYSTEM_CHANGE?' Desde el cambio de sistema, la 1ª respuesta incluye al bot.':''}${o&&o.notif?' No incluye '+o.notif+' notificaciones reenviadas por mail.':''}</div></div>`);
   // 2. Categorías
@@ -1667,6 +1730,23 @@ function buildWeeklySlides(w){
         ${fs.intents.slice(0,7).map(x=>`<div class="wk-mini" style="grid-template-columns:16em 1fr 3em"><span>${wkEsc(x[0])}</span><div class="wk-bar"><i style="width:${Math.round(x[1]/im*100)}%;background:var(--accent)"></i></div><span style="text-align:right">${x[1]}</span></div>`).join('')}
         ${fs.recurring?`<div class="wk-note" style="margin-top:1.4em"><b>${Math.round(fs.recurring/cT*100)}%</b> de los clientes volvió a escribir en más de un día del período.</div>`:''}</div>`);
     }
+  }
+  // 5c'. Cómo facturan los clientes (BO): mismo mes o misma semana que el período
+  if(FP&&FP.tot){
+    const p=FP.prev,word2=w.pt==='M'?'el mes anterior':'la semana anterior';
+    const rows=FACT_CANAL.filter(([k])=>FP.g[k]&&FP.g[k].n).map(([k,l,c])=>[k,l,c,FP.g[k]]).sort((a,b)=>b[3].n-a[3].n);const mx=Math.max(1,...rows.map(r=>r[3].n));
+    const integ=FP.g.integ?Object.entries(FP.g.integ.det).map(([n,v])=>`${n}: ${v[0]} factura${v[0]===1?'':'s'} de ${v[1]} cliente${v[1]===1?'':'s'}`).join(' · '):'';
+    const integMuchas=FP.g.integ&&FP.g.integ.n>=10*Math.max(1,FP.g.integ.cl);
+    slides.push(`<div class="wk-slide"><div class="wk-eyebrow">Operaciones — Facturación</div><div class="wk-h">Cómo facturaron los clientes ${elp}</div><div class="wk-sub">Facturas emitidas desde Lannis y autorizadas por ARCA · fuente: BO, al ${boFecha()}${FP.partial?' · <b>período en curso</b>':''}.</div>
+      <div class="wk-cards" style="grid-template-columns:repeat(4,1fr)">
+        <div class="wk-card"><div class="l">Facturas emitidas</div><div class="v">${FP.tot.toLocaleString('es')}</div>${p&&!FP.partial?wkDelta(FP.tot,p.tot,'',false,word2):''}</div>
+        <div class="wk-card p"><div class="l">Clientes que facturaron</div><div class="v">${FP.cl}</div><div class="s">de ${FP.activos} activos</div>${p&&!FP.partial?wkDelta(FP.cl,p.cl,'',false,word2):''}</div>
+        <div class="wk-card g"><div class="l">Por WhatsApp con IA</div><div class="v">${pctS(FP.waCl,FP.cl)}</div><div class="s">de los clientes que facturaron</div>${p&&p.cl&&!FP.partial?wkDelta(Math.round(FP.waCl/FP.cl*100),Math.round(p.waCl/p.cl*100),' pp',false,word2):''}</div>
+        <div class="wk-card a"><div class="l">Facturas con IA</div><div class="v">${pctS(FP.iaN,FP.tot)}</div><div class="s">WhatsApp + IA externa (MCP)</div></div>
+      </div>
+      <div style="margin-top:1.4em"><div class="wk-row h" style="grid-template-columns:12em 1fr 5em 5em"><div>Canal</div><div></div><div class="n">Facturas</div><div class="n">Clientes</div></div>
+        ${rows.map(([k,l,c,v])=>`<div class="wk-row" style="grid-template-columns:12em 1fr 5em 5em"><div>${l}</div><div class="wk-bar"><i style="width:${Math.round(v.n/mx*100)}%;background:${c}"></i></div><div class="n">${v.n}</div><div class="n">${v.cl}</div></div>`).join('')}</div>
+      <div class="wk-note">${integ?integ+'.'+(integMuchas?' Las integraciones emiten muchas facturas para pocos clientes: por eso conviene mirar los clientes.':'')+' ':''}No incluye facturas importadas de ARCA ni de Mercado Libre.</div></div>`);
   }
   // 5c. DDJJ e impuestos (BO): presentadas y movimientos del equipo en las semanas del período
   if(boData&&boData.ddjj&&(boData.ddjj.stagesBySeg||[]).length){
@@ -2409,6 +2489,18 @@ function renderGlosario(){
         {term:'Cuentas nuevas',formula:'destinatarios de listas externas que crearon cuenta dentro de los 14 días posteriores al envío',desc:'Se cruza por email o CUIT del destinatario contra las cuentas de Lannis. Solo aplica a listas externas (personas que no tenían cuenta).'},
         {term:'Suscripciones',formula:'destinatarios que empezaron una suscripción dentro de los 14 días posteriores al envío',desc:'Aplica a listas externas y a cuentas existentes. Mientras la ventana está abierta el número puede seguir subiendo.'},
         {term:'Rebotes / spam / fallidos',formula:'con fecha de rebote, de queja (marcado como spam) o de falla',desc:'Rebotes altos en una lista externa indican emails viejos o mal cargados.'}
+      ]
+    },
+    {
+      title:'🧾 Tab: Facturación (BO)',
+      desc:'Cómo facturan los clientes con Lannis, por semana y por mes. Sale del BO con la misma actualización automática de los lunes (data/bo.json).',
+      items:[
+        {term:'Facturas emitidas',formula:'facturas creadas desde Lannis con estado AUTORIZADA, sin las importadas',desc:'No cuenta las facturas que se importan de ARCA o de Mercado Libre: solo las que el cliente emitió con Lannis.'},
+        {term:'Canal',formula:'origen de la factura en el BO (source)',desc:'WhatsApp con IA (Varys), IA externa por MCP, app web, integraciones (Mercado Libre, Tiendanube, Mercado Pago), carga masiva, recurrentes y equipo (backoffice).'},
+        {term:'Clientes que facturaron',formula:'CUITs únicos que emitieron al menos una factura en el período',desc:'Mejor medida de adopción que la cantidad de facturas: una integración puede emitir cientos de facturas de un solo cliente.'},
+        {term:'Por WhatsApp con IA',formula:'clientes que facturaron por WhatsApp ÷ clientes que facturaron',desc:'Un cliente puede usar más de un canal en el mismo período.'},
+        {term:'Clientes activos',formula:'suscripción iniciada antes del cierre del período y no cancelada a esa fecha (sin clientes de estudios)',desc:'Se reconstruye hacia atrás; da apenas menos que el conteo exacto de hoy.'},
+        {term:'Consultas por cliente activo',formula:'consultas del período (CSV de conversaciones) ÷ clientes activos al cierre',desc:'Si sube la base de clientes y las consultas crecen menos, el ratio baja: la atención escala. Incluye consultas de personas sin suscripción, así que se usa para ver la tendencia. Aparece en la slide de resumen del Weekly y en la pestaña Facturación.'}
       ]
     },
     {
