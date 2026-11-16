@@ -1154,7 +1154,7 @@ async function confirmUpload(){
       if(!error)toast('Guardado SIN las métricas de Bot y demanda: falta la columna ops_metrics en Supabase (ver SQL en el glosario).',true);
     }else if(!error){toast('✓ Reporte guardado');}
     if(error){toast('Error: '+error.message,true);}
-    await fetchWeeks();
+    await fetchBO();await fetchWeeks();
   }catch(e){toast('Error: '+e.message,true);}
   btn.disabled=false;btn.innerHTML='Procesar y guardar';
 }
@@ -1377,9 +1377,14 @@ function boFecha(){if(!boData)return'';const d=new Date(boData.generado);return 
 function teamName(n){const k=String(n||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').trim();const hit=Object.values(EMAIL_AGENTS).find(v=>v.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'')===k);return hit||n;}
 function boMonday(iso){const d=new Date(iso+'T12:00:00');d.setDate(d.getDate()-((d.getDay()+6)%7));return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 
+// Los datos del BO se actualizan los lunes temprano. Si la página quedó abierta, se vuelven a leer al
+// cambiar a una pestaña que los usa (como mucho cada 5 min) y después de cargar un CSV.
+let boFetchedAt=0;
 async function fetchBO(){
-  try{const r=await fetch('data/bo.json?v='+Date.now(),{cache:'no-store'});if(!r.ok)throw new Error('HTTP '+r.status);boData=await r.json();}
-  catch(e){boData=null;}
+  try{const r=await fetch('data/bo.json?v='+Date.now(),{cache:'no-store'});if(!r.ok)throw new Error('HTTP '+r.status);const nd=await r.json();boFetchedAt=Date.now();
+    if(boData&&nd&&nd.generado===boData.generado)return; // sin cambios: no hace falta redibujar
+    boData=nd;}
+  catch(e){if(!boData)boData=null;}
   renderCampanias();renderDdjj();renderFacturacion();
   if(allWeeks.length)renderDecks();
 }
@@ -2651,8 +2656,10 @@ function renderGlosario(){
 }
 
 // ── Tab navigation ──
+const BO_TABS=['weekly','mensual','campanias','facturacion','ddjj','comparativa'];
 function showTab(t,el){
   curTab=t;
+  if(BO_TABS.includes(t)&&Date.now()-boFetchedAt>5*60000)fetchBO();
   document.querySelectorAll('.tab-c').forEach(d=>d.classList.remove('on'));
   document.getElementById('tab-'+t).classList.add('on');
   document.querySelectorAll('.nav-item,.tab-btn').forEach(e=>e.classList.remove('on'));
