@@ -9,10 +9,14 @@ Las consultas se corren con la herramienta run_readonly_query del MCP de Lannis
      templates de campanias.json ya reemplazados).
   2. Correr cada scripts/bo/out/<nombre>.sql con run_readonly_query y guardar el
      valor de la columna j (o la respuesta completa del MCP) en scripts/bo/out/<nombre>.json.
-  3. python3 scripts/bo/build.py build
+  3. (Opcional) Escribir el análisis de campañas en scripts/bo/out/analisis.json:
+     {"semanal": {"periodo": "YYYY-MM-DD" (lunes de la semana), "puntos": ["...", ...]},
+      "mensual": {"periodo": "YYYY-MM", "puntos": ["...", ...]}}   (cualquiera de las dos claves)
+  4. python3 scripts/bo/build.py build
      Valida los resultados y escribe data/bo.json. Nunca incluye CUITs, emails ni
-     nombres de clientes: solo agregados.
+     nombres de clientes: solo agregados. El análisis se suma al historial (últimos 12 de cada tipo).
 """
+import re
 import json
 import sys
 from datetime import datetime, timezone, timedelta
@@ -56,6 +60,30 @@ def load(q):
     if isinstance(v, str):
         v = json.loads(v)
     return v
+
+
+PII = [re.compile(r"[\w.+-]+@[\w-]+\.[\w.]+"), re.compile(r"\b\d{2}-?\d{8}-?\d\b"), re.compile(r"\d{8,}")]
+
+
+def merge_analisis(prev):
+    hist = {"semanal": dict((prev or {}).get("semanal") or {}), "mensual": dict((prev or {}).get("mensual") or {})}
+    p = OUT / "analisis.json"
+    if p.exists():
+        new = json.loads(p.read_text(encoding="utf-8"))
+        for tipo, fmt in (("semanal", r"^\d{4}-\d{2}-\d{2}$"), ("mensual", r"^\d{4}-\d{2}$")):
+            a = new.get(tipo)
+            if not a:
+                continue
+            per, puntos = str(a.get("periodo", "")), a.get("puntos") or []
+            assert re.match(fmt, per), f"analisis.{tipo}.periodo inválido: {per}"
+            assert isinstance(puntos, list) and 1 <= len(puntos) <= 10 and all(isinstance(x, str) and 0 < len(x) <= 400 for x in puntos), f"analisis.{tipo}.puntos inválido"
+            for x in puntos:
+                for rx in PII:
+                    assert not rx.search(x), f"analisis.{tipo} tiene algo que parece un dato personal (email, CUIT o teléfono): {x[:80]}"
+            hist[tipo][per] = {"puntos": puntos, "generado": datetime.now(ART).strftime("%Y-%m-%d")}
+    for tipo in hist:
+        hist[tipo] = dict(sorted(hist[tipo].items())[-12:])
+    return hist
 
 
 def build():
@@ -102,6 +130,7 @@ def build():
         },
         "ddjj": {**est, **sem, "historial": hist},
         "facturacion": fac,
+        "analisis": merge_analisis(prev.get("analisis")),
     }
     DATA.parent.mkdir(parents=True, exist_ok=True)
     DATA.write_text(json.dumps(out, ensure_ascii=False, separators=(",", ":")) + "\n", encoding="utf-8")

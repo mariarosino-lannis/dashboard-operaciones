@@ -33,8 +33,19 @@ python3 scripts/bo/build.py build       # escribe data/bo.json
 git add data/bo.json && git commit -m "Actualizar datos del BO" && git push
 ```
 
+## Análisis escrito de campañas
+
+La actualización de los lunes escribe 3 a 6 puntos sobre las campañas de la semana anterior
+(`analisis.semanal`) y, el primer lunes de cada mes, un análisis más completo del mes anterior
+(`analisis.mensual`). Aparecen en la slide "Campañas de email" del Weekly / Mensual y arriba de la
+pestaña Campañas. Se guarda el historial de los últimos 12 de cada tipo. `build.py` rechaza cualquier
+punto que tenga algo parecido a un email, un CUIT o un teléfono.
+
 ## Sumar o sacar campañas
 
 Editar `scripts/bo/campanias.json`. Cada grupo es una campaña y cada template, un segmento.
-`tipo: externa` = lista de no usuarios (convierte si se registra o se suscribe);
+Grupo `tipo: puntual` = envío manual o tanda (slide propia mientras dura la ventana de conversión);
+`tipo: continua` = flujo automático diario (va en la slide "Campañas de email" con los envíos del período).
+`conversion: false` = no se mide conversión (encuestas).
+Template `tipo: externa` = lista de no usuarios (convierte si se registra o se suscribe);
 `tipo: cuentas` = usuarios existentes (convierte si se suscribe).
