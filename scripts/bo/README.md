@@ -33,6 +33,13 @@ python3 scripts/bo/build.py build       # escribe data/bo.json
 git add data/bo.json && git commit -m "Actualizar datos del BO" && git push
 ```
 
+## Clics por enlace
+
+`clics.sql` lee la tabla `EmailClick` del BO (existe desde el 13/11/2026) y agrupa los clics de cada campaña por
+destino. El enlace exacto incluye el email y un token del destinatario (por ejemplo el de darse de baja), así que
+**nunca** se usa completo: se guarda solo dominio + ruta, con ids largos tapados, y el enlace de baja como `BAJA`.
+`build.py` rechaza cualquier destino que tenga `@`, `%40`, `?` o `=`.
+
 ## Análisis escrito de campañas
 
 La actualización de los lunes escribe 3 a 6 puntos sobre las campañas de la semana anterior

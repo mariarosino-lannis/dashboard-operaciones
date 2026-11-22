@@ -26,7 +26,7 @@ ROOT = Path(__file__).resolve().parents[2]
 BO = ROOT / "scripts" / "bo"
 OUT = BO / "out"
 DATA = ROOT / "data" / "bo.json"
-QUERIES = ["campanias", "ddjj_estado", "ddjj_semanal", "facturacion"]
+QUERIES = ["campanias", "ddjj_estado", "ddjj_semanal", "facturacion", "clics"]
 ART = timezone(timedelta(hours=-3))
 
 
@@ -88,13 +88,17 @@ def merge_analisis(prev):
 
 def build():
     cfg = config()
-    camp, est, sem, fac = (load(q) for q in QUERIES)
+    camp, est, sem, fac, cli = (load(q) for q in QUERIES)
     for k in ("funnel", "daily"):
         assert isinstance(camp.get(k), (list, type(None))), f"campanias.{k} inválido"
     for k in ("snapshot", "periodos", "excluidas"):
         assert k in est, f"ddjj_estado sin {k}"
     for k in ("stagesBySeg", "stagesByFam", "presentadas", "moves", "team"):
         assert k in sem, f"ddjj_semanal sin {k}"
+    for k in ("total", "daily"):
+        assert isinstance(cli.get(k), (list, type(None))), f"clics.{k} inválido"
+    for r in (cli.get("total") or []) + (cli.get("daily") or []):
+        assert not re.search(r"@|%40|\?|=", str(r[1])), f"clics: un destino parece tener datos personales: {r[1][:60]}"
     for k in ("semanas", "meses", "activosHoy"):
         assert k in fac, f"facturacion sin {k}"
 
@@ -123,10 +127,14 @@ def build():
     out = {
         "generado": now.strftime("%Y-%m-%dT%H:%M:%S-03:00"),
         "campanias": {
+            "generado": now.strftime("%Y-%m-%dT%H:%M:%S-03:00"),
             "ventanaDias": cfg.get("ventanaConversionDias", 14),
             "grupos": cfg["grupos"],
             "funnel": camp.get("funnel") or [],
             "daily": camp.get("daily") or [],
+            "links": cli.get("total") or [],
+            "linksDaily": cli.get("daily") or [],
+            "linksDesde": cli.get("desde"),
         },
         "ddjj": {**est, **sem, "historial": hist},
         "facturacion": fac,

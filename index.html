@@ -1378,7 +1378,7 @@ const DDJJ_STATUS_LBL={PENDIENTE:'Pendiente',INFORMACION_PENDIENTE:'Información
 const DDJJ_SEG_LBL={RI:'RI',SAS:'SAS',Mono:'Monotributo plus',Otro:'Otros'};
 const sumC=(rows,i)=>rows.reduce((s,r)=>s+(+r[i]||0),0);
 const pctS=(n,d,dec=0)=>d>0?(n/d*100).toFixed(dec)+'%':'—';
-function boFecha(){if(!boData)return'';const d=new Date(boData.generado);return isNaN(d)?String(boData.generado):d.toLocaleDateString('es-AR',{day:'numeric',month:'numeric'})+' '+d.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit',hour12:false})+' hs';}
+function boFecha(x){if(!boData)return'';x=x||boData.generado;const d=new Date(x);return isNaN(d)?String(x):d.toLocaleDateString('es-AR',{day:'numeric',month:'numeric'})+' '+d.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit',hour12:false})+' hs';}
 function teamName(n){const k=String(n||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').trim();const hit=Object.values(EMAIL_AGENTS).find(v=>v.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'')===k);return hit||n;}
 function boMonday(iso){const d=new Date(iso+'T12:00:00');d.setDate(d.getDate()-((d.getDay()+6)%7));return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 
@@ -1478,6 +1478,22 @@ function campRanges(w){
   const mon=boMonday(w.ws),a=new Date(mon+'T12:00:00'),b=new Date(a.getTime()+6*864e5),pa=new Date(a.getTime()-7*864e5),pb=new Date(a.getTime()-864e5);
   return{cur:[mon,isoD(b)],prev:[isoD(pa),isoD(pb)],key:mon,tipo:'semanal'};
 }
+// Clics por enlace (tabla EmailClick del BO, existe desde el 13/11). El destino viene agrupado: dominio + ruta, sin datos personales.
+const LINK_LBL={BAJA:'Darse de baja','lannis.app/planes':'Planes','lannis.app':'Inicio (lannis.app)','lannis.app/dashboard':'Entrar a la app','lannis.app/onboarding/clave-fiscal':'Conectar la clave fiscal',OTRO:'Otro enlace'};
+const linkLbl=d=>LINK_LBL[d]||d.replace(/^lannis\.app/,'lannis.app');
+// Por destino: {dest:{p:personas,n:clics}} para los templates del grupo (opcional: rango de fechas)
+function campLinks(templates,a,b){
+  const C=boData&&boData.campanias;if(!C||!C.links)return null;
+  const T=new Set(templates),o={};
+  (a?(C.linksDaily||[]).filter(r=>T.has(r[0])&&r[2]>=a&&r[2]<=b).map(r=>[r[0],r[1],r[3],r[4]]):(C.links||[]).filter(r=>T.has(r[0])))
+    .forEach(([,d,pp,nn])=>{const x=o[d]||(o[d]={p:0,n:0});x.p+=pp;x.n+=nn;});
+  return o;
+}
+const linkTot=L=>Object.values(L||{}).reduce((s,x)=>s+x.p,0);
+function linksBlock(L,small){
+  const E=Object.entries(L||{}).sort((a,b)=>b[1].p-a[1].p);if(!E.length)return'';const tot=linkTot(L),mx=Math.max(1,...E.map(x=>x[1].p));
+  return E.map(([d,x])=>`<div class="wk-mini" style="grid-template-columns:${small?'11em':'14em'} 1fr 9em"><span${d==='BAJA'?' style="color:var(--red)"':''}>${wkEsc(linkLbl(d))}</span><div class="wk-bar"><i style="width:${Math.round(x.p/mx*100)}%;background:${d==='BAJA'?'var(--red)':'var(--amber)'}"></i></div><span style="text-align:right;font-family:'JetBrains Mono',monospace;font-size:.9em">${x.p} · ${Math.round(x.p/tot*100)}%</span></div>`).join('');
+}
 function campAnalisis(tipo,key){const A=boData&&boData.analisis&&boData.analisis[tipo];return A&&A[key]||null;}
 function setCampGroup(i){boCampGroup=i;renderCampanias();}
 function renderCampanias(){
@@ -1487,6 +1503,8 @@ function renderCampanias(){
   if(!gs.length){el.innerHTML='<div class="card"><div class="empty">No hay campañas configuradas en scripts/bo/campanias.json.</div></div>';return;}
   if(boCampGroup>=gs.length)boCampGroup=0;
   const rows=campRows(boCampGroup),t=campTotals(rows),g=gs[boCampGroup];
+  const LG=campLinks(g.templates.map(x=>x.template)),lTot=linkTot(LG),lBaja=LG&&LG.BAJA?LG.BAJA.p:0,lDesde=C.linksDesde;
+  const bajaDe=tp=>{const L=campLinks([tp]);return L&&L.BAJA?L.BAJA.p:0;};
   const cont=g.tipo==='continua',hasConv=g.conversion!==false;
   const enCurso=!cont&&t.dias&&t.dias<win;
   const A=boData.analisis||{},lastOf=k=>{const o=A[k]||{};const ks=Object.keys(o).sort();return ks.length?[ks[ks.length-1],o[ks[ks.length-1]]]:null;};
@@ -1495,11 +1513,11 @@ function renderCampanias(){
     <div class="g2" style="margin:0">${[[aS,'Semana del ',x=>wkDmy(x)],[aM,'',x=>MONTHS[+x.substring(5)-1]+' '+x.substring(0,4)]].filter(x=>x[0]).map(([a,pre,f])=>`<div><div style="font-weight:600;margin-bottom:6px">${pre}${f(a[0])}</div><ul style="margin:0;padding-left:18px;font-size:12.5px;line-height:1.7">${(a[1].puntos||[]).map(p=>`<li>${wkEsc(p)}</li>`).join('')}</ul></div>`).join('')}</div></div>`:'';
   el.innerHTML=`${anaCard}
   <div class="bo-bar">${gs.map((x,i)=>`<div class="comp-chip ${i===boCampGroup?'on':''}" onclick="setCampGroup(${i})">${x.nombre}${x.tipo==='continua'?' <span style="opacity:.6">· automática</span>':''}</div>`).join('')}
-    <span class="bo-meta">Datos del BO al ${boFecha()}</span></div>
+    <span class="bo-meta">Datos del BO al ${boFecha(C.generado)}</span></div>
   <div class="mc-grid">
     <div class="mc c-accent"><div class="mc-label">Enviados</div><div class="mc-val">${t.n.toLocaleString('es')}</div><div class="mc-sub">${t.dl.toLocaleString('es')} entregados (${pctS(t.dl,t.n)})${t.d0?' · desde el '+wkDmy(t.d0):''}</div></div>
     <div class="mc c-purple"><div class="mc-label">Apertura</div><div class="mc-val">${pctS(t.op,t.dl)}</div><div class="mc-sub">${t.op.toLocaleString('es')} abrieron, sobre entregados</div></div>
-    <div class="mc c-amber"><div class="mc-label">Clics</div><div class="mc-val">${t.cl}</div><div class="mc-sub">${pctS(t.cl,t.dl,1)} de los entregados · ${pctS(t.cl,t.op)} de los que abrieron</div></div>
+    <div class="mc c-amber"><div class="mc-label">Clics</div><div class="mc-val">${t.cl}</div><div class="mc-sub">${pctS(t.cl,t.dl,1)} de los entregados · ${pctS(t.cl,t.op)} de los que abrieron${lTot?` · <b style="color:var(--red)">${lBaja} fueron a darse de baja</b>`:''}</div></div>
     ${hasConv?`<div class="mc c-green"><div class="mc-label">Suscripciones</div><div class="mc-val">${t.sb}</div><div class="mc-sub">${cont?pctS(t.sb,t.n,1)+' de los que lo recibieron, dentro de los '+win+' días · flujo automático':t.rg+' cuentas nuevas desde listas externas · '+(enCurso?'día '+t.dias+' de '+win:'ventana de '+win+' días cerrada')}</div></div>`
       :`<div class="mc c-green"><div class="mc-label">Hicieron clic en la encuesta</div><div class="mc-val">${pctS(t.cl,t.op)}</div><div class="mc-sub">${t.cl} de ${t.op} que abrieron · no se mide conversión</div></div>`}
   </div>
@@ -1508,16 +1526,22 @@ function renderCampanias(){
     <div class="card"><div class="card-header"><div><div class="card-title">Apertura y clics por segmento</div><div class="card-sub">% sobre entregados</div></div></div><div class="ch" style="height:220px"><canvas id="cCampSeg"></canvas></div></div>
   </div>
   <div class="card"><div class="card-header"><div><div class="card-title">Resultado por segmento</div><div class="card-sub">Lista externa = personas que no tenían cuenta · Cuentas = usuarios existentes</div></div></div>
-    <table class="tbl"><thead><tr><th>Segmento</th><th>Tipo</th><th class="r">Enviados</th><th class="r">Entregados</th><th class="r">Abrieron</th><th class="r">Clics</th><th class="r">Rebotes / spam</th><th class="r">Cuentas nuevas</th><th class="r">Suscripciones</th></tr></thead><tbody>
+    <table class="tbl"><thead><tr><th>Segmento</th><th>Tipo</th><th class="r">Enviados</th><th class="r">Entregados</th><th class="r">Abrieron</th><th class="r">Clics</th><th class="r">Bajas</th><th class="r">Rebotes / spam</th><th class="r">Cuentas nuevas</th><th class="r">Suscripciones</th></tr></thead><tbody>
     ${rows.map(r=>`<tr><td><div style="font-weight:500">${wkEsc(r.segmento)}</div><div style="font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--ink3)">${wkEsc(r.template)}</div></td>
       <td><span class="${r.tipo==='externa'?'badge-pur':'badge-neu'}">${r.tipo==='externa'?'Lista externa':'Cuentas'}</span></td>
       <td class="r">${r.n}</td><td class="r">${r.dl} <span style="color:var(--ink3)">${pctS(r.dl,r.n)}</span></td>
       <td class="r">${r.op} <span style="color:var(--ink3)">${pctS(r.op,r.dl)}</span></td><td class="r">${r.cl} <span style="color:var(--ink3)">${pctS(r.cl,r.dl,1)}</span></td>
+      <td class="r" style="color:${bajaDe(r.template)?'var(--red)':'var(--ink4)'}">${bajaDe(r.template)||'—'}</td>
       <td class="r" style="color:${r.bo+r.co+r.fa?'var(--red)':'var(--ink3)'}">${r.bo}${r.co?' + '+r.co+' spam':''}${r.fa?' + '+r.fa+' fallido':''}</td>
       <td class="r">${r.tipo==='externa'?r.rg:'<span style="color:var(--ink4)">—</span>'}</td><td class="r" style="font-weight:600">${r.sb}</td></tr>`).join('')}
-    <tr style="background:var(--s2)"><td style="font-weight:600">Total</td><td></td><td class="r" style="font-weight:600">${t.n}</td><td class="r">${t.dl} <span style="color:var(--ink3)">${pctS(t.dl,t.n)}</span></td><td class="r">${t.op} <span style="color:var(--ink3)">${pctS(t.op,t.dl)}</span></td><td class="r">${t.cl}</td><td class="r">${t.bo}${t.co?' + '+t.co+' spam':''}${t.fa?' + '+t.fa+' fallido':''}</td><td class="r">${t.rg}</td><td class="r" style="font-weight:600">${t.sb}</td></tr>
+    <tr style="background:var(--s2)"><td style="font-weight:600">Total</td><td></td><td class="r" style="font-weight:600">${t.n}</td><td class="r">${t.dl} <span style="color:var(--ink3)">${pctS(t.dl,t.n)}</span></td><td class="r">${t.op} <span style="color:var(--ink3)">${pctS(t.op,t.dl)}</span></td><td class="r">${t.cl}</td><td class="r" style="color:${lBaja?'var(--red)':'var(--ink4)'}">${lBaja||'—'}</td><td class="r">${t.bo}${t.co?' + '+t.co+' spam':''}${t.fa?' + '+t.fa+' fallido':''}</td><td class="r">${t.rg}</td><td class="r" style="font-weight:600">${t.sb}</td></tr>
     </tbody></table>
     <div class="bo-note">${cont?'Flujo automático: manda mails todos los días a quienes entran en cada segmento; los totales son desde el primer envío. Para ver una semana o un mes puntual, usá la slide “Campañas de email del período” del Weekly o el Mensual. ':''}Conversión: cuentas nuevas = la persona creó una cuenta en Lannis dentro de los ${win} días posteriores al envío (solo listas externas). Suscripciones = empezó una suscripción en ese plazo; se cruza por email o CUIT del destinatario. El código de descuento no queda asociado al envío en el BO, por eso no se mide por canjes.${enCurso?' <b>La ventana sigue abierta</b>: estos números van a crecer hasta el '+wkDmy(new Date(new Date(t.d0+'T12:00:00').getTime()+win*86400000).toISOString().substring(0,10))+'.':''}</div></div>
+  ${lTot?`<div class="card"><div class="card-header"><div><div class="card-title">A dónde entraron</div><div class="card-sub">Personas que hicieron clic en cada enlace · % sobre las ${lTot} que hicieron clic · desde el ${wkDmy(lDesde)}</div></div></div>
+    <table class="tbl"><thead><tr><th>Enlace</th><th class="r">Personas</th><th class="r">Clics</th><th class="r">% de los que hicieron clic</th><th class="r">% de los que abrieron</th></tr></thead><tbody>
+    ${Object.entries(LG).sort((a,b)=>b[1].p-a[1].p).map(([d,x])=>`<tr><td style="font-weight:500;${d==='BAJA'?'color:var(--red)':''}">${wkEsc(linkLbl(d))}${d!=='BAJA'&&LINK_LBL[d]?` <span style="font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--ink3)">${wkEsc(d)}</span>`:''}</td><td class="r">${x.p}</td><td class="r">${x.n}</td><td class="r">${pctS(x.p,lTot)}</td><td class="r">${pctS(x.p,t.op,1)}</td></tr>`).join('')}
+    </tbody></table>
+    <div class="bo-note">El BO guarda a qué enlace entró cada persona desde el ${wkDmy(lDesde)}: los clics anteriores cuentan en “Clics” pero no tienen destino. El enlace exacto incluye el email de la persona, así que acá se agrupa por destino. “Darse de baja” es el enlace para no recibir más mails: no es interés en la oferta.</div></div>`:''}
   <div class="card"><div class="card-header"><div><div class="card-title">Día a día</div><div class="card-sub">Aperturas, clics y conversiones según el día en que ocurrieron</div></div></div><div class="ch" style="height:220px"><canvas id="cCampDaily"></canvas></div></div>`;
   const conv=t.sb+t.rg;
   mkChart('cCampFunnel','bar',{labels:['Enviados','Entregados','Abrieron','Clics','Cuenta nueva o suscripción'],datasets:[{data:[t.n,t.dl,t.op,t.cl,conv],backgroundColor:['#c4c4cc','#6366f1','#8b5cf6','#f59e0b','#10b981'],borderRadius:4}]},
@@ -1831,19 +1855,21 @@ function buildWeeklySlides(w){
       const ana=campAnalisis(RG.tipo,RG.key),pw=RG.tipo==='mensual'?'el mes anterior':'la semana anterior';
       const dPct=(c,p)=>p?`<span style="color:var(--${c>=p?'green':'red'})">${c>=p?'+':''}${Math.round((c-p)/p*100)}%</span>`:'<span style="color:var(--ink3)">nuevo</span>';
       const dPp=(a,b)=>a==null||b==null?'':`<span style="color:var(--${a>=b?'green':'red'})">${a>=b?'+':''}${(a-b).toFixed(0)} pp</span>`;
-      const ap=x=>x.dl?x.op/x.dl*100:null;
+      const ap=x=>x.dl>=20&&x.op<=x.dl?x.op/x.dl*100:null; // con pocos envíos en el período, las aperturas de envíos anteriores distorsionan el %
+      grs.forEach(x=>{const L=campLinks(x.g.templates.map(t=>t.template),...RG.cur);x.baja=L&&L.BAJA?L.BAJA.p:0;x.lt=linkTot(L);});
       const auto=[];
-      { const sent=grs.filter(x=>x.c.se>0&&x.c.dl>0).sort((a,b)=>ap(b.c)-ap(a.c));
+      { const sent=grs.filter(x=>ap(x.c)!=null).sort((a,b)=>ap(b.c)-ap(a.c));
         if(sent.length>1)auto.push(`Mejor apertura: ${sent[0].g.nombre} (${ap(sent[0].c).toFixed(0)}%); la más baja: ${sent[sent.length-1].g.nombre} (${ap(sent[sent.length-1].c).toFixed(0)}%).`);
         grs.filter(x=>x.g.tipo==='continua'&&x.p.se>=10&&x.c.se<x.p.se*0.5).forEach(x=>auto.push(`${x.g.nombre} mandó ${x.c.se} mails contra ${x.p.se} ${pw}: revisar si el flujo está entrando gente.`));
         const tc=grs.reduce((s,x)=>s+x.c.conv,0);auto.push(tc?`En total, ${tc} conversiones (cuentas nuevas o suscripciones) de destinatarios de estas campañas en el período.`:'Ninguna campaña generó cuentas nuevas ni suscripciones en el período.');
+        grs.filter(x=>x.lt>=5&&x.baja/x.lt>=0.3).forEach(x=>auto.push(`${x.g.nombre}: ${x.baja} de las ${x.lt} personas que hicieron clic fueron a darse de baja (${Math.round(x.baja/x.lt*100)}%).`));
         const bo=grs.reduce((s,x)=>s+x.c.bo,0),se=grs.reduce((s,x)=>s+x.c.se,0);if(se&&bo/se>0.02)auto.push(`Rebotes del ${(bo/se*100).toFixed(1)}% (${bo} de ${se}): conviene limpiar las listas.`);}
       const puntos=ana&&ana.puntos&&ana.puntos.length?ana.puntos:auto;
-      slides.push(`<div class="wk-slide"><div class="wk-eyebrow">Operaciones — Campañas</div><div class="wk-h">Campañas de email ${w.pt==='M'?'del mes':w.pt==='Q'?'de la quincena':'de la semana'}</div><div class="wk-sub">Envíos manuales y flujos automáticos del BO, ${wkDmy(RG.cur[0])} al ${wkDmy(RG.cur[1])}, contra ${pw}. Datos del BO al ${boFecha()}.</div>
-        <div class="wk-row h" style="grid-template-columns:13em 6em 1fr 1fr 1fr 1fr 1fr"><div>Campaña</div><div>Tipo</div><div class="n">Enviados</div><div class="n">vs ant.</div><div class="n">Apertura</div><div class="n">Clics</div><div class="n">Conversiones</div></div>
-        ${grs.map(({g,c,p})=>`<div class="wk-row" style="grid-template-columns:13em 6em 1fr 1fr 1fr 1fr 1fr"><div>${wkEsc(g.nombre)}</div><div style="color:var(--ink3);font-size:.9em">${g.tipo==='continua'?'Automática':'Manual'}</div><div class="n">${c.se.toLocaleString('es')}</div><div class="n">${c.se||p.se?dPct(c.se,p.se):'—'}</div><div class="n">${c.dl?ap(c).toFixed(0)+'% '+(p.dl?dPp(ap(c),ap(p)):''):c.op?c.op+' abrieron':'—'}</div><div class="n">${c.cl}</div><div class="n">${g.conversion===false?'<span style="color:var(--ink3)">no aplica</span>':c.conv}</div></div>`).join('')}
+      slides.push(`<div class="wk-slide"><div class="wk-eyebrow">Operaciones — Campañas</div><div class="wk-h">Campañas de email ${w.pt==='M'?'del mes':w.pt==='Q'?'de la quincena':'de la semana'}</div><div class="wk-sub">Envíos manuales y flujos automáticos del BO, ${wkDmy(RG.cur[0])} al ${wkDmy(RG.cur[1])}, contra ${pw}. Datos del BO al ${boFecha(C.generado)}.</div>
+        <div class="wk-row h" style="grid-template-columns:13em 6em 1fr 1fr 1fr 1fr 1fr 1fr"><div>Campaña</div><div>Tipo</div><div class="n">Enviados</div><div class="n">vs ant.</div><div class="n">Apertura</div><div class="n">Clics</div><div class="n">Bajas</div><div class="n">Conversiones</div></div>
+        ${grs.map(({g,c,p,baja})=>`<div class="wk-row" style="grid-template-columns:13em 6em 1fr 1fr 1fr 1fr 1fr 1fr"><div>${wkEsc(g.nombre)}</div><div style="color:var(--ink3);font-size:.9em">${g.tipo==='continua'?'Automática':'Manual'}</div><div class="n">${c.se.toLocaleString('es')}</div><div class="n">${c.se||p.se?dPct(c.se,p.se):'—'}</div><div class="n">${ap(c)!=null?ap(c).toFixed(0)+'% '+(ap(p)!=null?dPp(ap(c),ap(p)):''):c.op?c.op+' abrieron':'—'}</div><div class="n">${c.cl}</div><div class="n" style="color:${baja?'var(--red)':'var(--ink4)'}">${baja||'—'}</div><div class="n">${g.conversion===false?'<span style="color:var(--ink3)">no aplica</span>':c.conv}</div></div>`).join('')}
         <div style="margin-top:1.2em"><div style="font-weight:600;margin-bottom:.4em">${ana?'Qué está pasando':'Lectura rápida'}</div>${puntos.map(t=>`<div class="wk-bul" style="margin:.3em 0"><div class="bar" style="background:var(--purple)"></div><div><span class="t" style="margin:0">${wkEsc(t)}</span></div></div>`).join('')}</div>
-        <div class="wk-note">Enviados por día de envío; aperturas, clics y conversiones por el día en que ocurrieron (pueden venir de envíos anteriores). Conversión = cuenta nueva o suscripción dentro de los ${win} días del envío.${ana?'':' La lectura completa se escribe en la actualización de los lunes.'}</div></div>`);
+        <div class="wk-note">Enviados por día de envío; aperturas, clics y conversiones por el día en que ocurrieron (pueden venir de envíos anteriores). Conversión = cuenta nueva o suscripción dentro de los ${win} días del envío. Bajas = personas que entraron al enlace para darse de baja (dato disponible desde el ${C.linksDesde?wkDmy(C.linksDesde):'13/11'}).${ana?'':' La lectura completa se escribe en la actualización de los lunes.'}</div></div>`);
     }
     // 5d-2. Detalle de cada campaña manual mientras dura su ventana de conversión
     (C.grupos||[]).forEach((g,gi)=>{
@@ -1852,7 +1878,7 @@ function buildWeeklySlides(w){
       const t=campTotals(rows);if(!t.d0)return;
       const d0=dms(t.d0);if(d0>dms(w.we)||d0<dms(w.ws)-win*86400000)return;
       const mx=Math.max(1,...rows.map(r=>r.dl?r.op/r.dl:0));
-      slides.push(`<div class="wk-slide"><div class="wk-eyebrow">Operaciones — Campañas</div><div class="wk-h">${wkEsc(g.nombre)}: cómo respondieron</div><div class="wk-sub">${t.n.toLocaleString('es')} emails enviados desde el ${wkDmy(t.d0)} · datos del BO al ${boFecha()}${t.dias<win?' · día '+t.dias+' de '+win+' de la ventana de conversión':''}.</div>
+      slides.push(`<div class="wk-slide"><div class="wk-eyebrow">Operaciones — Campañas</div><div class="wk-h">${wkEsc(g.nombre)}: cómo respondieron</div><div class="wk-sub">${t.n.toLocaleString('es')} emails enviados desde el ${wkDmy(t.d0)} · datos del BO al ${boFecha(C.generado)}${t.dias<win?' · día '+t.dias+' de '+win+' de la ventana de conversión':''}.</div>
         <div class="wk-cards" style="grid-template-columns:repeat(4,1fr)">
           <div class="wk-card"><div class="l">Entregados</div><div class="v">${pctS(t.dl,t.n)}</div><div class="s">${t.dl.toLocaleString('es')} de ${t.n.toLocaleString('es')}</div></div>
           <div class="wk-card p"><div class="l">Apertura</div><div class="v">${pctS(t.op,t.dl)}</div><div class="s">${t.op.toLocaleString('es')} personas</div></div>
@@ -1861,7 +1887,8 @@ function buildWeeklySlides(w){
         </div>
         <div style="margin-top:1.4em"><div style="font-weight:600;margin-bottom:.4em">Apertura por segmento</div>
           ${rows.map(r=>`<div class="wk-mini" style="grid-template-columns:12em 1fr 13em"><span>${wkEsc(r.corto||r.segmento)}</span><div class="wk-bar"><i style="width:${Math.round((r.dl?r.op/r.dl:0)/mx*100)}%;background:var(--purple)"></i></div><span style="text-align:right;font-family:'JetBrains Mono',monospace;font-size:.9em">${pctS(r.op,r.dl)} · ${r.cl} clics · ${r.sb} susc.</span></div>`).join('')}</div>
-        <div class="wk-note">Conversión: la persona creó una cuenta o se suscribió dentro de los ${win} días posteriores al envío (cruce por email o CUIT).</div></div>`);
+        ${(()=>{const L=campLinks(g.templates.map(x=>x.template));return linkTot(L)?`<div style="margin-top:1.2em"><div style="font-weight:600;margin-bottom:.4em">A dónde entraron <span style="font-weight:400;color:var(--ink3);font-size:.85em">· personas y % de las ${linkTot(L)} que hicieron clic</span></div>${linksBlock(L)}</div>`:'';})()}
+        <div class="wk-note">Conversión: la persona creó una cuenta o se suscribió dentro de los ${win} días posteriores al envío (cruce por email o CUIT). “Darse de baja” es el enlace para no recibir más mails.</div></div>`);
     });
   }
   // 6. Resumen desde Operaciones (editable)
