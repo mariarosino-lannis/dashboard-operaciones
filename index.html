@@ -1620,8 +1620,7 @@ async function ddjjManAdd(){
   const cli=g('dmCli').value.trim(),per=g('dmPer').value.trim(),v=g('dmVence').value,e=+g('dmEtapa').value;
   if(!cli){toast('Falta el cliente',true);return;}
   if(perKey(per)==null){toast('Período: mes/año (10/2026) o el año si es anual (2025)',true);return;}
-  if(!v){toast('Falta la fecha de vencimiento',true);return;}
-  const rec={cliente:cli,segmento:g('dmSeg').value,impuesto:g('dmImp').value,periodo:per,vence:v,etapa:e,presentada_el:e>=3?(g('dmPres').value||hoyIso()):null};
+  const rec={cliente:cli,segmento:g('dmSeg').value,impuesto:g('dmImp').value,periodo:per,vence:v||null,etapa:e,presentada_el:e>=3?(g('dmPres').value||hoyIso()):null};
   const b=g('dmAdd');b.disabled=true;
   const{error}=await db.from('ddjj_manual').insert(rec);b.disabled=false;
   if(error){toast('Error: '+error.message,true);return;}
@@ -1645,7 +1644,7 @@ async function ddjjManDel(id){
 }
 function ddjjManCopySql(){try{navigator.clipboard.writeText(DDJJ_MANUAL_SQL);toast('✓ SQL copiado');}catch(e){toast('No se pudo copiar: seleccionalo a mano',true);}}
 function ddjjManualHtml(){
-  const head=`<div class="card-header"><div><div class="card-title">Cargadas a mano</div><div class="card-sub">DDJJ de clientes que no están en el BO. Se suman a todos los números de esta pestaña y a la slide de DDJJ del Weekly y el Mensual (ahí solo van los totales, nunca el nombre del cliente).</div></div></div>`;
+  const head=`<div class="card-header"><div><div class="card-title">Cargadas a mano</div><div class="card-sub">DDJJ que se hacen por fuera del BO. Suman en esta pestaña y en la slide de DDJJ (en la slide, solo los totales).</div></div></div>`;
   if(ddjjManualErr)return`<div class="card">${head}
     <div class="card-sub" style="line-height:1.7;color:var(--ink2)">Falta crear la tabla en Supabase (se hace <b>una sola vez</b>): en Supabase abrí <b>SQL Editor</b>, pegá esto y tocá <b>Run</b>. Después recargá el dashboard.</div>
     <pre style="background:var(--s2);border-radius:var(--rs);padding:12px;font-size:11px;overflow-x:auto;margin:10px 0;white-space:pre">${wkEsc(DDJJ_MANUAL_SQL)}</pre>
@@ -1706,13 +1705,16 @@ function renderDdjj(){
   const per=(D.periodos||[]);
   const ex=D.excluidas||{};
   el.innerHTML=`
-  <div class="card" style="background:var(--s2)"><div class="card-sub" style="margin:0;line-height:1.7"><b>Qué se mide.</b> Obligaciones de clientes propios de Lannis que trabaja el equipo de Ops: IVA, IIBB, Ganancias, Bienes Personales, SICORE y F.931. No entran Monotributo, Autónomos ni anticipos (son pagos), ni las ${(ex.estudios||0).toLocaleString('es')} obligaciones de clientes de estudios contables, las ${ex.free||0} de cuentas free${ex.sinSuscripcion?' ni '+(ex.sinSuscripcion===1?'la':'las')+' '+ex.sinSuscripcion+' de cuentas que nunca se suscribieron':''}. Tampoco los impuestos deshabilitados en el BO (como el IIBB Convenio Multilateral viejo): igual que el tablero de DDJJ del BO. El avance semanal sale del historial de cambios de estado del BO: si algo se presenta por fuera del BO, acá no aparece (salvo que lo cargues a mano, abajo). <b>Vencimientos:</b> cuenta lo que vence hasta el último día del mes (${finL}); lo que ya está generado y vence en ${mesProx} va aparte, porque es trabajo del mes que viene.</div></div>
+  <div class="card" style="background:var(--s2)"><div class="card-sub" style="margin:0;line-height:1.8">
+    <b>Qué se mide:</b> DDJJ de clientes propios con suscripción (IVA, IIBB, Ganancias, Bienes Personales, SICORE y F.931), igual que el tablero de DDJJ del BO, más las que cargues a mano.
+    <b>Vencimientos:</b> se cuenta lo que vence hasta el ${finL}; lo ya generado que vence en ${mesProx} va aparte.
+    <span style="color:var(--ink3)">Fuera: ${(ex.estudios||0).toLocaleString('es')} de estudios contables, ${ex.free||0} de cuentas free${ex.sinSuscripcion?', '+ex.sinSuscripcion+' sin suscripción':''}. Detalle en el glosario.</span></div></div>
   <div class="bo-bar"><div class="comp-chip ${S==='all'?'on':''}" onclick="setDdjjSeg('all')">Todos</div>${segs.map(s=>`<div class="comp-chip ${S===s?'on':''}" onclick="setDdjjSeg('${s}')">${DDJJ_SEG_LBL[s]||s}</div>`).join('')}<span class="bo-meta">Datos del BO al ${boFecha(D.generado)}${nMan?' · '+nMan+' cargada'+(nMan===1?'':'s')+' a mano':''}</span></div>
   <div class="mc-grid">
-    <div class="mc c-accent"><div class="mc-label">Sin presentar (vencen hasta el ${finL})</div><div class="mc-val">${abiertas}</div><div class="mc-sub">${prox?'+'+prox+' ya generadas que vencen en '+mesProx+' (no cuentan)':'nada generado para '+mesProx+' todavía'}${tr7?' · '+tr7+' sin moverse hace más de 7 días':''}</div></div>
-    <div class="mc c-${v7?'amber':'green'}"><div class="mc-label">Vencen de hoy al ${finL}</div><div class="mc-val">${v7}</div><div class="mc-sub">todavía sin presentar</div></div>
-    <div class="mc c-${venc?'red':'green'}"><div class="mc-label">Vencidas sin presentar</div><div class="mc-val">${venc}</div><div class="mc-sub">${venc?'revisar en el BO':'nada vencido'}${tr14?' · '+tr14+' trabadas hace más de 14 días':''}</div></div>
-    <div class="mc c-green"><div class="mc-label">Presentadas semana del ${wkDmy(lastW)}</div><div class="mc-val">${pl}</div><div class="mc-sub">${ml} cambios de estado del equipo (todos los segmentos)${curW?' · esta semana van '+pc:''}</div>${dlt(pl,pp)}</div>
+    <div class="mc c-accent"><div class="mc-label">Sin presentar este mes</div><div class="mc-val">${abiertas}</div><div class="mc-sub">vencen hasta el ${finL}${prox?' · '+prox+' más vencen en '+mesProx:''}</div></div>
+    <div class="mc c-${v7?'amber':'green'}"><div class="mc-label">Por vencer</div><div class="mc-val">${v7}</div><div class="mc-sub">de hoy al ${finL}${tr7?' · '+tr7+' sin moverse +7 días':''}</div></div>
+    <div class="mc c-${venc?'red':'green'}"><div class="mc-label">Vencidas</div><div class="mc-val">${venc}</div><div class="mc-sub">${venc?'sin presentar':'nada vencido'}${tr14?' · '+tr14+' trabada'+(tr14===1?'':'s')+' +14 días':''}</div></div>
+    <div class="mc c-green"><div class="mc-label">Presentadas sem. ${wkDmy(lastW)}</div><div class="mc-val">${pl}</div><div class="mc-sub">${ml} cambios de estado del equipo${curW&&pc?' · esta semana van '+pc:''}</div>${dlt(pl,pp)}</div>
   </div>
   ${ddjjManualHtml()}
   <div class="card"><div class="card-header"><div><div class="card-title">Avance semana a semana</div><div class="card-sub">En qué etapa estaba cada obligación al cierre de cada semana${S==='all'?'':' · '+(DDJJ_SEG_LBL[S]||S)}</div></div></div>
