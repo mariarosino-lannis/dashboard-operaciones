@@ -22,9 +22,9 @@ Solo agregados: conteos por campaña, por impuesto, por segmento y por persona d
 
 Obligaciones de clientes propios de Lannis: sin clientes de estudios (`estudio_client`) ni cuentas free,
 y sin Monotributo, Autónomos ni anticipos (son pagos, no DDJJ que trabaje el equipo).
-Tampoco cuentas que nunca se suscribieron (`subscriptionStatus` vacío). Si el BO tiene la misma DDJJ duplicada
-(mismo cliente, período y nombre de impuesto, por ejemplo IIBB Convenio Multilateral con ids 5900 y 9001), queda una
-sola: la más avanzada.
+Tampoco cuentas que nunca se suscribieron (`subscriptionStatus` vacío). Solo impuestos habilitados en el BO
+(`Tax.isEnabled`), igual que el tablero de DDJJ del BO: por ejemplo, el IIBB Convenio Multilateral viejo (id 9001) está
+deshabilitado y sus obligaciones no se cuentan.
 
 ## Cómo actualizar a mano
 
