@@ -18,6 +18,17 @@ Solo agregados: conteos por campaña, por impuesto, por segmento y por persona d
   cambios, movimientos por quién los hizo y actividad del equipo. `historial` guarda una foto semanal de
   vencidas y abiertas (eso no se puede reconstruir hacia atrás).
 
+- `servicios`: VEPs generados y facturas con problemas al emitirse (por semana y por mes), ciclos de recategorización y
+  días promedio por etapa de las DDJJ presentadas en cada mes. Va en la slide "Servicios del mes" del Mensual.
+- `ddjj.meses`: cumplimiento por mes de vencimiento (vencen, presentadas, en término, vencidas, por vencer, días de anticipación).
+
+## Atribución de conversiones
+
+Si una persona recibió varias campañas, su cuenta nueva o suscripción cuenta para UNA sola: la del último mail que abrió o
+en el que hizo clic antes de convertir (si no abrió ninguno, la del último envío). Las encuestas no compiten. En listas
+externas, quienes se suscriben son parte de las cuentas nuevas: no se suman. `funnel` y `daily` traen además la columna
+"personas que convirtieron" (cada una contada una vez).
+
 ## Universo de DDJJ
 
 Obligaciones de clientes propios de Lannis: sin clientes de estudios (`estudio_client`) ni cuentas free,

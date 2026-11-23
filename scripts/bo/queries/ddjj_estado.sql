@@ -6,6 +6,9 @@
 -- snapshot: [familia, segmento, estado, cantidad, vencidas sin presentar, vencen de hoy a fin de mes,
 --            >7 días sin moverse, >14 días sin moverse, sin presentar que vencen el mes que viene o después]
 -- finMes: último día del mes en curso (YYYY-MM-DD)
+-- meses: cumplimiento por mes de vencimiento (últimos 4 meses y el actual):
+--        [mes YYYY-MM, vencen en el mes, presentadas, presentadas en término, vencidas sin presentar, por vencer, días de anticipación promedio]
+--        "En término" = llegó a presentada (o más) el día del vencimiento o antes, según el historial de cambios.
 -- periodos: [periodo, familia, total, presentadas o más]
 -- excluidas: obligaciones fuera del universo (estudios, free)
 WITH hoy AS (
@@ -23,6 +26,7 @@ WITH hoy AS (
 ), lst AS (
   SELECT ob.*, COALESCE((SELECT max(a."createdAt") FROM "ObligationAuditLog" a WHERE a."obligationId"=ob.id AND a."toStatus" IS NOT NULL), ob.cr) since,
     ob.s IN ('PRESENTADA','PENDIENTE_PAGO','PAGO_INFORMADO','PAGADA','COMPLETADA') pres,
+    (SELECT min(a."createdAt") FROM "ObligationAuditLog" a WHERE a."obligationId"=ob.id AND a."toStatus" IN ('PRESENTADA','PENDIENTE_PAGO','PAGO_INFORMADO','PAGADA','COMPLETADA') AND a.action<>'obligation_created') fp,
     COALESCE(ob.pv::date >= (SELECT fm FROM hoy), false) prox
   FROM ob
 )
@@ -36,6 +40,13 @@ SELECT json_build_object(
      count(*) FILTER (WHERE NOT pres AND prox) px
     FROM lst GROUP BY 1,2,3) x),
  'finMes', (SELECT to_char(fm - 1,'YYYY-MM-DD') FROM hoy),
+ 'meses', (SELECT json_agg(json_build_array(mes,n,p,pt,venc,pv,dias) ORDER BY mes) FROM (
+    SELECT to_char(pv,'YYYY-MM') mes, count(*) n, count(*) FILTER (WHERE pres) p,
+     count(*) FILTER (WHERE pres AND fp IS NOT NULL AND (fp AT TIME ZONE 'UTC' AT TIME ZONE 'America/Argentina/Buenos_Aires')::date <= pv::date) pt,
+     count(*) FILTER (WHERE NOT pres AND pv::date < (SELECT d FROM hoy)) venc,
+     count(*) FILTER (WHERE NOT pres AND pv::date >= (SELECT d FROM hoy)) pv,
+     round(avg(pv::date - (fp AT TIME ZONE 'UTC' AT TIME ZONE 'America/Argentina/Buenos_Aires')::date) FILTER (WHERE pres AND fp IS NOT NULL)::numeric,1) dias
+    FROM lst WHERE pv >= date_trunc('month', (SELECT d FROM hoy)) - interval '4 months' AND pv < (SELECT fm FROM hoy) GROUP BY 1) m),
  'periodos', (SELECT json_agg(json_build_array(periodo,fam,n,p) ORDER BY periodo DESC,fam) FROM (
     SELECT periodo,fam,count(*) n,count(*) FILTER (WHERE pres) p FROM lst
     WHERE periodo >= to_char(now()-interval '4 months','YYYYMM')::int OR periodo % 100 = 0 GROUP BY 1,2) y),

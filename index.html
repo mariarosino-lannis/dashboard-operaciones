@@ -90,6 +90,13 @@ body{font-family:'Inter',sans-serif;background:var(--paper);color:var(--ink);min
 .wk-bul span.t{color:var(--ink3);font-size:.95em}
 .wk-bul .bar{width:.4em;align-self:stretch;border-radius:99px;flex-shrink:0}
 .wk-g2{display:grid;grid-template-columns:1fr 1fr;gap:2em}
+.wk-cards.c4{grid-template-columns:repeat(4,1fr)}.wk-cards.c5{grid-template-columns:repeat(5,1fr)}.wk-cards.c5 .v,.wk-cards.c4 .v{font-size:2.4em}.wk-cards.c2{grid-template-columns:repeat(2,1fr)}.wk-cards.c1{grid-template-columns:1fr}
+.wk-stack{display:flex;height:1.15em;border-radius:99px;overflow:hidden;background:var(--s3)}.wk-stack>i{display:block;height:100%}
+.wk-leg{display:flex;flex-wrap:wrap;gap:.4em 1.2em;font-size:.85em;color:var(--ink2);margin-top:.55em}.wk-leg span::before{content:"";display:inline-block;width:.7em;height:.7em;border-radius:2px;margin-right:.4em;background:var(--c)}
+.wk-tbl{width:100%;border-collapse:collapse;font-size:.95em}.wk-tbl th{font-size:.78em;text-transform:uppercase;letter-spacing:.05em;color:var(--ink3);font-weight:600;text-align:left;padding:.35em .5em;border-bottom:1px solid var(--border)}.wk-tbl td{padding:.42em .5em;border-bottom:1px solid var(--border)}.wk-tbl .n{text-align:right;font-family:'JetBrains Mono',monospace;white-space:nowrap}
+.wk-heat{display:grid;gap:3px;font-size:.75em;color:var(--ink3);align-items:center}.wk-heat b{display:block;height:1.35em;border-radius:3px;background:var(--accent)}
+.wk-funnel{display:grid;gap:.6em}.wk-funnel>div{border:1px solid var(--border2);border-radius:10px;padding:.7em .85em;min-width:0}.wk-funnel .l{font-size:.75em;text-transform:uppercase;letter-spacing:.05em;color:var(--ink3);font-weight:600}.wk-funnel .v{font-family:'Syne',sans-serif;font-size:1.9em;font-weight:700;line-height:1.15}.wk-funnel .s{color:var(--ink3);font-size:.85em}.wk-funnel .cv{background:rgba(16,185,129,.08);border-color:rgba(16,185,129,.35)}
+
 .wk-mini{display:grid;grid-template-columns:5em 1fr 3em;gap:.7em;align-items:center;padding:.3em 0;font-size:.95em}
 #wkOv{display:none;position:fixed;inset:0;background:var(--paper);z-index:1000;flex-direction:column}
 #wkOv.on{display:flex}
@@ -99,7 +106,7 @@ body{font-family:'Inter',sans-serif;background:var(--paper);color:var(--ink);min
 .wk-ed-row{display:grid;grid-template-columns:1fr 2fr auto;gap:8px;margin-bottom:8px}
 .wk-ed-row input{padding:8px 10px;border:1px solid var(--border2);border-radius:var(--rs);font-family:inherit;font-size:12px}
 @media print{.sidebar,.tabs-bar,.main-header,.wk-controls,.wk-editor,#wkOv{display:none!important}.app{display:block!important}.tab-c{display:none!important}#tab-weekly.on,#tab-mensual.on{display:block!important}.wk-slide{break-inside:avoid;page-break-after:always;box-shadow:none}}
-@media(max-width:900px){.wk-cards,.wk-g2{grid-template-columns:1fr}}
+@media(max-width:900px){.wk-cards,.wk-cards.c2,.wk-cards.c4,.wk-cards.c5,.wk-g2{grid-template-columns:1fr}.wk-funnel{grid-template-columns:repeat(2,1fr)!important}}
 
 /* ── BO: campañas y DDJJ ── */
 .bo-bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:16px}
@@ -800,10 +807,14 @@ function convExtras(rows,msgRows){
   }
   // Vuelve a escribir: la misma persona abre otra conversación menos de 24 h después de que se resolvió la anterior
   const byC={};rows.forEach(r=>{if(!r.contactId||r.contactId==='NaN'||r.tmS==null)return;(byC[r.contactId]=byC[r.contactId]||[]).push(r);});
-  let re24=0,same72=0;const reCat={};
+  let re24=0,same72=0;const reCat={},s72Cat={};
   Object.values(byC).forEach(a=>{a.sort((x,y)=>x.tmS-y.tmS);for(let i=1;i<a.length;i++){const p=a[i-1],c=a[i];if(p.rsTm==null)continue;const g=(c.tmS-p.rsTm)/60;
-    if(g>=0&&g<24){re24++;reCat[c.catN]=(reCat[c.catN]||0)+1;}if(g>=0&&g<72&&c.catN===p.catN)same72++;}});
-  out.reopen={n:re24,pct:rows.length?+(re24/rows.length*100).toFixed(1):0,same72,byCat:reCat};
+    if(g>=0&&g<24){re24++;reCat[c.catN]=(reCat[c.catN]||0)+1;}if(g>=0&&g<72&&c.catN===p.catN){same72++;s72Cat[c.catN]=(s72Cat[c.catN]||0)+1;}}});
+  out.reopen={n:re24,pct:rows.length?+(re24/rows.length*100).toFixed(1):0,same72,byCat:reCat,same72Cat:s72Cat};
+  // Mapa de calor: conversaciones por día de la semana (0 = domingo) y hora de inicio
+  out.dh={};rows.forEach(r=>{if(r.dow==null||r.h==null||r.h<0)return;const k=r.dow+'-'+r.h;out.dh[k]=(out.dh[k]||0)+1;});
+  // Conversaciones largas (más de 20 mensajes) por tema: dónde se va el tiempo del equipo
+  out.long={};rows.forEach(r=>{const o=out.long[r.catN]||(out.long[r.catN]={t:0,l:0,m:0});o.t++;o.m+=r.totalMsgs||0;if((r.totalMsgs||0)>20)o.l++;});
   out.reassign={n2:rows.filter(r=>r.numA>=2).length,n4:rows.filter(r=>r.numA>=4).length,max:Math.max(0,...rows.map(r=>r.numA||0))};
   const a2=rows.map(r=>r.a2fr).filter(v=>v!=null);if(a2.length)out.a2fr={n:a2.length,med:+med(a2).toFixed(2),p90:+pctl(a2,.9).toFixed(1)};
   if(msgRows&&msgRows.length>1){const real=realAttention(rows,msgRows);if(real)out.real=real;}
@@ -812,18 +823,22 @@ function convExtras(rows,msgRows){
 // Cruce conversación ↔ mensajes por contacto y ventana [inicio, resolución]: quién escribió de verdad en cada conversación
 function realAttention(rows,msgRows){
   const h=msgRows[0].map(x=>String(x||'').replace(/^﻿/,'').trim().toLowerCase());const ix=n=>h.indexOf(n);
-  const iT=ix('date & time'),iST=ix('sender type'),iSID=ix('sender id'),iC=ix('contact id'),iCT=ix('content type'),iTx=ix('content');
+  const iT=ix('date & time'),iST=ix('sender type'),iSID=ix('sender id'),iC=ix('contact id'),iCT=ix('content type'),iTx=ix('content'),iSub=ix('sub type');
   if(iT<0||iST<0||iC<0)return null;
   const byC={};let tot=0;
   msgRows.slice(1).forEach(r=>{if(!r||!r[iT])return;const t=tsMin(r[iT]);if(t==null)return;tot++;const k=String(r[iC]||'').trim();
-    (byC[k]=byC[k]||[]).push({t,s:String(r[iST]||'').trim(),sid:iSID>=0?String(r[iSID]||'').trim():'',ct:iCT>=0?String(r[iCT]||'').trim():'',x:iTx>=0?String(r[iTx]||''):''});});
+    (byC[k]=byC[k]||[]).push({t,s:String(r[iST]||'').trim(),sid:iSID>=0?String(r[iSID]||'').trim():'',ct:iCT>=0?String(r[iCT]||'').trim():'',x:iTx>=0?String(r[iTx]||''):'',sub:iSub>=0?String(r[iSub]||'').trim():''});});
   Object.values(byC).forEach(a=>a.sort((p,q)=>p.t-q.t));
   const INV=/factura se gener|tu factura est[aá] en camino|^factura [a-z] - /i,DUP=/ya emitiste una factura igual/i,REM=/^(hola, te recordamos que el vencimiento|¡?hola!? paso a recordarte)/i;
-  const res={total:rows.length,msgs:tot,matched:0,tipos:{soloIA:0,iaAgente:0,soloAgente:0,workflow:0,sin:0},byCat:{},agents:{},inv:0,dup:0,att:0,factAI:0,factInv:0,factRem:0,cerradasAgente:0,cerradasSinEscribir:0,closers:{}};
+  const res={total:rows.length,msgs:tot,matched:0,tipos:{soloIA:0,iaAgente:0,soloAgente:0,workflow:0,sin:0},byCat:{},agents:{},inv:0,dup:0,att:0,factAI:0,factInv:0,factRem:0,cerradasAgente:0,cerradasSinEscribir:0,closers:{},h10:{n:0,ok:0},off:{t:0,soloIA:0,iaAgente:0,soloAgente:0,workflow:0,sin:0},bc:{n:0,by:{}}};
   const hand=[];
   rows.forEach((r,ri)=>{
     const a=byC[r.contactId];const end=r.rsTm!=null?r.rsTm:(r.tmS||0)+1440;
     const ms=a&&r.tmS!=null?a.filter(m=>m.t>=r.tmS-1&&m.t<=end+1):[];
+    // Difusión: la conversación empezó en las 24 h siguientes a una difusión de WhatsApp a ese contacto
+    const bc=a&&r.tmS!=null?a.filter(m=>m.s==='broadcast'&&m.t<=r.tmS&&m.t>=r.tmS-1440).pop():null;
+    if(bc){res.bc.n++;const k=(bc.sub||'Difusión').replace(/ \(es_AR\).*$/,'').trim()||'Difusión';res.bc.by[k]=(res.bc.by[k]||0)+1;}
+    let firstC=null;
     res.matched+=ms.length;
     let hum=0,ai=0,wf=0,att=0,inv=false,dup=false,first=null,firstHum=null,lastBot=null;
     ms.forEach(m=>{
@@ -831,11 +846,15 @@ function realAttention(rows,msgRows){
       else if(m.s==='ai_agent'){ai++;if(firstHum==null)lastBot=m.t;if(INV.test(m.x))inv=true;if(DUP.test(m.x))dup=true;if(first==null)first=m.x;}
       else if(m.s==='workflow'){wf++;if(firstHum==null)lastBot=m.t;}
       else if(m.s==='contact'&&m.ct==='attachment')att++;
+      if(m.s==='contact'&&firstC==null)firstC=m.t;
     });
     const tipo=hum&&(ai||wf)?'iaAgente':hum?'soloAgente':ai?'soloIA':wf?'workflow':'sin';
     res.tipos[tipo]++;
     const c=res.byCat[r.catN]||(res.byCat[r.catN]={t:0,soloIA:0,iaAgente:0,soloAgente:0,workflow:0,sin:0});c.t++;c[tipo]++;
     if(firstHum!=null&&lastBot!=null)hand.push(firstHum-lastBot);
+    // Atendida por una persona en menos de 10 min: desde que la IA deriva (o desde que escribe el cliente, si fue directo) hasta el primer mensaje de un agente. Solo conversaciones en horario hábil.
+    if(firstHum!=null&&r.zone==='hab'){const st=lastBot!=null?lastBot:firstC!=null?firstC:r.tmS;const wt=firstHum-st;if(wt>=0){res.h10.n++;if(wt<=10)res.h10.ok++;}}
+    if(r.zone&&r.zone!=='hab'){res.off.t++;res.off[tipo]++;}
     if(inv)res.inv++;if(dup)res.dup++;if(att)res.att++;
     if(r.agent){res.cerradasAgente++;if(!hum)res.cerradasSinEscribir++;const o=res.closers[r.agent]||(res.closers[r.agent]={n:0,sin:0});o.n++;if(!hum)o.sin++;}
     if(/^facturas ai$/i.test(r.catN)){res.factAI++;if(inv)res.factInv++;if(first&&REM.test(first))res.factRem++;}
@@ -1324,8 +1343,12 @@ function realOpsHtml(o,po){
   const P=(n,d)=>d>0?(n/d*100).toFixed(0)+'%':'—';
   const tbl=(head,rows,cls)=>`<table class="tbl"><thead><tr>${head.map((h,i)=>`<th class="${i?'r':''}">${h}</th>`).join('')}</tr></thead><tbody>${rows.map(r=>`<tr>${r.map((c,i)=>`<td class="${i?'r':''}">${c}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
   const T=R.total,h=R.handoff||{},fr=o.frb,re=o.reopen||{},ra=o.reassign||{},a2=o.a2fr;
+  const s72=re.same72Cat||null;
   const catRows=Object.entries(R.byCat).filter(([,v])=>v.t>=5).sort((a,b)=>b[1].t-a[1].t).slice(0,12)
-    .map(([c,v])=>[wkEsc(c),v.t,`<span style="white-space:nowrap"><span class="bo-pbar" style="width:60px"><i style="width:${Math.round(v.soloIA/v.t*100)}%;background:#10b981"></i></span>${P(v.soloIA,v.t)}</span>`,P(v.iaAgente+v.soloAgente,v.t),P(v.workflow,v.t)]);
+    .map(([c,v])=>[wkEsc(c),v.t,`<span style="white-space:nowrap"><span class="bo-pbar" style="width:60px"><i style="width:${Math.round(v.soloIA/v.t*100)}%;background:#10b981"></i></span>${P(v.soloIA,v.t)}</span>`,P(v.iaAgente+v.soloAgente,v.t),P(v.workflow,v.t),s72?P(s72[c]||0,v.t):'—']);
+  const longRows=Object.entries(o.long||{}).filter(([,v])=>v.t>=5).sort((a,b)=>b[1].m/b[1].t-a[1].m/a[1].t).slice(0,8).map(([c,v])=>[wkEsc(c),v.t,(v.m/v.t).toFixed(1).replace('.',','),v.l?v.l+' ('+P(v.l,v.t)+')':'—']);
+  const bcRows=Object.entries((R.bc||{}).by||{}).sort((a,b)=>b[1]-a[1]).slice(0,6).map(([k,n])=>[wkEsc(k),n]);
+  const OF=R.off||{t:0};
   const ags=Object.keys({...R.agents,...R.closers}).filter(a=>a&&a!=='Sin nombre');
   const agRows=ags.map(a=>{const w=R.agents[a]||{conv:0,msgs:0},c=R.closers[a]||{n:0,sin:0};return[a,w.conv,w.msgs,c.n,c.sin?`<span style="color:var(--ink3)">${c.sin}</span>`:'—'];}).sort((x,y)=>y[1]-x[1]);
   const reRows=Object.entries(re.byCat||{}).sort((a,b)=>b[1]-a[1]).slice(0,6).map(([c,n])=>[wkEsc(c),n]);
@@ -1342,7 +1365,7 @@ function realOpsHtml(o,po){
   </div>
   <div class="g2">
     <div class="card"><div class="card-header"><div><div class="card-title">Qué resuelve la IA sola, por categoría</div><div class="card-sub">Categorías con 5 o más conversaciones · muestra qué temas conviene automatizar después</div></div></div>
-      ${tbl(['Categoría','Conv.','Solo IA','Con agente','Automática'],catRows)}</div>
+      ${tbl(['Categoría','Conv.','Solo IA','Con agente','Automática','Vuelven en 72 h'],catRows)}${s72?'':'<div class="bo-note">“Vuelven en 72 h” por categoría aparece al volver a cargar este período.</div>'}</div>
     <div class="card"><div class="card-header"><div><div class="card-title">Carga real del equipo</div><div class="card-sub">Conversaciones en las que cada persona escribió, contra las que cerró</div></div></div>
       ${tbl(['Persona','Escribió en','Mensajes','Cerró','Cerró sin escribir'],agRows)}
       <div class="bo-note">“Cerró sin escribir” son conversaciones que resolvió la IA y la persona solo cerró. Para medir carga, la columna que importa es “Escribió en”.</div></div>
@@ -1357,7 +1380,18 @@ function realOpsHtml(o,po){
     <div class="card"><div class="card-header"><div><div class="card-title">Vuelven a escribir en menos de 24 h</div><div class="card-sub">La misma persona abre otra conversación menos de 24 h después de que se resolvió la anterior</div></div></div>
       ${tbl(['Categoría de la nueva conversación','Conv.'],reRows)}
       <div class="bo-note">Puede ser una consulta nueva o que la primera respuesta no resolvió. ${re.same72||0} volvieron por la misma categoría en menos de 72 h. Clientes que mandaron archivos (comprobantes, constancias): <b>${R.att}</b> conversaciones.</div></div>
-  </div>`;
+  </div>
+  ${R.h10||o.long?`<div class="g2">
+    <div class="card"><div class="card-header"><div><div class="card-title">Respuesta de una persona, fuera de horario y difusiones</div><div class="card-sub">Para las slides de atención y demanda del Weekly y el Mensual</div></div></div>
+      ${tbl(['Indicador','Valor'],[
+        ['Atendidas por una persona en menos de 10 min (horario hábil)',R.h10&&R.h10.n?R.h10.ok+' de '+R.h10.n+' ('+P(R.h10.ok,R.h10.n)+')':'—'],
+        ['Conversaciones fuera de horario',OF.t||0],['Fuera de horario: las resolvió la IA sola',OF.t?OF.soloIA+' ('+P(OF.soloIA,OF.t)+')':'—'],['Fuera de horario: pasaron a una persona',OF.t?(OF.iaAgente+OF.soloAgente)+' ('+P(OF.iaAgente+OF.soloAgente,OF.t)+')':'—'],
+        ['Consultas en las 24 h siguientes a una difusión',R.bc?R.bc.n+' ('+P(R.bc.n,T)+')':'—']])}
+      ${bcRows.length?`<div style="margin-top:14px">${tbl(['Difusión','Consultas en 24 h'],bcRows)}</div>`:''}
+      <div class="bo-note">Atendidas en menos de 10 min: desde que la IA deriva (o desde que el cliente escribe, si fue directo a una persona) hasta el primer mensaje de un agente.</div></div>
+    <div class="card"><div class="card-header"><div><div class="card-title">Conversaciones largas</div><div class="card-sub">Mensajes por conversación y cuántas pasan de 20 mensajes, por categoría · dónde se va el tiempo del equipo</div></div></div>
+      ${longRows.length?tbl(['Categoría','Conv.','Mensajes promedio','Más de 20 mensajes'],longRows):'<div class="empty">Aparece al volver a cargar este período.</div>'}</div>
+  </div>`:''}`;
 }
 function vsTxt(c,p){if(p==null||c==null)return'';const d=+(c-p).toFixed(1);return d?` · <span style="color:var(--${d<0?'green':'red'})">${d>0?'+':''}${d} pp</span>`:'';}
 function realOpsCharts(o){
@@ -1377,7 +1411,8 @@ const DDJJ_STATUS_STAGE={PENDIENTE:0,INFORMACION_PENDIENTE:0,PENDIENTE_REVISION:
 const DDJJ_STATUS_LBL={PENDIENTE:'Pendiente',INFORMACION_PENDIENTE:'Información pendiente',PENDIENTE_REVISION:'Pendiente de revisión',EN_CURSO:'En curso',REVISION_SOLICITADA:'Revisión solicitada',BORRADOR_A_REVISAR:'Borrador a revisar',BORRADOR_APROBADO:'Borrador aprobado',PRESENTADA:'Presentada',PENDIENTE_PAGO:'Pendiente de pago',PAGO_INFORMADO:'Pago informado',PAGADA:'Pagada',COMPLETADA:'Completada'};
 const DDJJ_SEG_LBL={RI:'RI',SAS:'SAS',Mono:'Monotributo plus',Otro:'Otros'};
 const sumC=(rows,i)=>rows.reduce((s,r)=>s+(+r[i]||0),0);
-const pctS=(n,d,dec=0)=>d>0?(n/d*100).toFixed(dec)+'%':'—';
+const pctS=(n,d,dec=0)=>d>0?(n/d*100).toFixed(dec).replace('.',',')+'%':'—';
+const miles=n=>n==null?'—':String(Math.round(+n)).replace(/\B(?=(\d{3})+(?!\d))/g,'.');
 function boFecha(x){if(!boData)return'';x=x||boData.generado;const d=new Date(x);return isNaN(d)?String(x):d.toLocaleDateString('es-AR',{day:'numeric',month:'numeric'})+' '+d.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit',hour12:false})+' hs';}
 function teamName(n){const k=String(n||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').trim();const hit=Object.values(EMAIL_AGENTS).find(v=>v.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'')===k);return hit||n;}
 function boMonday(iso){const d=new Date(iso+'T12:00:00');d.setDate(d.getDate()-((d.getDay()+6)%7));return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
@@ -1454,22 +1489,24 @@ function renderFacturacion(){
 function campRows(gi){
   const g=(boData&&boData.campanias&&boData.campanias.grupos||[])[gi];if(!g)return[];
   const F={};(boData.campanias.funnel||[]).forEach(r=>{F[r[0]]=r;});
-  return g.templates.map(t=>{const r=F[t.template]||[];return{...t,d0:r[1]||null,n:r[2]||0,dl:r[3]||0,op:r[4]||0,cl:r[5]||0,bo:r[6]||0,co:r[7]||0,fa:r[8]||0,pv:r[9]||0,rg:r[10]||0,sb:r[11]||0};});
+  return g.templates.map(t=>{const r=F[t.template]||[];return{...t,d0:r[1]||null,n:r[2]||0,dl:r[3]||0,op:r[4]||0,cl:r[5]||0,bo:r[6]||0,co:r[7]||0,fa:r[8]||0,pv:r[9]||0,rg:r[10]||0,sb:r[11]||0,cv:r[12]!=null?r[12]:Math.max(r[10]||0,r[11]||0)};});
 }
 function campTotals(rows){
-  const t={n:0,dl:0,op:0,cl:0,bo:0,co:0,fa:0,rg:0,sb:0,ext:0};
-  rows.forEach(r=>{['n','dl','op','cl','bo','co','fa','rg','sb'].forEach(k=>t[k]+=r[k]);if(r.tipo==='externa')t.ext+=r.n;});
+  const t={n:0,dl:0,op:0,cl:0,bo:0,co:0,fa:0,rg:0,sb:0,cv:0,ext:0};
+  rows.forEach(r=>{['n','dl','op','cl','bo','co','fa','rg','sb','cv'].forEach(k=>t[k]+=r[k]);if(r.tipo==='externa')t.ext+=r.n;});
   t.d0=rows.map(r=>r.d0).filter(Boolean).sort()[0]||null;
   t.dias=t.d0&&boData?Math.max(1,Math.floor((new Date(boData.generado)-new Date(t.d0+'T00:00:00-03:00'))/86400000)+1):0;
   return t;
 }
 // Resumen de cada campaña dentro de un rango de fechas (semana o mes), desde la serie diaria.
-// daily: [template, día, enviados, abiertos, clics, cuentas nuevas, suscripciones, entregados, rebotes]
+// daily: [template, día, enviados, abiertos, clics, cuentas nuevas, suscripciones, entregados, rebotes, personas que convirtieron]
+// Cada persona que convirtió está asignada a una sola campaña (la del último mail que abrió antes de convertir).
 function campRange(g,a,b){
-  const T=new Set(g.templates.map(t=>t.template)),o={se:0,dl:0,op:0,cl:0,rg:0,sb:0,bo:0,by:{}};
-  (boData.campanias.daily||[]).forEach(r=>{if(!T.has(r[0])||r[1]<a||r[1]>b)return;const x=o.by[r[0]]||(o.by[r[0]]={se:0,dl:0,op:0,cl:0,rg:0,sb:0,bo:0});
-    [['se',2],['op',3],['cl',4],['rg',5],['sb',6],['dl',7],['bo',8]].forEach(([k,i])=>{o[k]+=+r[i]||0;x[k]+=+r[i]||0;});});
-  o.conv=o.rg+o.sb;o.activo=o.se>0||o.op>0||o.conv>0;return o;
+  const T=new Set(g.templates.map(t=>t.template)),o={se:0,dl:0,op:0,cl:0,rg:0,sb:0,bo:0,cv:0,by:{}};
+  (boData.campanias.daily||[]).forEach(r=>{if(!T.has(r[0])||r[1]<a||r[1]>b)return;const x=o.by[r[0]]||(o.by[r[0]]={se:0,dl:0,op:0,cl:0,rg:0,sb:0,bo:0,cv:0});
+    [['se',2],['op',3],['cl',4],['rg',5],['sb',6],['dl',7],['bo',8]].forEach(([k,i])=>{o[k]+=+r[i]||0;x[k]+=+r[i]||0;});
+    const c=r[9]!=null?+r[9]:Math.max(+r[5]||0,+r[6]||0);o.cv+=c;x.cv+=c;});
+  o.conv=o.cv;o.activo=o.se>0||o.op>0||o.conv>0;return o;
 }
 const isoD=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
 // Rango del período y del anterior del mismo largo (semana: lun-dom; mes: calendario)
@@ -1518,7 +1555,7 @@ function renderCampanias(){
     <div class="mc c-accent"><div class="mc-label">Enviados</div><div class="mc-val">${t.n.toLocaleString('es')}</div><div class="mc-sub">${t.dl.toLocaleString('es')} entregados (${pctS(t.dl,t.n)})${t.d0?' · desde el '+wkDmy(t.d0):''}</div></div>
     <div class="mc c-purple"><div class="mc-label">Apertura</div><div class="mc-val">${pctS(t.op,t.dl)}</div><div class="mc-sub">${t.op.toLocaleString('es')} abrieron, sobre entregados</div></div>
     <div class="mc c-amber"><div class="mc-label">Clics</div><div class="mc-val">${t.cl}</div><div class="mc-sub">${pctS(t.cl,t.dl,1)} de los entregados · ${pctS(t.cl,t.op)} de los que abrieron${lTot?` · <b style="color:var(--red)">${lBaja} fueron a darse de baja</b>`:''}</div></div>
-    ${hasConv?`<div class="mc c-green"><div class="mc-label">Suscripciones</div><div class="mc-val">${t.sb}</div><div class="mc-sub">${cont?pctS(t.sb,t.n,1)+' de los que lo recibieron, dentro de los '+win+' días · flujo automático':t.rg+' cuentas nuevas desde listas externas · '+(enCurso?'día '+t.dias+' de '+win:'ventana de '+win+' días cerrada')}</div></div>`
+    ${hasConv?`<div class="mc c-green"><div class="mc-label">Convirtieron</div><div class="mc-val">${t.cv}</div><div class="mc-sub">${cont?t.sb+' se suscribieron · '+pctS(t.sb,t.n,1)+' de los que lo recibieron, dentro de los '+win+' días':(t.rg?t.rg+' crearon cuenta, '+t.sb+' de ellas ya se suscribieron':t.sb+' se suscribieron')+' · '+(enCurso?'día '+t.dias+' de '+win:'ventana de '+win+' días cerrada')}</div></div>`
       :`<div class="mc c-green"><div class="mc-label">Hicieron clic en la encuesta</div><div class="mc-val">${pctS(t.cl,t.op)}</div><div class="mc-sub">${t.cl} de ${t.op} que abrieron · no se mide conversión</div></div>`}
   </div>
   <div class="g2">
@@ -1526,7 +1563,7 @@ function renderCampanias(){
     <div class="card"><div class="card-header"><div><div class="card-title">Apertura y clics por segmento</div><div class="card-sub">% sobre entregados</div></div></div><div class="ch" style="height:220px"><canvas id="cCampSeg"></canvas></div></div>
   </div>
   <div class="card"><div class="card-header"><div><div class="card-title">Resultado por segmento</div><div class="card-sub">Lista externa = personas que no tenían cuenta · Cuentas = usuarios existentes</div></div></div>
-    <table class="tbl"><thead><tr><th>Segmento</th><th>Tipo</th><th class="r">Enviados</th><th class="r">Entregados</th><th class="r">Abrieron</th><th class="r">Clics</th><th class="r">Bajas</th><th class="r">Rebotes / spam</th><th class="r">Cuentas nuevas</th><th class="r">Suscripciones</th></tr></thead><tbody>
+    <table class="tbl"><thead><tr><th>Segmento</th><th>Tipo</th><th class="r">Enviados</th><th class="r">Entregados</th><th class="r">Abrieron</th><th class="r">Clics</th><th class="r">Bajas</th><th class="r">Rebotes / spam</th><th class="r">Cuentas nuevas</th><th class="r">Se suscribieron</th></tr></thead><tbody>
     ${rows.map(r=>`<tr><td><div style="font-weight:500">${wkEsc(r.segmento)}</div><div style="font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--ink3)">${wkEsc(r.template)}</div></td>
       <td><span class="${r.tipo==='externa'?'badge-pur':'badge-neu'}">${r.tipo==='externa'?'Lista externa':'Cuentas'}</span></td>
       <td class="r">${r.n}</td><td class="r">${r.dl} <span style="color:var(--ink3)">${pctS(r.dl,r.n)}</span></td>
@@ -1536,14 +1573,14 @@ function renderCampanias(){
       <td class="r">${r.tipo==='externa'?r.rg:'<span style="color:var(--ink4)">—</span>'}</td><td class="r" style="font-weight:600">${r.sb}</td></tr>`).join('')}
     <tr style="background:var(--s2)"><td style="font-weight:600">Total</td><td></td><td class="r" style="font-weight:600">${t.n}</td><td class="r">${t.dl} <span style="color:var(--ink3)">${pctS(t.dl,t.n)}</span></td><td class="r">${t.op} <span style="color:var(--ink3)">${pctS(t.op,t.dl)}</span></td><td class="r">${t.cl}</td><td class="r" style="color:${lBaja?'var(--red)':'var(--ink4)'}">${lBaja||'—'}</td><td class="r">${t.bo}${t.co?' + '+t.co+' spam':''}${t.fa?' + '+t.fa+' fallido':''}</td><td class="r">${t.rg}</td><td class="r" style="font-weight:600">${t.sb}</td></tr>
     </tbody></table>
-    <div class="bo-note">${cont?'Flujo automático: manda mails todos los días a quienes entran en cada segmento; los totales son desde el primer envío. Para ver una semana o un mes puntual, usá la slide “Campañas de email del período” del Weekly o el Mensual. ':''}Conversión: cuentas nuevas = la persona creó una cuenta en Lannis dentro de los ${win} días posteriores al envío (solo listas externas). Suscripciones = empezó una suscripción en ese plazo; se cruza por email o CUIT del destinatario. El código de descuento no queda asociado al envío en el BO, por eso no se mide por canjes.${enCurso?' <b>La ventana sigue abierta</b>: estos números van a crecer hasta el '+wkDmy(new Date(new Date(t.d0+'T12:00:00').getTime()+win*86400000).toISOString().substring(0,10))+'.':''}</div></div>
+    <div class="bo-note">${cont?'Flujo automático: manda mails todos los días a quienes entran en cada segmento; los totales son desde el primer envío. Para ver una semana o un mes puntual, usá la slide “Campañas de email del período” del Weekly o el Mensual. ':''}Conversión: cuentas nuevas = la persona creó una cuenta en Lannis dentro de los ${win} días posteriores al envío (solo listas externas). Se suscribieron = empezó una suscripción en ese plazo (en listas externas, sale de esas mismas cuentas nuevas: no se suman). Se cruza por email o CUIT del destinatario. Si una persona recibió varias campañas, cuenta solo para una: la del último mail que abrió o en el que hizo clic antes de convertir (si no abrió ninguno, la del último envío). El código de descuento no queda asociado al envío en el BO, por eso no se mide por canjes.${enCurso?' <b>La ventana sigue abierta</b>: estos números van a crecer hasta el '+wkDmy(new Date(new Date(t.d0+'T12:00:00').getTime()+win*86400000).toISOString().substring(0,10))+'.':''}</div></div>
   ${lTot?`<div class="card"><div class="card-header"><div><div class="card-title">A dónde entraron</div><div class="card-sub">Personas que hicieron clic en cada enlace · % sobre las ${lTot} que hicieron clic · desde el ${wkDmy(lDesde)}</div></div></div>
     <table class="tbl"><thead><tr><th>Enlace</th><th class="r">Personas</th><th class="r">Clics</th><th class="r">% de los que hicieron clic</th><th class="r">% de los que abrieron</th></tr></thead><tbody>
     ${Object.entries(LG).sort((a,b)=>b[1].p-a[1].p).map(([d,x])=>`<tr><td style="font-weight:500;${d==='BAJA'?'color:var(--red)':''}">${wkEsc(linkLbl(d))}${d!=='BAJA'&&LINK_LBL[d]?` <span style="font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--ink3)">${wkEsc(d)}</span>`:''}</td><td class="r">${x.p}</td><td class="r">${x.n}</td><td class="r">${pctS(x.p,lTot)}</td><td class="r">${pctS(x.p,t.op,1)}</td></tr>`).join('')}
     </tbody></table>
     <div class="bo-note">El BO guarda a qué enlace entró cada persona desde el ${wkDmy(lDesde)}: los clics anteriores cuentan en “Clics” pero no tienen destino. El enlace exacto incluye el email de la persona, así que acá se agrupa por destino. “Darse de baja” es el enlace para no recibir más mails: no es interés en la oferta.</div></div>`:''}
   <div class="card"><div class="card-header"><div><div class="card-title">Día a día</div><div class="card-sub">Aperturas, clics y conversiones según el día en que ocurrieron</div></div></div><div class="ch" style="height:220px"><canvas id="cCampDaily"></canvas></div></div>`;
-  const conv=t.sb+t.rg;
+  const conv=t.cv;
   mkChart('cCampFunnel','bar',{labels:['Enviados','Entregados','Abrieron','Clics','Cuenta nueva o suscripción'],datasets:[{data:[t.n,t.dl,t.op,t.cl,conv],backgroundColor:['#c4c4cc','#6366f1','#8b5cf6','#f59e0b','#10b981'],borderRadius:4}]},
     {indexAxis:'y',plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.raw.toLocaleString('es')+(c.dataIndex?' · '+pctS(c.raw,t.n,1)+' de los enviados':'')}}},scales:{x:{beginAtZero:true,grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#8a8a96',font:{size:10}}},y:{grid:{display:false},ticks:{color:'#3a3a42',font:{size:11}}}}});
   mkChart('cCampSeg','bar',{labels:rows.map(r=>r.corto||r.segmento),datasets:[
@@ -1551,7 +1588,7 @@ function renderCampanias(){
     {label:'Clics %',data:rows.map(r=>r.dl?+(r.cl/r.dl*100).toFixed(1):0),backgroundColor:'#f59e0b',borderRadius:4}]},
     {plugins:{legend:{display:true,position:'bottom',labels:{boxWidth:10,font:{size:10}}},tooltip:{callbacks:{label:c=>c.dataset.label+': '+c.raw+'%'}}},scales:{y:{beginAtZero:true,grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#8a8a96',font:{size:10},callback:v=>v+'%'}},x:{grid:{display:false},ticks:{color:'#3a3a42',font:{size:10}}}}});
   const tset=new Set(rows.map(r=>r.template)),D={};
-  (C.daily||[]).filter(r=>tset.has(r[0])).forEach(r=>{const o=D[r[1]]||(D[r[1]]={se:0,op:0,cl:0,cv:0});o.se+=r[2];o.op+=r[3];o.cl+=r[4];o.cv+=r[5]+r[6];});
+  (C.daily||[]).filter(r=>tset.has(r[0])).forEach(r=>{const o=D[r[1]]||(D[r[1]]={se:0,op:0,cl:0,cv:0});o.se+=r[2];o.op+=r[3];o.cl+=r[4];o.cv+=r[9]!=null?+r[9]:Math.max(+r[5]||0,+r[6]||0);});
   const days=Object.keys(D).sort();
   mkChart('cCampDaily','bar',{labels:days.map(wkDmy),datasets:[
     {label:'Abrieron',data:days.map(d=>D[d].op),backgroundColor:'#8b5cf6',borderRadius:3},
@@ -1768,256 +1805,294 @@ function wkDelta(cur,pv,unit,lowGood,label){
   const good=lowGood?d<0:d>0;
   return'<div class="wk-d '+(good?'up':'dn')+'">'+(d>0?'▲ +':'▼ ')+d.toLocaleString('es')+unit+' vs '+label+'</div>';
 }
+// Objetivos del semáforo de las presentaciones (editables)
+const OBJ={espera:10,at10:90,mismoDia:80}; // espera para hablar con una persona (min), % atendidas por una persona en < 10 min, % resueltas en el día
+const semMin=(v,obj)=>v==null?'':v<=obj?'g':v<=obj*3?'a':'r';
+const semPct=(v,obj)=>v==null?'':v>=obj?'g':v>=obj-15?'a':'r';
+const DOW_ES=['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+// Cumplimiento de DDJJ de un mes (BO + cargadas a mano): {n,p,pt,venc,pv,dias}
+function ddjjMes(mes){
+  const D=boData&&boData.ddjj;if(!D||!D.meses)return null;
+  const r=(D.meses||[]).find(x=>x[0]===mes);const o=r?{n:r[1],p:r[2],pt:r[3],venc:r[4],pv:r[5],dias:r[6]}:{n:0,p:0,pt:0,venc:0,pv:0,dias:null};
+  const hoy=hoyIso();
+  (ddjjManual||[]).forEach(m=>{if(!m.vence||m.vence.substring(0,7)!==mes)return;o.n++;
+    if(+m.etapa>=3){o.p++;if(m.presentada_el&&m.presentada_el<=m.vence)o.pt++;}else if(m.vence<hoy)o.venc++;else o.pv++;});
+  return o.n?o:null;
+}
+const mesNombre=k=>MONTHS[+k.substring(5)-1]+(k.substring(0,4)!==String(new Date().getFullYear())?' '+k.substring(0,4):'');
+const wkStack=parts=>`<div class="wk-stack">${parts.filter(p=>p[1]>0).map(([l,n,c,tot])=>`<i style="width:${(n/tot*100).toFixed(1)}%;background:${c}" title="${wkEsc(l)}: ${n}"></i>`).join('')}</div>
+  <div class="wk-leg">${parts.filter(p=>p[1]>0).map(([l,n,c])=>`<span style="--c:${c}">${wkEsc(l)}</span>`).join('')}</div>`;
+
 function buildWeeklySlides(w){
   const prev=deckPrev(w);
   const word=w.pt==='M'?'mes':w.pt==='Q'?'quincena':'semana';
   const elp=w.pt==='M'?'el mes':'la '+word,dlp=w.pt==='M'?'del mes':'de la '+word;
   const pl=prev?(w.pt==='M'?'el mes anterior':w.pt==='Q'?'la quincena anterior':'la semana anterior'):'';
-  const o=w.ops||null;const slides=[];
-  const sysCross=prev&&prev.ws<SYSTEM_CHANGE&&w.ws>=SYSTEM_CHANGE; // FRT no comparable entre sistemas
-  // 1. Números
-  const sla=(v,obj)=>v<=obj?'g':'r';
-  const FP=factPeriod(w),PFP=prev?factPeriod(prev):null,cW=cpa(w,FP),cP=prev&&PFP?cpa(prev,PFP):null;
-  const cpaCard=cW!=null?`<div class="wk-card p"><div class="l">Consultas por cliente activo</div><div class="v">${fmt2(cW)}</div><div class="s">${FP.activos} clientes activos${FP.partial?' (período en curso)':''}</div>${cP!=null?wkDelta(+cW.toFixed(2),+cP.toFixed(2),'',true,pl):''}</div>`:'';
-  slides.push(`<div class="wk-slide"><div class="wk-eyebrow">Operaciones — Resumen</div>
-    <div class="wk-h">Los números que resumen ${elp}</div><div class="wk-sub">Consultas totales y tiempos de respuesta · ${wkEsc(w.fl||w.week)}</div>
-    <div class="wk-cards"${cpaCard?' style="grid-template-columns:repeat(4,1fr)"':''}>
-      <div class="wk-card"><div class="l">Consultas totales</div><div class="v">${w.total.toLocaleString('es')}</div><div class="s">${w.totalH.toLocaleString('es')} en horario hábil</div>${prev?wkDelta(w.total,prev.total,'',false,pl):''}</div>
-      <div class="wk-card ${sla(w.frtMed,SLA.frt)}"><div class="l">FRT mediana</div><div class="v">${fmtM(w.frtMed)}</div><div class="s">objetivo &lt; ${SLA.frt}m</div>${prev&&!sysCross&&prev.frtMed?wkDelta(+w.frtMed.toFixed(1),+prev.frtMed.toFixed(1),' min',true,pl):''}</div>
-      <div class="wk-card ${sla(w.ttrMed,SLA.ttr)}"><div class="l">TTR mediana</div><div class="v">${fmtM(w.ttrMed)}</div><div class="s">objetivo &lt; ${SLA.ttr/60}h</div>${prev&&prev.ttrMed?wkDelta(+w.ttrMed.toFixed(1),+prev.ttrMed.toFixed(1),' min',true,pl):''}</div>
-      ${cpaCard}
-    </div>
-    <div class="wk-note">Tiempos en horas hábiles (lun-vie 9-18, sin feriados).${w.ws>=SYSTEM_CHANGE?' Desde el cambio de sistema, la 1ª respuesta incluye al bot.':''}${o&&o.notif?' No incluye '+o.notif+' notificaciones reenviadas por mail.':''}</div></div>`);
-  // 2. Categorías
-  const ALW=new Set(['Facturación','Facturas AI','Impuestos','Impuestos provinciales','Deudas','SAS / RI','Sueldos','Baja servicios Lannis']);
-  const tot=w.total||1;let otros=w.cats['Otros']||0;const main=[];
-  Object.entries(w.cats).forEach(([c,n])=>{if(c==='Otros')return;if(n/tot*100>=1||ALW.has(c))main.push([c,n]);else otros+=n;});
-  main.sort((a,b)=>b[1]-a[1]);if(otros)main.push(['Otros',otros]);
-  const prevOtros=prev?((prev.cats['Otros']||0)+Object.entries(prev.cats).filter(([c,n])=>c!=='Otros'&&n/(prev.total||1)*100<1&&!ALW.has(c)).reduce((s,[,n])=>s+n,0)):0;
-  const mx=Math.max(...main.map(x=>x[1]),1);
-  const chip=(c,n)=>{if(!prev)return'';const pv=c==='Otros'?prevOtros:(prev.cats[c]||0);const d=n-pv;return d?`<span style="color:var(--${d>0?'amber':'green'})">${d>0?'+':''}${d}</span>`:'<span style="color:var(--ink3)">=</span>';};
-  slides.push(`<div class="wk-slide"><div class="wk-eyebrow">Operaciones — Conversaciones</div>
-    <div class="wk-h">${w.total.toLocaleString('es')} conversaciones en ${elp}, por categoría</div><div class="wk-sub">${prev?'La columna “vs ant.” compara con '+pl+'.':'&nbsp;'}</div>
-    <div class="wk-row h"><div>Categoría</div><div></div><div class="n">Consultas</div><div class="n">%</div><div class="n">${prev?'vs ant.':''}</div></div>
-    ${main.map(([c,n],i)=>`<div class="wk-row"><div>${wkEsc(c)}</div><div class="wk-bar"><i style="width:${Math.round(n/mx*100)}%;background:${PAL[i%PAL.length]}"></i></div><div class="n">${n}</div><div class="n">${(n/tot*100).toFixed(1)}%</div><div class="n">${chip(c,n)}</div></div>`).join('')}
-    <div class="wk-note">“Otros” agrupa las categorías de menos del 1% y las de tipo “Otros - …”.</div></div>`);
-  // 2b. Tendencia (mensual/quincenal): últimos períodos del mismo tipo
+  const o=w.ops||null,R=o&&o.real,po=prev&&prev.ops||null,PR=po&&po.real;const slides=[];
+  const sysCross=prev&&prev.ws<SYSTEM_CHANGE&&w.ws>=SYSTEM_CHANGE;
+  const FP=factPeriod(w),PFP=prev?factPeriod(prev):null,cW=cpa(w,FP);
+  const mesK=w.pt==='M'?monthKeyOf(w):String(w.we||w.ws).substring(0,7),DM=ddjjMes(mesK);
+  const pctR=(n,t)=>t?Math.round(n/t*100):null;
+  const iaPct=R?pctR(R.tipos.soloIA,R.total):null,iaPrev=PR?pctR(PR.tipos.soloIA,PR.total):null;
+  const H=R&&R.handoff&&R.handoff.n?R.handoff:null;
+  const ttl=w.pt==='M'?'Mes de '+(w.fl||''):'Semana del '+wkDmy(w.ws)+' al '+wkDmy(w.we);
+  // Categorías: las 6 principales y el resto agrupado
+  const tot=w.total||1,catE=Object.entries(w.cats||{}).filter(([c])=>!/^otr(os|a)\b/i.test(c.trim())).sort((a,b)=>b[1]-a[1]);
+  const top=catE.slice(0,6),resto=w.total-top.reduce((s,x)=>s+x[1],0),restoN=Object.keys(w.cats||{}).length-top.length;
+  const dCat=c=>prev?(w.cats[c]||0)-((prev.cats||{})[c]||0):null;
+  // Pico de la semana
+  const DOW=['lunes','martes','miércoles','jueves','viernes'];const dv=DOW.map(d=>(w.days||{})[d]||0);
+  const hrs=Object.entries(w.hours||{}).map(([h,n])=>[+h,n]).sort((a,b)=>b[1]-a[1]);
+  const peakD=DOW[dv.indexOf(Math.max(...dv))],peakDn=Math.max(...dv),peakH=hrs[0];
+
+  // 1. La semana (o el mes) en 30 segundos
+  {
+    const K=[];
+    K.push(`<div class="wk-card"><div class="l">Consultas</div><div class="v">${miles(w.total)}</div><div class="s">${miles(w.totalH)} en horario hábil</div>${prev?wkDelta(w.total,prev.total,'',false,pl):''}</div>`);
+    if(iaPct!=null)K.push(`<div class="wk-card g"><div class="l">Resueltas solo por la IA</div><div class="v">${iaPct}%</div><div class="s">sin que escriba una persona</div>${iaPrev!=null?wkDelta(iaPct,iaPrev,' pp',false,pl):''}</div>`);
+    if(H)K.push(`<div class="wk-card ${semMin(H.med,OBJ.espera)}"><div class="l">Espera para hablar con una persona</div><div class="v">${fmtM(H.med)}</div><div class="s">mediana, cuando la IA deriva · objetivo ${OBJ.espera}m</div>${PR&&PR.handoff&&PR.handoff.n?wkDelta(+H.med.toFixed(1),+PR.handoff.med.toFixed(1),' min',true,pl):''}</div>`);
+    else K.push(`<div class="wk-card ${w.frtMed<=SLA.frt?'g':'r'}"><div class="l">1ª respuesta (mediana)</div><div class="v">${fmtM(w.frtMed)}</div><div class="s">objetivo &lt; ${SLA.frt}m</div>${prev&&!sysCross&&prev.frtMed?wkDelta(+w.frtMed.toFixed(1),+prev.frtMed.toFixed(1),' min',true,pl):''}</div>`);
+    if(FP&&FP.cl)K.push(`<div class="wk-card p"><div class="l">Facturaron por WhatsApp</div><div class="v">${pctS(FP.waCl,FP.cl)}</div><div class="s">de los ${FP.cl} clientes que facturaron</div>${FP.prev&&FP.prev.cl&&!FP.partial?wkDelta(Math.round(FP.waCl/FP.cl*100),Math.round(FP.prev.waCl/FP.prev.cl*100),' pp',false,pl):''}</div>`);
+    if(DM)K.push(`<div class="wk-card ${DM.venc?'r':DM.pv?'a':'g'}"><div class="l">DDJJ de ${mesNombre(mesK).toLowerCase()}</div><div class="v">${DM.p}/${DM.n}</div><div class="s">presentadas${DM.venc?' · '+DM.venc+' vencida'+(DM.venc===1?'':'s'):''}${DM.pv?' · '+DM.pv+' por vencer':''}</div></div>`);
+    const B=[];
+    if(prev){const ch=catE.map(([c])=>[c,dCat(c)]).filter(x=>Math.abs(x[1])>=3).sort((a,b)=>Math.abs(b[1])-Math.abs(a[1]))[0];
+      if(ch)B.push(`${ch[1]>0?'Subieron':'Bajaron'} las consultas de ${ch[0]} (${ch[1]>0?'+':''}${ch[1]} contra ${pl}).`);}
+    if(peakDn)B.push(`El ${peakD} concentró ${peakDn} consultas (${Math.round(peakDn/tot*100)}%)${peakH?', con pico a las '+peakH[0]+' h':''}.`);
+    if(DM)B.push(DM.venc?`DDJJ de ${mesNombre(mesK).toLowerCase()}: ${DM.p} de ${DM.n} presentadas y ${DM.venc} vencida${DM.venc===1?'':'s'} sin presentar.`:`DDJJ de ${mesNombre(mesK).toLowerCase()}: ${DM.p} de ${DM.n} presentadas, ninguna vencida.`);
+    slides.push(`<div class="wk-slide"><div class="wk-eyebrow">Operaciones — Resumen</div><div class="wk-h">${wkEsc(ttl)} en 30 segundos</div><div class="wk-sub">${wkEsc(w.fl||w.week)}${prev?' · contra '+pl:''}</div>
+      <div class="wk-cards c${K.length}">${K.join('')}</div>
+      ${B.length?`<div style="margin-top:1.3em">${B.slice(0,3).map(t=>`<div class="wk-bul" style="padding:.35em 0"><div class="bar" style="background:var(--accent)"></div><div><span class="t" style="color:var(--ink2)">${wkEsc(t)}</span></div></div>`).join('')}</div>`:''}
+      <div class="wk-note">Tiempos de espera en reloj real; el objetivo es editable en el código (OBJ). ${o&&o.notif?'No incluye '+o.notif+' notificaciones reenviadas por mail.':''}</div></div>`);
+  }
+
+  // 2. Qué y cuándo consultan
+  {
+    const mx=Math.max(1,...top.map(x=>x[1]),resto);
+    const dc=c=>{const d=dCat(c);return d==null?'':d?`<span style="color:var(--${d>0?'amber':'green'})">${d>0?'+':''}${d}</span>`:'<span style="color:var(--ink3)">=</span>';};
+    const catHtml=`<div class="wk-row h" style="grid-template-columns:11em 1fr 5.5em 4.5em"><div>Tema</div><div></div><div class="n">Consultas</div><div class="n">${prev?'vs ant.':''}</div></div>
+      ${top.map(([c,n],i)=>`<div class="wk-row" style="grid-template-columns:11em 1fr 5.5em 4.5em"><div>${wkEsc(c)}</div><div class="wk-bar"><i style="width:${Math.round(n/mx*100)}%;background:${PAL[i%PAL.length]}"></i></div><div class="n">${n}</div><div class="n">${dc(c)}</div></div>`).join('')}
+      ${resto>0?`<div class="wk-row" style="grid-template-columns:11em 1fr 5.5em 4.5em"><div style="color:var(--ink3)">Otros temas (${restoN})</div><div class="wk-bar"><i style="width:${Math.round(resto/mx*100)}%;background:var(--ink4)"></i></div><div class="n">${resto}</div><div class="n"></div></div>`:''}`;
+    let when='';
+    if(o&&o.dh&&Object.keys(o.dh).length){
+      const HR=[];for(let h=8;h<=21;h++)HR.push(h);const rowsD=[[1,'Lun'],[2,'Mar'],[3,'Mié'],[4,'Jue'],[5,'Vie'],[-1,'Sáb/Dom']];
+      const val=(d,h)=>d===-1?(o.dh['0-'+h]||0)+(o.dh['6-'+h]||0):(o.dh[d+'-'+h]||0);
+      const hm=Math.max(1,...rowsD.flatMap(([d])=>HR.map(h=>val(d,h))));
+      when=`<div style="font-weight:600;margin-bottom:.5em">Cuándo escriben${peakH?' <span style="font-weight:400;color:var(--ink3)">· pico: '+peakD+' a las '+peakH[0]+' h</span>':''}</div>
+        <div class="wk-heat" style="grid-template-columns:4.2em repeat(${HR.length},1fr)"><span></span>${HR.map(h=>`<span style="text-align:center">${h}</span>`).join('')}
+        ${rowsD.map(([d,l])=>`<span>${l}</span>${HR.map(h=>{const v=val(d,h);return`<b style="opacity:${v?(0.12+0.88*v/hm).toFixed(2):0.05}" title="${l} ${h} h: ${v}"></b>`;}).join('')}`).join('')}</div>`;
+    }else{
+      const dmx=Math.max(...dv,1);
+      when=`<div style="font-weight:600;margin-bottom:.5em">Cuándo escriben</div>${DOW.map((d,i)=>`<div class="wk-mini"><span style="text-transform:capitalize">${d}</span><div class="wk-bar"><i style="width:${Math.round(dv[i]/dmx*100)}%"></i></div><span style="text-align:right;font-family:'JetBrains Mono',monospace">${dv[i]}</span></div>`).join('')}
+        ${peakH?`<div class="wk-note" style="margin-top:.6em">Hora pico: ${peakH[0]} h (${peakH[1]} consultas).</div>`:''}`;
+    }
+    const notes=[];
+    if(o&&o.off)notes.push(`<b>${o.off.pct}%</b> llegó fuera de horario (${o.zones.noche} de noche, ${o.zones.finde} en fin de semana o feriado).`);
+    if(cW!=null)notes.push(`<b>${fmt2(cW)}</b> consultas por cliente activo (${w.total.toLocaleString('es')} consultas, ${FP.activos} clientes activos${FP.partial?', período en curso':''}).`);
+    if(R&&R.bc&&R.bc.n){const top2=Object.entries(R.bc.by).sort((a,b)=>b[1]-a[1]).slice(0,2).map(([k,n])=>wkEsc(k)+' ('+n+')').join(', ');
+      notes.push(`<b>${R.bc.n}</b> consultas (${Math.round(R.bc.n/R.total*100)}%) llegaron en las 24 h siguientes a una difusión de WhatsApp: ${top2}.`);}
+    slides.push(`<div class="wk-slide"><div class="wk-eyebrow">Operaciones — Demanda</div><div class="wk-h">${w.total.toLocaleString('es')} consultas en ${elp}: qué y cuándo</div><div class="wk-sub">${prev?'La columna “vs ant.” compara con '+pl+'.':'&nbsp;'}</div>
+      <div class="wk-g2"><div>${catHtml}</div><div>${when}</div></div>
+      ${notes.length?`<div style="margin-top:1.2em;display:flex;flex-direction:column;gap:.35em;color:var(--ink2);font-size:.95em">${notes.map(n=>`<div>${n}</div>`).join('')}</div>`:''}</div>`);
+  }
+  // 2b. Mensual: tendencia y semanas dentro del mes
   if(w.pt!=='S'){
     const same=allWeeks.filter(x=>x.pt===w.pt&&x.ws<=w.ws).sort((a,b)=>new Date(a.ws)-new Date(b.ws)).slice(-6);
-    if(same.length>=2){
-      const tm=Math.max(...same.map(x=>x.total),1);
-      slides.push(`<div class="wk-slide"><div class="wk-eyebrow">Operaciones — Tendencia</div><div class="wk-h">Evolución de los últimos ${same.length} ${w.pt==='M'?'meses':'períodos'}</div><div class="wk-sub">Volumen y tiempos medianos por período.</div>
-        <div class="wk-row h" style="grid-template-columns:1.2fr 3fr .8fr .8fr .8fr"><div>Período</div><div></div><div class="n">Consultas</div><div class="n">FRT med.</div><div class="n">TTR med.</div></div>
-        ${same.map(x=>`<div class="wk-row" style="grid-template-columns:1.2fr 3fr .8fr .8fr .8fr;${x.id===w.id?'font-weight:600':''}"><div>${wkEsc(x.fl)}</div><div class="wk-bar"><i style="width:${Math.round(x.total/tm*100)}%;background:${x.id===w.id?'var(--accent)':'var(--ink4)'}"></i></div><div class="n">${x.total}</div><div class="n">${fmtM(x.frtMed)}</div><div class="n">${fmtM(x.ttrMed)}</div></div>`).join('')}
-        <div class="wk-note">La 1ª respuesta de períodos posteriores a ${wkDmy(SYSTEM_CHANGE)} incluye al bot, por lo que no es comparable con los anteriores.</div></div>`);
-    }
-    // Semana a semana dentro del período (si hay semanas cargadas)
     const inside=allWeeks.filter(x=>x.pt==='S'&&x.ws>=w.ws&&x.we<=w.we).sort((a,b)=>new Date(a.ws)-new Date(b.ws));
-    if(inside.length>=2){
-      const im=Math.max(...inside.map(x=>x.total),1);
-      slides.push(`<div class="wk-slide"><div class="wk-eyebrow">Operaciones — Semana a semana</div><div class="wk-h">Cómo se repartió ${elp}</div><div class="wk-sub">Semanas cargadas dentro del período.</div>
-        <div class="wk-row h" style="grid-template-columns:1.2fr 3fr .8fr .8fr .8fr"><div>Semana</div><div></div><div class="n">Consultas</div><div class="n">FRT med.</div><div class="n">TTR med.</div></div>
-        ${inside.map(x=>`<div class="wk-row" style="grid-template-columns:1.2fr 3fr .8fr .8fr .8fr"><div>${wkDmy(x.ws)} al ${wkDmy(x.we)}</div><div class="wk-bar"><i style="width:${Math.round(x.total/im*100)}%"></i></div><div class="n">${x.total}</div><div class="n">${fmtM(x.frtMed)}</div><div class="n">${fmtM(x.ttrMed)}</div></div>`).join('')}</div>`);
+    const ia=x=>{const r=x.ops&&x.ops.real;return r?Math.round(r.tipos.soloIA/r.total*100)+'%':'—';};
+    const esp=x=>{const h=x.ops&&x.ops.real&&x.ops.real.handoff;return h&&h.n?fmtM(h.med):'—';};
+    const tbl=(L,lbl,cur)=>{const tm=Math.max(...L.map(x=>x.total),1);return`<div class="wk-row h" style="grid-template-columns:1.3fr 3fr .8fr .9fr .9fr"><div>${lbl}</div><div></div><div class="n">Consultas</div><div class="n">Solo IA</div><div class="n">Espera</div></div>
+      ${L.map(x=>`<div class="wk-row" style="grid-template-columns:1.3fr 3fr .8fr .9fr .9fr;${cur&&x.id===w.id?'font-weight:600':''}"><div>${wkEsc(cur?x.fl:wkDmy(x.ws)+' al '+wkDmy(x.we))}</div><div class="wk-bar"><i style="width:${Math.round(x.total/tm*100)}%;background:${cur&&x.id===w.id?'var(--accent)':'var(--ink4)'}"></i></div><div class="n">${x.total}</div><div class="n">${ia(x)}</div><div class="n">${esp(x)}</div></div>`).join('')}`;};
+    if(same.length>=2||inside.length>=2)slides.push(`<div class="wk-slide"><div class="wk-eyebrow">Operaciones — Tendencia</div><div class="wk-h">Cómo viene ${elp}</div><div class="wk-sub">Consultas, resueltas solo por la IA y espera para hablar con una persona.</div>
+      ${same.length>=2?`<div style="font-weight:600;margin:.2em 0 .4em">Últimos ${same.length} ${w.pt==='M'?'meses':'períodos'}</div>${tbl(same,'Período',true)}`:''}
+      ${inside.length>=2?`<div style="font-weight:600;margin:1.2em 0 .4em">Semana a semana</div>${tbl(inside,'Semana',false)}`:''}
+      <div class="wk-note">Los períodos sin cruce con mensajes muestran “—” en IA y espera.</div></div>`);
+  }
+
+  // 3. Cómo se atendió
+  if(R){
+    const T=R.total,re=o.reopen||{},s72=re.same72Cat||null;
+    const parts=REAL_TIPOS.map(([k,l,c])=>[l,R.tipos[k]||0,c,T]);
+    const at10=R.h10&&R.h10.n?Math.round(R.h10.ok/R.h10.n*100):null;
+    const sd=w.total?Math.round((w.sdTotal||0)/w.total*100):null;
+    const v72=o.total?Math.round((re.same72||0)/o.total*100):null;
+    const cards=[];
+    cards.push(`<div class="wk-card ${H?semMin(H.med,OBJ.espera):''}"><div class="l">Espera para hablar con una persona</div><div class="v">${H?fmtM(H.med):'—'}</div><div class="s">${H?'mediana · '+Math.round(H.over60/H.n*100)+'% esperó más de 1 h':'sin pases de la IA a una persona'}</div></div>`);
+    if(at10!=null)cards.push(`<div class="wk-card ${semPct(at10,OBJ.at10)}"><div class="l">Atendidas por una persona en &lt; 10 min</div><div class="v">${at10}%</div><div class="s">${R.h10.ok} de ${R.h10.n} en horario hábil · objetivo ${OBJ.at10}%</div></div>`);
+    if(sd!=null)cards.push(`<div class="wk-card ${semPct(sd,OBJ.mismoDia)}"><div class="l">Resueltas en el día</div><div class="v">${sd}%</div><div class="s">${(w.sdTotal||0).toLocaleString('es')} de ${w.total.toLocaleString('es')}</div></div>`);
+    if(v72!=null)cards.push(`<div class="wk-card ${v72>=15?'r':v72>=8?'a':'g'}"><div class="l">Volvieron por lo mismo</div><div class="v">${v72}%</div><div class="s">otra conversación del mismo tema en &lt; 72 h</div></div>`);
+    const cats=Object.entries(R.byCat).filter(([,v])=>v.t>=5).map(([c,v])=>[c,v.t,Math.round((v.iaAgente+v.soloAgente)/v.t*100),s72?Math.round((s72[c]||0)/v.t*100):null]).sort((a,b)=>b[2]-a[2]).slice(0,5);
+    slides.push(`<div class="wk-slide"><div class="wk-eyebrow">Operaciones — Atención</div><div class="wk-h">Cómo se atendió</div><div class="wk-sub">${T.toLocaleString('es')} conversaciones ${dlp}, según quién escribió en cada una.</div>
+      ${wkStack(parts.map(p=>[p[0]+' '+Math.round(p[1]/T*100)+'%',p[1],p[2],T]))}
+      <div class="wk-cards c${cards.length}" style="margin-top:1.2em">${cards.join('')}</div>
+      ${cats.length?`<div style="margin-top:1.3em"><div style="font-weight:600;margin-bottom:.3em">Temas que la IA no resuelve sola</div>
+        <table class="wk-tbl"><thead><tr><th>Tema</th><th class="n">Conversaciones</th><th class="n">Pasan a una persona</th><th class="n">Vuelven en 72 h</th></tr></thead><tbody>
+        ${cats.map(([c,t,p,v])=>`<tr><td>${wkEsc(c)}</td><td class="n">${t}</td><td class="n" style="color:var(--${p>=60?'red':p>=30?'amber':'ink2'})">${p}%</td><td class="n">${v==null?'—':v+'%'}</td></tr>`).join('')}</tbody></table></div>`:''}
+      <div class="wk-note">Espera: desde el último mensaje de la IA hasta el primero de una persona, en reloj real. Atendidas en &lt; 10 min: conversaciones en horario hábil con mensaje de una persona${R.off&&R.off.t?'. Fuera de horario la IA resolvió sola '+Math.round(R.off.soloIA/R.off.t*100)+'% de '+R.off.t+' conversaciones':''}.${s72?'':' “Vuelven en 72 h” por tema aparece al volver a cargar el período.'}</div></div>`);
+  }else{
+    // Sin cruce con mensajes: tiempos del CSV de conversaciones y, si hay, el reporte de mensajes por cliente
+    const dms=x=>new Date(x+'T12:00:00').getTime(),TOL=4*86400000;
+    const mr=(typeof msgReports!=='undefined'?msgReports:[]).find(r=>r.start&&r.end&&Math.abs(dms(r.start)-dms(w.ws))<=TOL&&Math.abs(dms(r.end)-dms(w.we))<=TOL)||null;
+    const fs=mr&&mr.flowStats||{},cT=fs.total||((fs.aiOnly||0)+(fs.botHuman||0)+(fs.humanOnly||0));
+    slides.push(`<div class="wk-slide"><div class="wk-eyebrow">Operaciones — Atención</div><div class="wk-h">Cómo se atendió</div><div class="wk-sub">Tiempos en horas hábiles (lun-vie 9-18, sin feriados).</div>
+      <div class="wk-cards c3">
+        <div class="wk-card ${w.frtMed<=SLA.frt?'g':'r'}"><div class="l">1ª respuesta (mediana)</div><div class="v">${fmtM(w.frtMed)}</div><div class="s">objetivo &lt; ${SLA.frt}m${w.ws>=SYSTEM_CHANGE?' · incluye al bot':''}</div>${prev&&!sysCross&&prev.frtMed?wkDelta(+w.frtMed.toFixed(1),+prev.frtMed.toFixed(1),' min',true,pl):''}</div>
+        <div class="wk-card ${w.ttrMed<=SLA.ttr?'g':'r'}"><div class="l">Resolución (mediana)</div><div class="v">${fmtM(w.ttrMed)}</div><div class="s">objetivo &lt; ${SLA.ttr/60}h</div>${prev&&prev.ttrMed?wkDelta(+w.ttrMed.toFixed(1),+prev.ttrMed.toFixed(1),' min',true,pl):''}</div>
+        <div class="wk-card g"><div class="l">${cT?'Clientes resueltos solo por la IA':'Resueltas en el día'}</div><div class="v">${cT?Math.round((fs.aiOnly||0)/cT*100)+'%':w.total?Math.round((w.sdTotal||0)/w.total*100)+'%':'—'}</div><div class="s">${cT?(fs.aiOnly||0)+' de '+cT+' clientes':''}</div></div>
+      </div>
+      <div class="wk-note">Para ver quién atendió cada conversación y la espera para hablar con una persona, cargá también el CSV de mensajes de este período.</div></div>`);
+  }
+
+  // 4. Cómo facturaron los clientes (BO)
+  if(FP&&FP.tot){
+    const p=FP.prev,word2=w.pt==='M'?'el mes anterior':'la semana anterior';
+    const rows=FACT_CANAL.filter(([k])=>FP.g[k]&&FP.g[k].n).map(([k,l,c])=>[k,l,c,FP.g[k]]).sort((a,b)=>b[3].n-a[3].n);const mx=Math.max(1,...rows.map(r=>r[3].n));
+    const SV=boData.servicios,sr=SV?(w.pt==='M'?(SV.meses||[]).find(r=>r[0]===monthKeyOf(w)):(SV.semanas||[]).find(r=>r[0]===boMonday(w.ws))):null;
+    const LBL={varys:'WhatsApp, con la IA de Lannis',mcp_external:'ChatGPT o Claude conectados a Lannis',dashboard:'App web de Lannis'};
+    slides.push(`<div class="wk-slide"><div class="wk-eyebrow">Operaciones — Facturación</div><div class="wk-h">Cómo facturaron los clientes ${elp}</div><div class="wk-sub">Desde dónde emitieron sus facturas · autorizadas por ARCA · fuente: BO${FP.partial?' · <b>período en curso</b>':''}.</div>
+      <div class="wk-cards c3">
+        <div class="wk-card"><div class="l">Facturas emitidas</div><div class="v">${miles(FP.tot)}</div>${p&&!FP.partial?wkDelta(FP.tot,p.tot,'',false,word2):''}</div>
+        <div class="wk-card p"><div class="l">Clientes que facturaron</div><div class="v">${FP.cl}</div><div class="s">de ${FP.activos} activos</div>${p&&!FP.partial?wkDelta(FP.cl,p.cl,'',false,word2):''}</div>
+        <div class="wk-card g"><div class="l">Facturaron por WhatsApp</div><div class="v">${pctS(FP.waCl,FP.cl)}</div><div class="s">de los clientes que facturaron</div>${p&&p.cl&&!FP.partial?wkDelta(Math.round(FP.waCl/FP.cl*100),Math.round(p.waCl/p.cl*100),' pp',false,word2):''}</div>
+      </div>
+      <table class="wk-tbl" style="margin-top:1.3em"><thead><tr><th>Desde dónde facturaron</th><th></th><th class="n">Facturas</th><th class="n">Clientes</th></tr></thead><tbody>
+        ${rows.map(([k,l,c,v])=>`<tr><td>${wkEsc(LBL[k]||l)}</td><td style="width:40%"><div class="wk-bar"><i style="width:${Math.round(v.n/mx*100)}%;background:${c}"></i></div></td><td class="n">${v.n}</td><td class="n">${v.cl}</td></tr>`).join('')}</tbody></table>
+      <div class="wk-note">${sr?(sr[3]||sr[4]?`Facturas con problemas al emitirse: ${sr[3]} se emitieron en un reintento automático${sr[4]?' y '+sr[4]+' no se pudieron emitir (ARCA las rechazó)':''}. `:'Ninguna factura tuvo problemas al emitirse. '):''}No incluye facturas importadas de ARCA ni de Mercado Libre.</div></div>`);
+  }
+
+  // 5. DDJJ: cumplimiento del mes y avance del período
+  if(boData&&boData.ddjj&&(boData.ddjj.stagesBySeg||[]).length){
+    const D=ddjjMerged(),weeks=ddjjWeeks(D),from=boMonday(w.ws),fin=ddjjFin(D),nMan=(D.snapshot||[]).filter(r=>r[9]).length;
+    const inW=weeks.filter(x=>x>=from&&x<=w.we);
+    const i0=inW.length?weeks.indexOf(inW[0]):-1,prevW=i0>=inW.length?weeks.slice(i0-inW.length,i0):[];
+    const presIn=ws=>(D.presentadas||[]).filter(r=>ws.includes(r[0]));
+    const movIn=ws=>(D.moves||[]).filter(r=>ws.includes(r[0])&&r[1]==='accountant').reduce((s,r)=>s+r[3],0);
+    const pr=presIn(inW),pN=pr.reduce((s,r)=>s+r[3],0),pP=prevW.length?presIn(prevW).reduce((s,r)=>s+r[3],0):null;
+    const mN=movIn(inW),mP=prevW.length?movIn(prevW):null;
+    const snap=D.snapshot||[],open=snap.filter(r=>ddjjOpenN(r)>0),nOpen=open.reduce((a,r)=>a+ddjjOpenN(r),0),px=sumC(snap,8),vc=sumC(snap,4),vm=sumC(snap,5);
+    const byF={};pr.forEach(r=>{byF[r[1]]=(byF[r[1]]||0)+r[3];});const fE=Object.entries(byF).sort((a,b)=>b[1]-a[1]);const fM=Math.max(1,...fE.map(x=>x[1]));
+    const oF={};open.forEach(r=>{const x=oF[r[0]]||(oF[r[0]]={n:0,v7:0,venc:0});x.n+=ddjjOpenN(r);x.v7+=r[5];x.venc+=r[4];});const oE=Object.entries(oF).sort((a,b)=>b[1].n-a[1].n);const oM=Math.max(1,...oE.map(x=>x[1].n));
+    const cerrado=w.pt==='M'&&mesK<hoyIso().substring(0,7);
+    const mesHtml=DM?`<div style="font-family:'Syne',sans-serif;font-weight:700;font-size:1.25em;margin-bottom:.5em">${mesNombre(mesK)}: ${DM.p} de ${DM.n} presentadas${DM.p?(DM.pt===DM.p?', todas en término':', '+DM.pt+' en término'):''}${cerrado?'':' (hasta hoy)'}</div>
+      ${wkStack([['Presentadas '+DM.p,DM.p,'var(--green)',DM.n],['Por vencer '+DM.pv,DM.pv,'var(--amber)',DM.n],['Vencidas sin presentar '+DM.venc,DM.venc,'var(--red)',DM.n]])}`:'';
+    const cards=[`<div class="wk-card g"><div class="l">Presentadas ${dlp}</div><div class="v">${pN}</div><div class="s">llegaron a presentada o más</div>${pP!=null?wkDelta(pN,pP,'',false,pl||'el período anterior'):''}</div>`,
+      `<div class="wk-card"><div class="l">Cambios de estado del equipo</div><div class="v">${mN}</div><div class="s">movimientos en el BO</div>${mP!=null?wkDelta(mN,mP,'',false,pl||'el período anterior'):''}</div>`];
+    if(DM&&DM.dias!=null)cards.push(`<div class="wk-card p"><div class="l">Días antes del vencimiento</div><div class="v">${String(DM.dias).replace('.',',')}</div><div class="s">promedio, en ${mesNombre(mesK).toLowerCase()}</div></div>`);
+    if(!cerrado)cards.push(`<div class="wk-card ${vc?'r':vm?'a':'g'}"><div class="l">Sin presentar hoy</div><div class="v">${nOpen}</div><div class="s">${vm} vencen antes del ${wkDmy(fin)} · ${vc} vencida${vc===1?'':'s'}</div></div>`);
+    slides.push(`<div class="wk-slide"><div class="wk-eyebrow">Operaciones — DDJJ e impuestos</div><div class="wk-h">DDJJ: cómo vamos con el mes</div><div class="wk-sub">Clientes propios de Lannis (RI, SAS y Monotributo plus). Fuente: BO, al ${boFecha(D.generado)}${nMan?', más '+nMan+' cargada'+(nMan===1?'':'s')+' a mano':''}.</div>
+      ${mesHtml}
+      <div class="wk-cards c${cards.length}" style="margin-top:1.2em">${cards.join('')}</div>
+      <div class="wk-g2" style="margin-top:1.3em">
+        <div><div style="font-weight:600;margin-bottom:.4em">Presentadas ${dlp}, por impuesto</div>${fE.length?fE.map(([f,n])=>`<div class="wk-mini" style="grid-template-columns:9em 1fr 3em"><span>${wkEsc(f)}</span><div class="wk-bar"><i style="width:${Math.round(n/fM*100)}%;background:var(--green)"></i></div><span style="text-align:right">${n}</span></div>`).join(''):'<div class="wk-note" style="margin:0">No hubo presentaciones en el período.</div>'}</div>
+        ${cerrado?'':`<div><div style="font-weight:600;margin-bottom:.4em">Sin presentar hoy, por impuesto</div>${oE.length?oE.map(([f,x])=>`<div class="wk-mini" style="grid-template-columns:7em 1fr 11em"><span>${wkEsc(f)}</span><div class="wk-bar"><i style="width:${Math.round(x.n/oM*100)}%;background:${x.venc?'var(--red)':x.v7?'var(--amber)':'var(--accent)'}"></i></div><span style="text-align:right">${x.n}${x.v7?' · <span style="color:var(--amber)">'+x.v7+' vencen</span>':''}${x.venc?' · <span style="color:var(--red)">'+x.venc+' venc.</span>':''}</span></div>`).join(''):'<div class="wk-note" style="margin:0">Nada pendiente de presentar.</div>'}</div>`}
+      </div>
+      <div class="wk-note">El mes cuenta las DDJJ que vencen en ${mesNombre(mesK).toLowerCase()}. “En término” = presentada el día del vencimiento o antes.${cerrado?'':' “Sin presentar hoy” es la foto del momento de la actualización y cuenta lo que vence hasta el '+wkDmy(fin)+(px?'; no incluye '+px+' que ya están generadas y vencen en '+mesSig(fin):'')+'.'} No incluye clientes de estudios contables.</div></div>`);
+  }
+
+  // 6. Campañas de email del período (manuales y automáticas)
+  if(boData&&boData.campanias){
+    const C=boData.campanias,win=C.ventanaDias||14;
+    const RG=campRanges(w),grs=(C.grupos||[]).map(g=>({g,c:campRange(g,...RG.cur),p:campRange(g,...RG.prev)})).filter(x=>x.c.activo);
+    if(grs.length){
+      const ana=campAnalisis(RG.tipo,RG.key),pw=RG.tipo==='mensual'?'el mes anterior':'la semana anterior';
+      const dPct=(c,p)=>p?`<span style="color:var(--${c>=p?'green':'red'})">${c>=p?'+':''}${Math.round((c-p)/p*100)}%</span>`:'<span style="color:var(--ink3)">nuevo</span>';
+      const ap=x=>x.dl>=20&&x.op<=x.dl?x.op/x.dl*100:null;
+      grs.forEach(x=>{const L=campLinks(x.g.templates.map(t=>t.template),...RG.cur);x.baja=L&&L.BAJA?L.BAJA.p:0;x.lt=linkTot(L);x.int=Math.max(0,x.lt-x.baja);});
+      const auto=[];
+      { const sent=grs.filter(x=>ap(x.c)!=null).sort((a,b)=>ap(b.c)-ap(a.c));
+        if(sent.length>1)auto.push(`Mejor apertura: ${sent[0].g.nombre} (${ap(sent[0].c).toFixed(0)}%); la más baja: ${sent[sent.length-1].g.nombre} (${ap(sent[sent.length-1].c).toFixed(0)}%).`);
+        grs.filter(x=>x.g.tipo==='continua'&&x.p.se>=10&&x.c.se<x.p.se*0.5).forEach(x=>auto.push(`${x.g.nombre} mandó ${x.c.se} mails contra ${x.p.se} ${pw}: revisar si el flujo está entrando gente.`));
+        const tc=grs.filter(x=>x.g.conversion!==false).reduce((s,x)=>s+x.c.cv,0);auto.push(tc?`En total, ${tc} persona${tc===1?'':'s'} convirtieron (crearon cuenta o se suscribieron) en el período.`:'Ninguna campaña generó cuentas nuevas ni suscripciones en el período.');
+        grs.filter(x=>x.lt>=5&&x.baja/x.lt>=0.3).forEach(x=>auto.push(`${x.g.nombre}: ${x.baja} de las ${x.lt} personas que hicieron clic entraron para darse de baja (${Math.round(x.baja/x.lt*100)}%).`));
+        const bo=grs.reduce((s,x)=>s+x.c.bo,0),se=grs.reduce((s,x)=>s+x.c.se,0);if(se&&bo/se>0.02)auto.push(`Rebotes del ${(bo/se*100).toFixed(1)}% (${bo} de ${se}): conviene limpiar las listas.`);}
+      const puntos=ana&&ana.puntos&&ana.puntos.length?ana.puntos:auto;
+      const nc=g=>g.conversion===false;
+      slides.push(`<div class="wk-slide"><div class="wk-eyebrow">Operaciones — Campañas</div><div class="wk-h">Campañas de email ${w.pt==='M'?'del mes':w.pt==='Q'?'de la quincena':'de la semana'}</div><div class="wk-sub">Envíos manuales y flujos automáticos, ${wkDmy(RG.cur[0])} al ${wkDmy(RG.cur[1])}, contra ${pw}. Datos del BO al ${boFecha(C.generado)}.</div>
+        <div style="overflow-x:auto"><table class="wk-tbl"><thead><tr><th>Campaña</th><th class="n">Enviados</th><th class="n">vs ant.</th><th class="n">Apertura</th><th class="n">Clics</th><th class="n">Interés</th><th class="n">Bajas</th><th class="n">Cuentas nuevas</th><th class="n">Se suscribieron</th></tr></thead><tbody>
+        ${grs.map(({g,c,p,baja,int})=>`<tr><td><b style="font-weight:600">${wkEsc(g.nombre)}</b> <span style="color:var(--ink3);font-size:.85em">${g.tipo==='continua'?'automática':'manual'}</span></td><td class="n">${miles(c.se)}</td><td class="n">${c.se||p.se?dPct(c.se,p.se):'—'}</td><td class="n">${ap(c)!=null?ap(c).toFixed(0)+'%':c.op?c.op+' abr.':'—'}</td><td class="n">${c.cl}</td><td class="n">${int||'—'}</td><td class="n" style="color:${baja?'var(--red)':'var(--ink4)'}">${baja||'—'}</td>${nc(g)?'<td class="n" colspan="2" style="color:var(--ink3)">no aplica</td>':`<td class="n">${c.rg}</td><td class="n">${c.sb}</td>`}</tr>`).join('')}
+        </tbody></table></div>
+        <div style="margin-top:1.1em"><div style="font-weight:600;margin-bottom:.3em">${ana?'Qué está pasando':'Lectura rápida'}</div>${puntos.map(t=>`<div class="wk-bul" style="margin:.2em 0;padding:.3em 0"><div class="bar" style="background:var(--purple)"></div><div><span class="t" style="margin:0">${wkEsc(t)}</span></div></div>`).join('')}</div>
+        <div class="wk-note">Interés y bajas: personas, según el enlace en el que entraron (interés = planes, inicio u otra página de Lannis; baja = el enlace para no recibir más mails; datos desde el ${C.linksDesde?wkDmy(C.linksDesde):'13/11'}). Cuentas nuevas: personas de la lista que crearon su cuenta dentro de los ${win} días del envío; las que se suscribieron salen de esas mismas cuentas (no se suman). Cada persona cuenta para una sola campaña: la del último mail que abrió antes de convertir.</div></div>`);
+    }
+    // 6b. Una slide por campaña manual mientras dura su ventana de conversión
+    const dms=x=>new Date(x+'T12:00:00').getTime();
+    (C.grupos||[]).forEach((g,gi)=>{
+      if(g.tipo==='continua')return;
+      const rows=campRows(gi).filter(r=>r.n>0);if(!rows.length)return;
+      const t=campTotals(rows);if(!t.d0)return;
+      const d0=dms(t.d0);if(d0>dms(w.we)||d0<dms(w.ws)-win*86400000)return;
+      const L=campLinks(g.templates.map(x=>x.template)),lt=linkTot(L),lb=L&&L.BAJA?L.BAJA.p:0;
+      const ext=rows.some(r=>r.tipo==='externa');
+      const fn=[['Enviados',miles(t.n),''],['Entregados',miles(t.dl),pctS(t.dl,t.n)],['Abrieron',miles(t.op),pctS(t.op,t.dl)],['Hicieron clic',miles(t.cl),pctS(t.cl,t.dl,1)]];
+      if(ext)fn.push(['Crearon cuenta',t.rg,'de la lista']);
+      fn.push(['Se suscribieron',t.sb,ext&&t.rg?'de esas '+t.rg:'']);
+      const lk=L?Object.entries(L).sort((a,b)=>(a[0]==='BAJA')-(b[0]==='BAJA')||b[1].p-a[1].p):[];
+      const lcol=d=>d==='BAJA'?'var(--red)':d==='lannis.app/planes'?'var(--green)':'var(--accent)';
+      const callout=lt>=5?(lb/lt>=0.3?`<div style="color:var(--red);font-weight:600;margin-top:.6em">${Math.round(lb/lt*10)} de cada 10 personas que hicieron clic entraron para darse de baja.</div>`:`<div style="color:var(--green);font-weight:600;margin-top:.6em">${Math.round((lt-lb)/lt*10)} de cada 10 personas que hicieron clic entraron por interés.</div>`):'';
+      const best=k=>Math.max(...rows.map(r=>k(r)));
+      const apR=r=>r.dl?r.op/r.dl:0;
+      slides.push(`<div class="wk-slide"><div class="wk-eyebrow">Operaciones — Campañas</div><div class="wk-h">${wkEsc(g.nombre)}: cómo respondieron</div><div class="wk-sub">Enviada desde el ${wkDmy(t.d0)} · datos del BO al ${boFecha(C.generado)} · ${t.dias<win?'día '+t.dias+' de '+win+' de la ventana de conversión':'ventana de '+win+' días cerrada'}.</div>
+        <div class="wk-funnel" style="grid-template-columns:repeat(${fn.length},1fr)">${fn.map(([l,v,s],i)=>`<div${i>=4?' class="cv"':''}><div class="l">${l}</div><div class="v">${v}</div><div class="s">${s||'&nbsp;'}</div></div>`).join('')}</div>
+        <div class="wk-g2" style="margin-top:1.3em">
+          <div><div style="font-weight:600;margin-bottom:.5em">A dónde entraron <span style="font-weight:400;color:var(--ink3)">· ${lt} persona${lt===1?'':'s'}${C.linksDesde&&t.d0<C.linksDesde?' con enlace registrado (desde el '+wkDmy(C.linksDesde)+')':''}</span></div>
+            ${lt?wkStack(lk.map(([d,x])=>[linkLbl(d)+' '+x.p+' · '+Math.round(x.p/lt*100)+'%',x.p,lcol(d),lt])):'<div class="wk-note" style="margin:0">Sin clics con enlace registrado.</div>'}${callout}</div>
+          <div><table class="wk-tbl"><thead><tr><th>Segmento</th><th class="n">Apertura</th><th class="n">Clics</th>${ext?'<th class="n">Cuentas</th>':''}<th class="n">Susc.</th></tr></thead><tbody>
+            ${rows.map(r=>`<tr><td>${wkEsc(r.corto||r.segmento)}</td><td class="n"${apR(r)===best(apR)&&rows.length>1?' style="font-weight:700"':''}>${pctS(r.op,r.dl)}</td><td class="n"${r.cl===best(x=>x.cl)&&r.cl?' style="font-weight:700"':''}>${r.cl}</td>${ext?`<td class="n">${r.tipo==='externa'?r.rg:'—'}</td>`:''}<td class="n"${r.sb===best(x=>x.sb)&&r.sb?' style="font-weight:700"':''}>${r.sb}</td></tr>`).join('')}
+          </tbody></table></div>
+        </div>
+        <div class="wk-note">Cuentas nuevas: personas de la lista que crearon su cuenta dentro de los ${win} días del envío (hayan hecho clic o no); las suscripciones salen de esas mismas cuentas. Cada persona cuenta para una sola campaña. “Darse de baja” es el enlace para no recibir más mails.</div></div>`);
+    });
+  }
+
+  // 7. Mensual: servicios del mes y DDJJ en detalle
+  if(w.pt==='M'&&boData&&boData.servicios){
+    const SV=boData.servicios,mk=monthKeyOf(w);
+    const sm=(SV.meses||[]).find(r=>r[0]===mk),rc=(SV.recat||[]).find(r=>r[0]===mk),et=(SV.etapas||[]).find(r=>r[0]===mk);
+    const smP=(SV.meses||[]).find(r=>r[0]===String(new Date(+mk.substring(0,4),+mk.substring(5)-2,1).getFullYear())+'-'+String(new Date(+mk.substring(0,4),+mk.substring(5)-2,1).getMonth()+1).padStart(2,'0'));
+    if(sm||rc||et){
+      const K=[];
+      if(sm)K.push(`<div class="wk-card"><div class="l">VEPs generados</div><div class="v">${miles(sm[1])}</div><div class="s">para ${miles(sm[2])} contribuyentes</div>${smP?wkDelta(sm[1],smP[1],'',false,'el mes anterior'):''}</div>`);
+      if(sm)K.push(`<div class="wk-card ${sm[4]?'r':'g'}"><div class="l">Facturas con problemas</div><div class="v">${sm[3]+sm[4]}</div><div class="s">${sm[3]} se emitieron en un reintento · ${sm[4]} no se emitieron</div></div>`);
+      if(rc)K.push(`<div class="wk-card p"><div class="l">Recategorización</div><div class="v">${miles(rc[1]||rc[5])}</div><div class="s">${rc[1]?rc[2]+' pidieron cambio · '+rc[3]+' se quedan · '+rc[4]+' sin respuesta':'solicitudes completadas'}</div></div>`);
+      const etHtml=et?`<div style="margin-top:1.3em"><div style="font-weight:600;margin-bottom:.4em">Cuántos días pasan las DDJJ en cada etapa <span style="font-weight:400;color:var(--ink3)">· promedio de las ${et[1]} presentadas en el mes</span></div>
+        ${(()=>{const E=[['Por empezar',et[2],'var(--ink4)'],['Esperando al cliente',et[3],'var(--amber)'],['En preparación',et[4],'var(--accent)'],['En borrador',et[5],'var(--purple)']];const m=Math.max(1,...E.map(x=>x[1]));
+          return E.map(([l,v,c])=>`<div class="wk-mini" style="grid-template-columns:11em 1fr 5em"><span>${l}</span><div class="wk-bar"><i style="width:${Math.round(v/m*100)}%;background:${c}"></i></div><span style="text-align:right">${String(v).replace('.',',')} días</span></div>`).join('');})()}</div>`:'';
+      slides.push(`<div class="wk-slide"><div class="wk-eyebrow">Operaciones — Servicios del mes</div><div class="wk-h">Otros servicios de ${mesNombre(mk).toLowerCase()}</div><div class="wk-sub">Pagos, facturas con problemas, recategorización y etapas de las DDJJ. Fuente: BO.</div>
+        ${K.length?`<div class="wk-cards c${K.length}">${K.join('')}</div>`:''}${etHtml}
+        <div class="wk-note">VEPs: generados desde Lannis por todos los usuarios; el BO no registra de forma confiable si se pagaron. Facturas con problemas: las que fallaron al emitirse; la mayoría se emite sola en un reintento. La recategorización solo tiene actividad en los meses del ciclo.</div></div>`);
     }
   }
-  // 3. Demanda
-  const DOW=['lunes','martes','miércoles','jueves','viernes'];const dv=DOW.map(d=>w.days[d]||0);const dmx=Math.max(...dv,1);
-  const hrs=Object.entries(w.hours||{}).map(([h,n])=>[+h,n]).sort((a,b)=>b[1]-a[1]);
-  const peakH=hrs[0],peakD=DOW[dv.indexOf(Math.max(...dv))];
-  const zon=o?`<div class="wk-note" style="margin-top:1.2em"><b>${o.off.pct}%</b> de las conversaciones llegó fuera de horario (${o.zones.noche} de noche, ${o.zones.finde} en fin de semana o feriado).</div>`:'';
-  slides.push(`<div class="wk-slide"><div class="wk-eyebrow">Operaciones — Demanda</div>
-    <div class="wk-h">Cuándo escriben los clientes</div><div class="wk-sub">${peakH?'Pico '+dlp+': '+peakD+' y '+peakH[0]+':00 hs.':'&nbsp;'}</div>
-    <div class="wk-g2"><div><div style="font-weight:600;margin-bottom:.5em">Por día (lun-vie)</div>${DOW.map((d,i)=>`<div class="wk-mini"><span style="text-transform:capitalize">${d}</span><div class="wk-bar"><i style="width:${Math.round(dv[i]/dmx*100)}%"></i></div><span class="n" style="font-family:'JetBrains Mono',monospace;text-align:right">${dv[i]}</span></div>`).join('')}</div>
-    <div><div style="font-weight:600;margin-bottom:.5em">Horas con más consultas</div>${hrs.slice(0,6).map(([h,n])=>`<div class="wk-mini"><span>${h}:00</span><div class="wk-bar"><i style="width:${Math.round(n/(hrs[0][1]||1)*100)}%;background:var(--purple)"></i></div><span style="font-family:'JetBrains Mono',monospace;text-align:right">${n}</span></div>`).join('')}</div></div>${zon}</div>`);
-  // 4. Para tener en cuenta: solo lo que se desvía (no repite lo de las slides anteriores)
-  const A=[];
-  if(prev){
-    const ch=Object.keys(w.cats).filter(c=>c!=='Otros'&&!/outbound/i.test(c)).map(c=>[c,(w.cats[c]||0)-(prev.cats[c]||0)]);
-    ch.filter(x=>x[1]>=3).sort((a,b)=>b[1]-a[1]).slice(0,2).forEach(x=>A.push(['amber','Subió: '+x[0],`+${x[1]} conversaciones vs ${pl} (${w.cats[x[0]]} contra ${prev.cats[x[0]]||0}). Revisar si hay una causa puntual.`]));
-    ch.filter(x=>x[1]<=-3).sort((a,b)=>a[1]-b[1]).slice(0,1).forEach(x=>A.push(['green','Bajó: '+x[0],`${x[1]} conversaciones vs ${pl} (${w.cats[x[0]]||0} contra ${prev.cats[x[0]]}).`]));
-  }
-  if(w.frtMed>SLA.frt)A.push(['red','Primera respuesta fuera de objetivo',`FRT mediana ${fmtM(w.frtMed)} contra objetivo de ${SLA.frt}m.`]);
-  if(w.ttrMed>SLA.ttr)A.push(['red','Resolución fuera de objetivo',`TTR mediana ${fmtM(w.ttrMed)} contra objetivo de ${SLA.ttr/60}h.`]);
-  if(o&&o.slow.d1Pct>=10)A.push(['red','Resoluciones lentas',`${o.slow.d1Pct}% de las conversaciones hábiles tardó más de 2 hs en resolverse (${o.slow.d1} de ${o.slow.base}).`]);
-  if(o&&o.recur.pct>=10){const rc=Object.entries(o.recur.byCat).sort((a,b)=>b[1]-a[1])[0];A.push(['purple','Clientes que vuelven por lo mismo',`${o.recur.pct}% de los contactos tuvo 2 o más conversaciones del mismo tema${rc?' (sobre todo '+rc[0]+')':''}. Puede indicar que la primera respuesta no resolvió.`]);}
-  if(A.length)slides.push(`<div class="wk-slide"><div class="wk-eyebrow">Resumen</div><div class="wk-h">Para tener en cuenta</div><div class="wk-sub">Solo lo que cambió o se aparta del objetivo ${dlp}.</div>
-    ${A.map(b=>`<div class="wk-bul"><div class="bar" style="background:var(--${b[0]})"></div><div><b>${wkEsc(b[1])}</b><span class="t">${wkEsc(b[2])}</span></div></div>`).join('')}</div>`);
-  // 4b. Llamadas del período (si hay reporte de llamadas que cae dentro)
+  // 7b. Mensual: llamadas del período
   if(w.pt!=='S'&&typeof callsReports!=='undefined'){
     const cr=callsReports.filter(c=>c.start&&c.start>=w.ws&&c.start<=w.we).sort((a,b)=>new Date(b.start)-new Date(a.start))[0];
     if(cr&&cr.total){
       const pc=callsReports.filter(c=>c.start&&c.start<w.ws).sort((a,b)=>new Date(b.start)-new Date(a.start))[0];
       slides.push(`<div class="wk-slide"><div class="wk-eyebrow">Operaciones — Llamadas</div><div class="wk-h">Llamadas con clientes</div><div class="wk-sub">${wkEsc(cr.label||'')}</div>
-        <div class="wk-cards" style="grid-template-columns:repeat(4,1fr)">
+        <div class="wk-cards c4">
         <div class="wk-card"><div class="l">Llamadas</div><div class="v">${cr.total}</div>${pc?wkDelta(cr.total,pc.total,'',false,'el período anterior'):''}</div>
         <div class="wk-card g"><div class="l">Minutos</div><div class="v">${Math.round(cr.minutes).toLocaleString('es')}</div>${pc?wkDelta(Math.round(cr.minutes),Math.round(pc.minutes),'',false,'el período anterior'):''}</div>
         <div class="wk-card p"><div class="l">Duración promedio</div><div class="v">${Math.round(cr.avgDur)}m</div></div>
         <div class="wk-card a"><div class="l">Clientes únicos</div><div class="v">${cr.uniqueClients}</div></div></div></div>`);
     }
   }
-  // 5. Automatización por conversación (cruce conversaciones + mensajes): reemplaza a la versión por cliente cuando está
-  const R=o&&o.real;
-  if(R){
-    const T=R.total,pf=n=>Math.round((n||0)/T*100),h=R.handoff||{},fr=o.frb;
-    const cats=Object.entries(R.byCat).filter(([,v])=>v.t>=10).sort((a,b)=>b[1].t-a[1].t).slice(0,6);
-    slides.push(`<div class="wk-slide"><div class="wk-eyebrow">Operaciones — Automatización</div><div class="wk-h">Qué resuelve la IA y qué llega a una persona</div><div class="wk-sub">${T.toLocaleString('es')} conversaciones ${dlp}, mirando quién escribió en cada una.</div>
-      <div class="wk-cards">
-        <div class="wk-card g"><div class="l">Resueltas solo por la IA</div><div class="v">${pf(R.tipos.soloIA)}%</div><div class="s">${R.tipos.soloIA.toLocaleString('es')} conversaciones sin que escriba un agente</div></div>
-        <div class="wk-card a"><div class="l">Pasaron a una persona</div><div class="v">${pf(R.tipos.iaAgente)}%</div><div class="s">${R.tipos.iaAgente} empezaron con la IA y siguió un agente</div></div>
-        <div class="wk-card"><div class="l">Facturas emitidas por la IA</div><div class="v">${R.factInv}</div><div class="s">${R.factAI?Math.round(R.factInv/R.factAI*100)+'% de las conversaciones de facturación por IA':''}</div></div>
-      </div>
-      <div class="wk-g2" style="margin-top:1.4em">
-        <div><div style="font-weight:600;margin-bottom:.4em">Cómo se atendió cada conversación</div>
-          ${REAL_TIPOS.map(([k,l,c])=>`<div class="wk-mini" style="grid-template-columns:12em 1fr 3em"><span>${l}</span><div class="wk-bar"><i style="width:${pf(R.tipos[k])}%;background:${c}"></i></div><span style="text-align:right">${pf(R.tipos[k])}%</span></div>`).join('')}</div>
-        <div><div style="font-weight:600;margin-bottom:.4em">La IA sola, por tema</div>
-          ${cats.map(([c,v])=>`<div class="wk-mini" style="grid-template-columns:12em 1fr 3em"><span>${wkEsc(c)}</span><div class="wk-bar"><i style="width:${Math.round(v.soloIA/v.t*100)}%;background:var(--green)"></i></div><span style="text-align:right">${Math.round(v.soloIA/v.t*100)}%</span></div>`).join('')}</div>
-      </div>
-      <div class="wk-note">${fr?'La primera respuesta la dio la IA en el '+pf(fr.ia)+'% de las conversaciones. ':''}En ${R.cerradasSinEscribir} de las ${R.cerradasAgente} conversaciones cerradas por un agente, el agente no escribió: las resolvió la IA.</div></div>`);
-    if(h.n){
-      const re=o.reopen||{},ra=o.reassign||{},a2=o.a2fr;
-      slides.push(`<div class="wk-slide"><div class="wk-eyebrow">Operaciones — Derivación</div><div class="wk-h">Dónde se traba el pase a una persona</div><div class="wk-sub">Tiempo desde el último mensaje de la IA hasta el primero de un agente, en reloj real.</div>
-        <div class="wk-cards">
-          <div class="wk-card ${h.med<=10?'g':'a'}"><div class="l">Pase IA → agente (mediana)</div><div class="v">${fmtM(h.med)}</div><div class="s">${h.n} pases ${dlp}</div></div>
-          <div class="wk-card ${h.over60/h.n>.2?'r':'a'}"><div class="l">Esperaron más de 1 hora</div><div class="v">${Math.round(h.over60/h.n*100)}%</div><div class="s">${h.over60} de ${h.n} · 1 de cada 4 espera más de ${fmtM(h.p75)}</div></div>
-          <div class="wk-card g"><div class="l">Agente, una vez asignado</div><div class="v">${a2?fmtM(a2.med):'—'}</div><div class="s">${a2?'mediana · 90% en menos de '+fmtM(a2.p90):''}</div></div>
-        </div>
-        <div class="wk-g2" style="margin-top:1.4em">
-          <div class="wk-bul" style="margin:0"><div class="bar" style="background:var(--purple)"></div><div><b>Vuelven en menos de 24 h: ${re.pct||0}%</b><span class="t">${re.n||0} conversaciones; ${re.same72||0} por el mismo tema en menos de 72 h. Puede indicar que la primera respuesta no resolvió.</span></div></div>
-          <div class="wk-bul" style="margin:0"><div class="bar" style="background:var(--amber)"></div><div><b>Reasignadas 2 o más veces: ${ra.n2||0}</b><span class="t">${ra.n4||0} pasaron por 4 o más asignaciones${ra.max?' (máximo '+ra.max+')':''}.</span></div></div>
-        </div>
-        <div class="wk-note">Cuando el agente responde rápido una vez asignado pero el pase tarda, la demora está en la derivación, no en el equipo.</div></div>`);
-    }
+
+  // 8. Para tener en cuenta y próximos pasos: desvíos automáticos y notas del equipo
+  const A=[];
+  if(prev){
+    const ch=Object.keys(w.cats).filter(c=>c!=='Otros'&&!/outbound/i.test(c)).map(c=>[c,(w.cats[c]||0)-(prev.cats[c]||0)]);
+    ch.filter(x=>x[1]>=3).sort((a,b)=>b[1]-a[1]).slice(0,2).forEach(x=>A.push(['amber','Subió: '+x[0],`+${x[1]} conversaciones contra ${pl} (${w.cats[x[0]]} contra ${prev.cats[x[0]]||0}). Revisar si hay una causa puntual.`]));
   }
-  // 5b. Automatización por cliente: sale del reporte de mensajes (se usa si no hay cruce por conversación)
-  const dms=x=>new Date(x+'T12:00:00').getTime(),TOL=4*86400000;
-  const mr=(typeof msgReports!=='undefined'?msgReports:[]).find(r=>r.start&&r.end&&Math.abs(dms(r.start)-dms(w.ws))<=TOL&&Math.abs(dms(r.end)-dms(w.we))<=TOL)||null;
-  wkMsgMissing=!mr&&!R;
-  if(mr){
-    const fs=mr.flowStats||{};const cT=fs.total||((fs.aiOnly||0)+(fs.botHuman||0)+(fs.humanOnly||0))||1;
-    const pf=n=>Math.round((n||0)/cT*100);
-    const sinAt=fs.sinAtencion!=null?fs.sinAtencion:Math.max(0,cT-(fs.aiOnly||0)-(fs.botHuman||0)-(fs.humanOnly||0));
-    const oh=fs.offHours,hasOh=oh&&oh.off&&oh.off.in>0;
-    const pO=(n,t)=>t?Math.round(n/t*100):0;
-    const third=fs.invoices?`<div class="wk-card"><div class="l">Facturas emitidas por la IA</div><div class="v">${fs.invoices.toLocaleString('es')}</div><div class="s">para ${fs.invoiceClients} clientes</div></div>`
-      :`<div class="wk-card"><div class="l">Respuesta (mediana)</div><div class="v">${mr.aiRtMed}m <span style="font-size:.45em;color:var(--ink3)">IA</span></div><div class="s">agentes: ${mr.humanRtMed}m</div></div>`;
-    if(!R)slides.push(`<div class="wk-slide"><div class="wk-eyebrow">Operaciones — Automatización</div><div class="wk-h">Qué hace la IA y qué llega a una persona</div><div class="wk-sub">${cT.toLocaleString('es')} clientes escribieron en el período · ${mr.totalMsgs.toLocaleString('es')} mensajes.</div>
-      <div class="wk-cards">
-        <div class="wk-card g"><div class="l">Resueltos solo por la IA</div><div class="v">${pf(fs.aiOnly)}%</div><div class="s">${(fs.aiOnly||0).toLocaleString('es')} clientes, sin intervención humana</div></div>
-        <div class="wk-card a"><div class="l">Pasaron a una persona</div><div class="v">${pf(fs.botHuman)}%</div><div class="s">${(fs.botHuman||0).toLocaleString('es')} clientes: primero bot, luego agente</div></div>
-        ${third}
-      </div>
-      <div class="wk-g2" style="margin-top:1.4em">
-        <div><div style="font-weight:600;margin-bottom:.4em">Cómo se atendió a los clientes</div>
-          ${[['Solo IA',fs.aiOnly,'var(--green)'],['IA y luego agente',fs.botHuman,'var(--accent)'],['Directo a un agente',fs.humanOnly,'var(--amber)'],['Sin atención',sinAt,'var(--ink4)']].map(x=>`<div class="wk-mini" style="grid-template-columns:10em 1fr 3em"><span>${x[0]}</span><div class="wk-bar"><i style="width:${pf(x[1])}%;background:${x[2]}"></i></div><span style="text-align:right">${pf(x[1])}%</span></div>`).join('')}</div>
-        ${hasOh?`<div><div style="font-weight:600;margin-bottom:.4em">Fuera de horario: ${oh.off.in.toLocaleString('es')} mensajes de clientes</div>
-          ${[['Respondió la IA',oh.off.ia,'var(--green)'],['Respuesta automática',oh.off.workflow,'var(--purple)'],['Respondió un agente',oh.off.agente,'var(--accent)'],['Sin respuesta',oh.off.sin,'var(--ink4)']].map(x=>`<div class="wk-mini" style="grid-template-columns:10em 1fr 3em"><span>${x[0]}</span><div class="wk-bar"><i style="width:${pO(x[1],oh.off.in)}%;background:${x[2]}"></i></div><span style="text-align:right">${pO(x[1],oh.off.in)}%</span></div>`).join('')}</div>`
-        :`<div><div style="font-weight:600;margin-bottom:.4em">Tiempo de respuesta (mediana)</div><div class="wk-mini" style="grid-template-columns:10em 1fr 3em"><span>IA</span><div class="wk-bar"><i style="width:${Math.min(100,mr.aiRtMed*20)}%;background:var(--green)"></i></div><span style="text-align:right">${mr.aiRtMed}m</span></div><div class="wk-mini" style="grid-template-columns:10em 1fr 3em"><span>Agentes</span><div class="wk-bar"><i style="width:${Math.min(100,mr.humanRtMed*20)}%"></i></div><span style="text-align:right">${mr.humanRtMed}m</span></div></div>`}
-      </div>
-      <div class="wk-note">“Clientes” = contactos únicos que escribieron en el período, no conversaciones. Tiempo de respuesta mediana: IA ${mr.aiRtMed}m, agentes ${mr.humanRtMed}m.</div></div>`);
-    // 5b. Qué piden los clientes (primer mensaje de cada cliente)
-    if(fs.intents&&fs.intents.length){
-      const im=fs.intents[0][1]||1;
-      slides.push(`<div class="wk-slide"><div class="wk-eyebrow">Operaciones — Clientes</div><div class="wk-h">Qué piden los clientes cuando escriben</div><div class="wk-sub">Primer mensaje de cada cliente, sin saludos. Útil para producto y ventas.</div>
-        ${fs.intents.slice(0,7).map(x=>`<div class="wk-mini" style="grid-template-columns:16em 1fr 3em"><span>${wkEsc(x[0])}</span><div class="wk-bar"><i style="width:${Math.round(x[1]/im*100)}%;background:var(--accent)"></i></div><span style="text-align:right">${x[1]}</span></div>`).join('')}
-        ${fs.recurring?`<div class="wk-note" style="margin-top:1.4em"><b>${Math.round(fs.recurring/cT*100)}%</b> de los clientes volvió a escribir en más de un día del período.</div>`:''}</div>`);
-    }
-  }
-  // 5c'. Cómo facturan los clientes (BO): mismo mes o misma semana que el período
-  if(FP&&FP.tot){
-    const p=FP.prev,word2=w.pt==='M'?'el mes anterior':'la semana anterior';
-    const rows=FACT_CANAL.filter(([k])=>FP.g[k]&&FP.g[k].n).map(([k,l,c])=>[k,l,c,FP.g[k]]).sort((a,b)=>b[3].n-a[3].n);const mx=Math.max(1,...rows.map(r=>r[3].n));
-    const integ=FP.g.integ?Object.entries(FP.g.integ.det).map(([n,v])=>`${n}: ${v[0]} factura${v[0]===1?'':'s'} de ${v[1]} cliente${v[1]===1?'':'s'}`).join(' · '):'';
-    const integMuchas=FP.g.integ&&FP.g.integ.n>=10*Math.max(1,FP.g.integ.cl);
-    slides.push(`<div class="wk-slide"><div class="wk-eyebrow">Operaciones — Facturación</div><div class="wk-h">Cómo facturaron los clientes ${elp}</div><div class="wk-sub">Facturas emitidas desde Lannis y autorizadas por ARCA · fuente: BO, al ${boFecha()}${FP.partial?' · <b>período en curso</b>':''}.</div>
-      <div class="wk-cards" style="grid-template-columns:repeat(4,1fr)">
-        <div class="wk-card"><div class="l">Facturas emitidas</div><div class="v">${FP.tot.toLocaleString('es')}</div>${p&&!FP.partial?wkDelta(FP.tot,p.tot,'',false,word2):''}</div>
-        <div class="wk-card p"><div class="l">Clientes que facturaron</div><div class="v">${FP.cl}</div><div class="s">de ${FP.activos} activos</div>${p&&!FP.partial?wkDelta(FP.cl,p.cl,'',false,word2):''}</div>
-        <div class="wk-card g"><div class="l">Por WhatsApp con IA</div><div class="v">${pctS(FP.waCl,FP.cl)}</div><div class="s">de los clientes que facturaron</div>${p&&p.cl&&!FP.partial?wkDelta(Math.round(FP.waCl/FP.cl*100),Math.round(p.waCl/p.cl*100),' pp',false,word2):''}</div>
-        <div class="wk-card a"><div class="l">Facturas con IA</div><div class="v">${pctS(FP.iaN,FP.tot)}</div><div class="s">WhatsApp + IA externa (MCP)</div></div>
-      </div>
-      <div style="margin-top:1.4em"><div class="wk-row h" style="grid-template-columns:12em 1fr 5em 5em"><div>Canal</div><div></div><div class="n">Facturas</div><div class="n">Clientes</div></div>
-        ${rows.map(([k,l,c,v])=>`<div class="wk-row" style="grid-template-columns:12em 1fr 5em 5em"><div>${l}</div><div class="wk-bar"><i style="width:${Math.round(v.n/mx*100)}%;background:${c}"></i></div><div class="n">${v.n}</div><div class="n">${v.cl}</div></div>`).join('')}</div>
-      <div class="wk-note">${integ?integ+'.'+(integMuchas?' Las integraciones emiten muchas facturas para pocos clientes: por eso conviene mirar los clientes.':'')+' ':''}No incluye facturas importadas de ARCA ni de Mercado Libre.</div></div>`);
-  }
-  // 5c. DDJJ e impuestos (BO): presentadas y movimientos del equipo en las semanas del período
-  if(boData&&boData.ddjj&&(boData.ddjj.stagesBySeg||[]).length){
-    const D=ddjjMerged(),weeks=ddjjWeeks(D),from=boMonday(w.ws),fin=ddjjFin(D),nMan=(D.snapshot||[]).filter(r=>r[9]).length;
-    const inW=weeks.filter(x=>x>=from&&x<=w.we);
-    if(inW.length){
-      const i0=weeks.indexOf(inW[0]),prevW=i0>=inW.length?weeks.slice(i0-inW.length,i0):[];
-      const presIn=ws=>(D.presentadas||[]).filter(r=>ws.includes(r[0]));
-      const movIn=ws=>(D.moves||[]).filter(r=>ws.includes(r[0])&&r[1]==='accountant').reduce((s,r)=>s+r[3],0);
-      const pr=presIn(inW),pN=pr.reduce((s,r)=>s+r[3],0),pP=prevW.length?presIn(prevW).reduce((s,r)=>s+r[3],0):null;
-      const mN=movIn(inW),mP=prevW.length?movIn(prevW):null;
-      const snap=D.snapshot||[],open=snap.filter(r=>ddjjOpenN(r)>0),nOpen=open.reduce((a,r)=>a+ddjjOpenN(r),0),px=sumC(snap,8),vc=sumC(snap,4),vm=sumC(snap,5);
-      const byF={};pr.forEach(r=>{byF[r[1]]=(byF[r[1]]||0)+r[3];});const fE=Object.entries(byF).sort((a,b)=>b[1]-a[1]);const fM=Math.max(1,...fE.map(x=>x[1]));
-      // Sin presentar por impuesto (foto de hoy). El detalle por persona queda en la pestaña DDJJ, no en la presentación.
-      const oF={};open.forEach(r=>{const o=oF[r[0]]||(oF[r[0]]={n:0,v7:0,venc:0});o.n+=ddjjOpenN(r);o.v7+=r[5];o.venc+=r[4];});const oE=Object.entries(oF).sort((a,b)=>b[1].n-a[1].n);const oM=Math.max(1,...oE.map(x=>x[1].n));
-      const prevLbl=w.pt==='S'?'la semana anterior':w.pt==='M'?'el mes anterior':'el período anterior';
-      slides.push(`<div class="wk-slide"><div class="wk-eyebrow">Operaciones — DDJJ e impuestos</div><div class="wk-h">Cómo avanzaron las DDJJ ${elp}</div><div class="wk-sub">Clientes propios de Lannis (RI, SAS y Monotributo plus). Fuente: BO, al ${boFecha(D.generado)}${nMan?', más '+nMan+' cargada'+(nMan===1?'':'s')+' a mano':''}.</div>
-        <div class="wk-cards">
-          <div class="wk-card g"><div class="l">Presentadas</div><div class="v">${pN}</div><div class="s">llegaron a presentada o más</div>${pP!=null?wkDelta(pN,pP,'',false,prevLbl):''}</div>
-          <div class="wk-card"><div class="l">Cambios de estado del equipo</div><div class="v">${mN}</div><div class="s">movimientos en el BO</div>${mP!=null?wkDelta(mN,mP,'',false,prevLbl):''}</div>
-          <div class="wk-card ${vc?'r':vm?'a':'g'}"><div class="l">Sin presentar hoy</div><div class="v">${nOpen}</div><div class="s">${vm} vencen antes del ${wkDmy(fin)} · ${vc} vencida${vc===1?'':'s'}</div></div>
-        </div>
-        <div class="wk-g2" style="margin-top:1.4em">
-          <div><div style="font-weight:600;margin-bottom:.4em">Presentadas por impuesto</div>${fE.length?fE.map(([f,n])=>`<div class="wk-mini" style="grid-template-columns:9em 1fr 3em"><span>${wkEsc(f)}</span><div class="wk-bar"><i style="width:${Math.round(n/fM*100)}%;background:var(--green)"></i></div><span style="text-align:right">${n}</span></div>`).join(''):'<div class="wk-note" style="margin:0">No hubo presentaciones en el período.</div>'}</div>
-          <div><div style="font-weight:600;margin-bottom:.4em">Sin presentar hoy, por impuesto</div>${oE.length?oE.map(([f,o])=>`<div class="wk-mini" style="grid-template-columns:7em 1fr 11em"><span>${wkEsc(f)}</span><div class="wk-bar"><i style="width:${Math.round(o.n/oM*100)}%;background:${o.venc?'var(--red)':o.v7?'var(--amber)':'var(--accent)'}"></i></div><span style="text-align:right">${o.n}${o.v7?' · <span style="color:var(--amber)">'+o.v7+' vencen</span>':''}${o.venc?' · <span style="color:var(--red)">'+o.venc+' venc.</span>':''}</span></div>`).join(''):'<div class="wk-note" style="margin:0">Nada pendiente de presentar.</div>'}</div>
-        </div>
-        <div class="wk-note">“Sin presentar hoy” es la foto al momento de la actualización y cuenta lo que vence hasta el ${wkDmy(fin)}${px?`; no incluye ${px} que ya están generadas y vencen en ${mesSig(fin)}`:''}. No incluye clientes de estudios contables.</div></div>`);
-    }
-  }
-  // 5d. Campañas de email del BO activas en el período (primer envío dentro del período o con la ventana de conversión abierta)
-  if(boData&&boData.campanias){
-    const C=boData.campanias,win=C.ventanaDias||14;
-    // 5d-1. Todas las campañas (manuales y automáticas) con actividad en el período, contra el período anterior
-    const RG=campRanges(w),grs=(C.grupos||[]).map(g=>({g,c:campRange(g,...RG.cur),p:campRange(g,...RG.prev)})).filter(x=>x.c.activo);
-    if(grs.length){
-      const ana=campAnalisis(RG.tipo,RG.key),pw=RG.tipo==='mensual'?'el mes anterior':'la semana anterior';
-      const dPct=(c,p)=>p?`<span style="color:var(--${c>=p?'green':'red'})">${c>=p?'+':''}${Math.round((c-p)/p*100)}%</span>`:'<span style="color:var(--ink3)">nuevo</span>';
-      const dPp=(a,b)=>a==null||b==null?'':`<span style="color:var(--${a>=b?'green':'red'})">${a>=b?'+':''}${(a-b).toFixed(0)} pp</span>`;
-      const ap=x=>x.dl>=20&&x.op<=x.dl?x.op/x.dl*100:null; // con pocos envíos en el período, las aperturas de envíos anteriores distorsionan el %
-      grs.forEach(x=>{const L=campLinks(x.g.templates.map(t=>t.template),...RG.cur);x.baja=L&&L.BAJA?L.BAJA.p:0;x.lt=linkTot(L);});
-      const auto=[];
-      { const sent=grs.filter(x=>ap(x.c)!=null).sort((a,b)=>ap(b.c)-ap(a.c));
-        if(sent.length>1)auto.push(`Mejor apertura: ${sent[0].g.nombre} (${ap(sent[0].c).toFixed(0)}%); la más baja: ${sent[sent.length-1].g.nombre} (${ap(sent[sent.length-1].c).toFixed(0)}%).`);
-        grs.filter(x=>x.g.tipo==='continua'&&x.p.se>=10&&x.c.se<x.p.se*0.5).forEach(x=>auto.push(`${x.g.nombre} mandó ${x.c.se} mails contra ${x.p.se} ${pw}: revisar si el flujo está entrando gente.`));
-        const tc=grs.reduce((s,x)=>s+x.c.conv,0);auto.push(tc?`En total, ${tc} conversiones (cuentas nuevas o suscripciones) de destinatarios de estas campañas en el período.`:'Ninguna campaña generó cuentas nuevas ni suscripciones en el período.');
-        grs.filter(x=>x.lt>=5&&x.baja/x.lt>=0.3).forEach(x=>auto.push(`${x.g.nombre}: ${x.baja} de las ${x.lt} personas que hicieron clic fueron a darse de baja (${Math.round(x.baja/x.lt*100)}%).`));
-        const bo=grs.reduce((s,x)=>s+x.c.bo,0),se=grs.reduce((s,x)=>s+x.c.se,0);if(se&&bo/se>0.02)auto.push(`Rebotes del ${(bo/se*100).toFixed(1)}% (${bo} de ${se}): conviene limpiar las listas.`);}
-      const puntos=ana&&ana.puntos&&ana.puntos.length?ana.puntos:auto;
-      slides.push(`<div class="wk-slide"><div class="wk-eyebrow">Operaciones — Campañas</div><div class="wk-h">Campañas de email ${w.pt==='M'?'del mes':w.pt==='Q'?'de la quincena':'de la semana'}</div><div class="wk-sub">Envíos manuales y flujos automáticos del BO, ${wkDmy(RG.cur[0])} al ${wkDmy(RG.cur[1])}, contra ${pw}. Datos del BO al ${boFecha(C.generado)}.</div>
-        <div class="wk-row h" style="grid-template-columns:13em 6em 1fr 1fr 1fr 1fr 1fr 1fr"><div>Campaña</div><div>Tipo</div><div class="n">Enviados</div><div class="n">vs ant.</div><div class="n">Apertura</div><div class="n">Clics</div><div class="n">Bajas</div><div class="n">Conversiones</div></div>
-        ${grs.map(({g,c,p,baja})=>`<div class="wk-row" style="grid-template-columns:13em 6em 1fr 1fr 1fr 1fr 1fr 1fr"><div>${wkEsc(g.nombre)}</div><div style="color:var(--ink3);font-size:.9em">${g.tipo==='continua'?'Automática':'Manual'}</div><div class="n">${c.se.toLocaleString('es')}</div><div class="n">${c.se||p.se?dPct(c.se,p.se):'—'}</div><div class="n">${ap(c)!=null?ap(c).toFixed(0)+'% '+(ap(p)!=null?dPp(ap(c),ap(p)):''):c.op?c.op+' abrieron':'—'}</div><div class="n">${c.cl}</div><div class="n" style="color:${baja?'var(--red)':'var(--ink4)'}">${baja||'—'}</div><div class="n">${g.conversion===false?'<span style="color:var(--ink3)">no aplica</span>':c.conv}</div></div>`).join('')}
-        <div style="margin-top:1.2em"><div style="font-weight:600;margin-bottom:.4em">${ana?'Qué está pasando':'Lectura rápida'}</div>${puntos.map(t=>`<div class="wk-bul" style="margin:.3em 0"><div class="bar" style="background:var(--purple)"></div><div><span class="t" style="margin:0">${wkEsc(t)}</span></div></div>`).join('')}</div>
-        <div class="wk-note">Enviados por día de envío; aperturas, clics y conversiones por el día en que ocurrieron (pueden venir de envíos anteriores). Conversión = cuenta nueva o suscripción dentro de los ${win} días del envío. Bajas = personas que entraron al enlace para darse de baja (dato disponible desde el ${C.linksDesde?wkDmy(C.linksDesde):'13/11'}).${ana?'':' La lectura completa se escribe en la actualización de los lunes.'}</div></div>`);
-    }
-    // 5d-2. Detalle de cada campaña manual mientras dura su ventana de conversión
-    (C.grupos||[]).forEach((g,gi)=>{
-      if(g.tipo==='continua')return;
-      const rows=campRows(gi).filter(r=>r.n>0);if(!rows.length)return;
-      const t=campTotals(rows);if(!t.d0)return;
-      const d0=dms(t.d0);if(d0>dms(w.we)||d0<dms(w.ws)-win*86400000)return;
-      const mx=Math.max(1,...rows.map(r=>r.dl?r.op/r.dl:0));
-      slides.push(`<div class="wk-slide"><div class="wk-eyebrow">Operaciones — Campañas</div><div class="wk-h">${wkEsc(g.nombre)}: cómo respondieron</div><div class="wk-sub">${t.n.toLocaleString('es')} emails enviados desde el ${wkDmy(t.d0)} · datos del BO al ${boFecha(C.generado)}${t.dias<win?' · día '+t.dias+' de '+win+' de la ventana de conversión':''}.</div>
-        <div class="wk-cards" style="grid-template-columns:repeat(4,1fr)">
-          <div class="wk-card"><div class="l">Entregados</div><div class="v">${pctS(t.dl,t.n)}</div><div class="s">${t.dl.toLocaleString('es')} de ${t.n.toLocaleString('es')}</div></div>
-          <div class="wk-card p"><div class="l">Apertura</div><div class="v">${pctS(t.op,t.dl)}</div><div class="s">${t.op.toLocaleString('es')} personas</div></div>
-          <div class="wk-card a"><div class="l">Clics</div><div class="v">${t.cl}</div><div class="s">${pctS(t.cl,t.dl,1)} de los entregados</div></div>
-          <div class="wk-card g"><div class="l">Suscripciones</div><div class="v">${t.sb}</div><div class="s">${t.rg} cuentas nuevas</div></div>
-        </div>
-        <div style="margin-top:1.4em"><div style="font-weight:600;margin-bottom:.4em">Apertura por segmento</div>
-          ${rows.map(r=>`<div class="wk-mini" style="grid-template-columns:12em 1fr 13em"><span>${wkEsc(r.corto||r.segmento)}</span><div class="wk-bar"><i style="width:${Math.round((r.dl?r.op/r.dl:0)/mx*100)}%;background:var(--purple)"></i></div><span style="text-align:right;font-family:'JetBrains Mono',monospace;font-size:.9em">${pctS(r.op,r.dl)} · ${r.cl} clics · ${r.sb} susc.</span></div>`).join('')}</div>
-        ${(()=>{const L=campLinks(g.templates.map(x=>x.template));return linkTot(L)?`<div style="margin-top:1.2em"><div style="font-weight:600;margin-bottom:.4em">A dónde entraron <span style="font-weight:400;color:var(--ink3);font-size:.85em">· personas y % de las ${linkTot(L)} que hicieron clic</span></div>${linksBlock(L)}</div>`:'';})()}
-        <div class="wk-note">Conversión: la persona creó una cuenta o se suscribió dentro de los ${win} días posteriores al envío (cruce por email o CUIT). “Darse de baja” es el enlace para no recibir más mails.</div></div>`);
-    });
-  }
-  // 6. Resumen desde Operaciones (editable)
+  if(H&&H.med>OBJ.espera)A.push(['red','Espera para hablar con una persona fuera de objetivo',`Mediana de ${fmtM(H.med)} contra un objetivo de ${OBJ.espera}m; ${H.over60} de ${H.n} pases esperaron más de 1 hora.`]);
+  else if(!R&&w.frtMed>SLA.frt)A.push(['red','Primera respuesta fuera de objetivo',`Mediana de ${fmtM(w.frtMed)} contra un objetivo de ${SLA.frt}m.`]);
+  if(R){const cats=Object.entries(R.byCat).filter(([,v])=>v.t>=5).map(([c,v])=>[c,Math.round((v.iaAgente+v.soloAgente)/v.t*100),v.t]).sort((a,b)=>b[1]-a[1]);
+    if(cats[0]&&cats[0][1]>=60)A.push(['purple','La IA no resuelve: '+cats[0][0],`${cats[0][1]}% de las ${cats[0][2]} conversaciones de este tema pasan a una persona. Conviene revisar qué le falta a la IA.`]);}
+  if(o&&o.slow&&o.slow.d1Pct>=10)A.push(['red','Resoluciones lentas',`${o.slow.d1Pct}% de las conversaciones hábiles tardó más de 2 hs en resolverse (${o.slow.d1} de ${o.slow.base}).`]);
+  if(DM&&DM.venc)A.push(['red','DDJJ vencidas sin presentar',`${DM.venc} de las ${DM.n} DDJJ que vencen en ${mesNombre(mesK).toLowerCase()} ya vencieron y siguen sin presentar.`]);
   const notes=wkGetNotes(w).filter(n=>(n.t||'').trim()||(n.d||'').trim());
   const COL=['accent','purple','green','amber'];
-  const ttl=w.pt==='M'?'Mes de '+(w.fl||''):'Semana del '+wkDmy(w.ws)+' al '+wkDmy(w.we);
-  if(notes.length)slides.push(`<div class="wk-slide"><div class="wk-eyebrow">Resumen</div><div class="wk-h">${ttl}, en resumen desde Operaciones</div><div class="wk-sub">&nbsp;</div>
-    ${notes.map((n,i)=>`<div class="wk-bul"><div class="bar" style="background:var(--${COL[i%4]})"></div><div><b>${wkEsc(n.t)}</b><span class="t">${wkEsc(n.d)}</span></div></div>`).join('')}</div>`);
+  if(A.length||notes.length)slides.push(`<div class="wk-slide"><div class="wk-eyebrow">Cierre</div><div class="wk-h">Para tener en cuenta y próximos pasos</div><div class="wk-sub">${A.length?'Lo que se aparta del objetivo o cambió '+dlp:''}${A.length&&notes.length?' y ':''}${notes.length?'las notas del equipo':''}.</div>
+    ${A.map(b=>`<div class="wk-bul"><div class="bar" style="background:var(--${b[0]})"></div><div><b>${wkEsc(b[1])}</b><span class="t">${wkEsc(b[2])}</span></div></div>`).join('')}
+    ${notes.length?`${A.length?'<div style="font-weight:600;margin:1em 0 .2em">Desde Operaciones</div>':''}${notes.map((n,i)=>`<div class="wk-bul"><div class="bar" style="background:var(--${COL[i%4]})"></div><div><b>${wkEsc(n.t)}</b><span class="t">${wkEsc(n.d)}</span></div></div>`).join('')}`:''}</div>`);
+  wkMsgMissing=!R;
   return slides;
 }
 // Dos presentaciones: Weekly (períodos semanales y quincenales) y Mensual (períodos mensuales).
@@ -2286,6 +2361,7 @@ function renderBot(){
 
   const bc=mr.broadcasts||{};const bcSorted=Object.entries(bc).sort((a,b)=>b[1]-a[1]);const bcMax=bcSorted[0]?.[1]||1;
   document.getElementById('broadcastList').innerHTML=bcSorted.length?bcSorted.map(([name,count],i)=>`<div class="sla-row"><div class="sla-label" style="font-family:'JetBrains Mono',monospace;font-size:11px">${name.replace(' (es_AR) (MARKETING)','')}</div><div class="sla-bar"><div class="sla-bar-fill" style="width:${Math.round(count/bcMax*100)}%;background:${PAL[i%PAL.length]}"></div></div><div class="sla-val" style="color:var(--ink)">${count}</div></div>`).join(''):'<div class="empty">Sin broadcasts</div>';
+  {const it=(mr.flowStats||{}).intents||[];if(it.length){const im=it[0][1]||1;document.getElementById('broadcastList').insertAdjacentHTML('beforeend',`<div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--border)"><div class="card-title" style="font-size:13px">Qué piden los clientes cuando escriben</div><div class="card-sub" style="margin-bottom:8px">Primer mensaje de cada cliente, sin saludos · útil para producto y ventas · no va en las presentaciones</div>${it.slice(0,10).map(x=>`<div class="sla-row"><div class="sla-label" style="font-size:11px">${wkEsc(x[0])}</div><div class="sla-bar"><div class="sla-bar-fill" style="width:${Math.round(x[1]/im*100)}%;background:var(--accent)"></div></div><div class="sla-val" style="color:var(--ink)">${x[1]}</div></div>`).join('')}</div>`);}}
 
   mkChart('cSenders','doughnut',{labels:['Humano','AI agent','Workflow','Broadcast','n8n'],datasets:[{data:[mr.humanMsgs,mr.botMsgs,mr.workflowMsgs,mr.broadcastMsgs,mr.n8nMsgs],backgroundColor:['#6366f1','#10b981','#f59e0b','#8b5cf6','#ec4899'],borderWidth:4,borderColor:'#fff'}]},{cutout:'55%'});
 
@@ -2780,6 +2856,21 @@ function renderGlosario(){
       ]
     },
     {
+      title:'📊 Presentaciones Weekly y Mensual',
+      desc:'Orden: resumen en 30 segundos, qué y cuándo consultan, cómo se atendió, cómo facturaron, DDJJ del mes, campañas (tabla y una slide por campaña manual) y cierre. El Mensual suma la tendencia y los servicios del mes. Lo que se mide por persona y “Qué piden los clientes” quedan solo en el dashboard.',
+      items:[
+        {term:'Objetivos del semáforo',formula:'OBJ en el código: espera 10 min · atendidas en < 10 min 90% · resueltas en el día 80%',desc:'Verde si cumple; amarillo si está cerca (hasta 3 veces el objetivo de espera, o hasta 15 puntos abajo); rojo si no.'},
+        {term:'Espera para hablar con una persona',formula:'mediana de (primer mensaje de un agente − último mensaje de la IA), cuando la IA deriva',desc:'En reloj real. Requiere el CSV de mensajes. Reemplaza a la 1ª respuesta, que incluye al bot y por eso casi siempre da segundos.'},
+        {term:'Atendidas por una persona en < 10 min',formula:'conversaciones en horario hábil con mensaje de un agente que lo tuvieron dentro de los 10 min',desc:'Se cuenta desde que la IA deriva o, si la conversación fue directo a una persona, desde el primer mensaje del cliente.'},
+        {term:'Resueltas en el día',formula:'conversaciones resueltas el mismo día en que empezaron ÷ total',desc:'Sale del CSV de conversaciones.'},
+        {term:'Volvieron por lo mismo',formula:'conversaciones del mismo contacto y la misma categoría abiertas menos de 72 h después de resolverse la anterior ÷ total',desc:'Es la única métrica de re-contacto de la presentación. En la tabla de temas se muestra por categoría.'},
+        {term:'Temas que la IA no resuelve sola',formula:'por categoría (5 o más conversaciones): (IA y luego agente + solo agente) ÷ total',desc:'Los temas con más pases a una persona son los que conviene enseñarle a la IA.'},
+        {term:'Consultas por difusiones',formula:'conversaciones que empezaron en las 24 h siguientes a una difusión de WhatsApp a ese contacto',desc:'Requiere el CSV de mensajes (las difusiones vienen como sender “broadcast”).'},
+        {term:'DDJJ del mes',formula:'DDJJ que vencen en el mes: presentadas, en término, vencidas sin presentar y por vencer',desc:'Incluye las cargadas a mano. “En término” = presentada el día del vencimiento o antes. En el Mensual de un mes cerrado no se muestra “sin presentar hoy”.'},
+        {term:'Servicios del mes (Mensual)',formula:'VEPs generados · facturas con problemas al emitirse · recategorización · días por etapa de las DDJJ',desc:'VEPs: todos los generados desde Lannis; el BO no registra de forma confiable si se pagaron. Facturas con problemas: se emitieron en un reintento o ARCA no las dejó emitir. Recategorización: solo en los meses del ciclo. Etapas: promedio de días de las DDJJ presentadas en el mes. No se incluye el costo de la IA porque el BO no registra el de la IA de WhatsApp.'}
+      ]
+    },
+    {
       title:'📧 Tab: Campañas (BO)',
       desc:'Campañas de email que salen del BO de Lannis. Los datos no se cargan a mano: una tarea programada consulta el BO por MCP y actualiza data/bo.json en el repo. Las campañas que se siguen se eligen en scripts/bo/campanias.json.',
       items:[
@@ -2787,7 +2878,8 @@ function renderGlosario(){
         {term:'Apertura',formula:'abrieron ÷ entregados',desc:'Se calcula sobre entregados, no sobre enviados, para que los rebotes no la bajen. Algunos clientes de email bloquean el píxel de apertura, así que es un mínimo.'},
         {term:'Clics',formula:'hicieron clic ÷ entregados',desc:'También se muestra sobre los que abrieron.'},
         {term:'Cuentas nuevas',formula:'destinatarios de listas externas que crearon cuenta dentro de los 14 días posteriores al envío',desc:'Se cruza por email o CUIT del destinatario contra las cuentas de Lannis. Solo aplica a listas externas (personas que no tenían cuenta).'},
-        {term:'Suscripciones',formula:'destinatarios que empezaron una suscripción dentro de los 14 días posteriores al envío',desc:'Aplica a listas externas y a cuentas existentes. Mientras la ventana está abierta el número puede seguir subiendo.'},
+        {term:'Suscripciones',formula:'destinatarios que empezaron una suscripción dentro de los 14 días posteriores al envío',desc:'Aplica a listas externas y a cuentas existentes. Mientras la ventana está abierta el número puede seguir subiendo. En listas externas, quienes se suscriben son parte de las cuentas nuevas: no se suman.'},
+        {term:'Convirtieron (atribución)',formula:'personas que crearon cuenta o se suscribieron, contadas una vez',desc:'Si una persona recibió varias campañas, cuenta solo para una: la del último mail que abrió o en el que hizo clic antes de convertir; si no abrió ninguno, la del último envío. Las encuestas no compiten por la atribución.'},
         {term:'Rebotes / spam / fallidos',formula:'con fecha de rebote, de queja (marcado como spam) o de falla',desc:'Rebotes altos en una lista externa indican emails viejos o mal cargados.'}
       ]
     },

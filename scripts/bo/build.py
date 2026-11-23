@@ -26,7 +26,7 @@ ROOT = Path(__file__).resolve().parents[2]
 BO = ROOT / "scripts" / "bo"
 OUT = BO / "out"
 DATA = ROOT / "data" / "bo.json"
-QUERIES = ["campanias", "ddjj_estado", "ddjj_semanal", "facturacion", "clics"]
+QUERIES = ["campanias", "ddjj_estado", "ddjj_semanal", "facturacion", "clics", "servicios"]
 ART = timezone(timedelta(hours=-3))
 
 
@@ -42,6 +42,8 @@ def render():
         sql = (BO / "queries" / f"{q}.sql").read_text(encoding="utf-8")
         sql = sql.replace("{{TEMPLATES}}", ",".join("'" + t.replace("'", "''") + "'" for t in tpls))
         sql = sql.replace("{{DIAS}}", str(int(cfg.get("ventanaConversionDias", 14))))
+        noconv = [t["template"] for g in cfg["grupos"] if g.get("conversion") is False for t in g["templates"]] or ["__ninguno__"]
+        sql = sql.replace("{{SIN_CONVERSION}}", ",".join("'" + t.replace("'", "''") + "'" for t in noconv))
         # sin comentarios ni saltos de línea: más fácil de pasar al MCP
         lines = [l.split("--")[0].rstrip() if not l.strip().startswith("--") else "" for l in sql.splitlines()]
         (OUT / f"{q}.sql").write_text(" ".join(l.strip() for l in lines if l.strip()) + "\n", encoding="utf-8")
@@ -88,7 +90,7 @@ def merge_analisis(prev):
 
 def build():
     cfg = config()
-    camp, est, sem, fac, cli = (load(q) for q in QUERIES)
+    camp, est, sem, fac, cli, srv = (load(q) for q in QUERIES)
     for k in ("funnel", "daily"):
         assert isinstance(camp.get(k), (list, type(None))), f"campanias.{k} inválido"
     for k in ("snapshot", "periodos", "excluidas"):
@@ -101,6 +103,8 @@ def build():
         assert not re.search(r"@|%40|\?|=", str(r[1])), f"clics: un destino parece tener datos personales: {r[1][:60]}"
     for k in ("semanas", "meses", "activosHoy"):
         assert k in fac, f"facturacion sin {k}"
+    for k in ("semanas", "meses", "recat", "etapas"):
+        assert k in srv, f"servicios sin {k}"
 
     now = datetime.now(ART)
     prev = {}
@@ -143,6 +147,7 @@ def build():
         },
         "ddjj": {**est, **sem, "historial": hist, "generado": now.strftime("%Y-%m-%dT%H:%M:%S-03:00")},
         "facturacion": fac,
+        "servicios": srv,
         "analisis": merge_analisis(prev.get("analisis")),
     }
     DATA.parent.mkdir(parents=True, exist_ok=True)
