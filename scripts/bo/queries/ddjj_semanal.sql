@@ -15,6 +15,11 @@ WITH ob AS (
   FROM "TaxObligation" t JOIN "Tax" tx ON tx.id=t."taxId"
   JOIN LATERAL (SELECT * FROM "User" uu WHERE uu.cuit=t."userCuit" AND uu."deletedAt" IS NULL ORDER BY uu.id LIMIT 1) u ON true
   WHERE t."taxId" NOT IN (20,308,9100,9101) AND u."estudioId" IS NULL AND COALESCE(u."planKey",'free') NOT IN ('free','estudio_client')
+    AND u."subscriptionStatus" IS NOT NULL -- nunca se suscribió: no es cliente de Ops
+    -- Duplicados: el BO tiene dos impuestos con el mismo nombre (ej. IIBB Convenio Multilateral 5900 y 9001).
+    -- Por cliente, período e impuesto queda una sola obligación: la más avanzada.
+    AND NOT EXISTS (SELECT 1 FROM "TaxObligation" o JOIN "Tax" ox ON ox.id=o."taxId" WHERE o."userCuit"=t."userCuit" AND o.periodo=t.periodo AND o.id<>t.id AND upper(ox.name)=upper(tx.name)
+      AND (COALESCE(array_position(ARRAY['PENDIENTE','INFORMACION_PENDIENTE','PENDIENTE_REVISION','EN_CURSO','REVISION_SOLICITADA','BORRADOR_A_REVISAR','BORRADOR_APROBADO','PRESENTADA','PENDIENTE_PAGO','PAGO_INFORMADO','PAGADA','COMPLETADA']::text[], o.status),0) > COALESCE(array_position(ARRAY['PENDIENTE','INFORMACION_PENDIENTE','PENDIENTE_REVISION','EN_CURSO','REVISION_SOLICITADA','BORRADOR_A_REVISAR','BORRADOR_APROBADO','PRESENTADA','PENDIENTE_PAGO','PAGO_INFORMADO','PAGADA','COMPLETADA']::text[], t.status),0) OR (COALESCE(array_position(ARRAY['PENDIENTE','INFORMACION_PENDIENTE','PENDIENTE_REVISION','EN_CURSO','REVISION_SOLICITADA','BORRADOR_A_REVISAR','BORRADOR_APROBADO','PRESENTADA','PENDIENTE_PAGO','PAGO_INFORMADO','PAGADA','COMPLETADA']::text[], o.status),0) = COALESCE(array_position(ARRAY['PENDIENTE','INFORMACION_PENDIENTE','PENDIENTE_REVISION','EN_CURSO','REVISION_SOLICITADA','BORRADOR_A_REVISAR','BORRADOR_APROBADO','PRESENTADA','PENDIENTE_PAGO','PAGO_INFORMADO','PAGADA','COMPLETADA']::text[], t.status),0) AND o.id < t.id)))
 ), wk AS (SELECT generate_series(date_trunc('week', now()) - interval '11 weeks', date_trunc('week', now()), interval '1 week') ws),
 st AS (
   SELECT wk.ws, ob.fam, ob.seg, COALESCE(

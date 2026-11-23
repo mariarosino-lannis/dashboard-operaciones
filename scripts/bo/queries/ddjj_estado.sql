@@ -1,5 +1,5 @@
 -- Estado actual de las DDJJ que gestiona el equipo de Ops. Devuelve una fila con la columna j (JSON).
--- Universo: obligaciones de clientes propios de Lannis (sin clientes de estudios ni cuentas free),
+-- Universo: obligaciones de clientes propios de Lannis (sin clientes de estudios, cuentas free ni cuentas que nunca se suscribieron),
 -- sin Monotributo, Autónomos ni anticipos (son pagos, no DDJJ).
 -- Corte: los vencimientos cuentan hasta el último día del mes en curso (hora argentina). Lo que vence el mes que
 -- viene (por ejemplo, el período en curso) ya está generado pero todavía no es trabajo del mes: va aparte (prox).
@@ -18,6 +18,11 @@ WITH hoy AS (
   FROM "TaxObligation" t JOIN "Tax" tx ON tx.id=t."taxId"
   JOIN LATERAL (SELECT * FROM "User" uu WHERE uu.cuit=t."userCuit" AND uu."deletedAt" IS NULL ORDER BY uu.id LIMIT 1) u ON true
   WHERE t."taxId" NOT IN (20,308,9100,9101) AND u."estudioId" IS NULL AND COALESCE(u."planKey",'free') NOT IN ('free','estudio_client')
+    AND u."subscriptionStatus" IS NOT NULL -- nunca se suscribió: no es cliente de Ops
+    -- Duplicados: el BO tiene dos impuestos con el mismo nombre (ej. IIBB Convenio Multilateral 5900 y 9001).
+    -- Por cliente, período e impuesto queda una sola obligación: la más avanzada.
+    AND NOT EXISTS (SELECT 1 FROM "TaxObligation" o JOIN "Tax" ox ON ox.id=o."taxId" WHERE o."userCuit"=t."userCuit" AND o.periodo=t.periodo AND o.id<>t.id AND upper(ox.name)=upper(tx.name)
+      AND (COALESCE(array_position(ARRAY['PENDIENTE','INFORMACION_PENDIENTE','PENDIENTE_REVISION','EN_CURSO','REVISION_SOLICITADA','BORRADOR_A_REVISAR','BORRADOR_APROBADO','PRESENTADA','PENDIENTE_PAGO','PAGO_INFORMADO','PAGADA','COMPLETADA']::text[], o.status),0) > COALESCE(array_position(ARRAY['PENDIENTE','INFORMACION_PENDIENTE','PENDIENTE_REVISION','EN_CURSO','REVISION_SOLICITADA','BORRADOR_A_REVISAR','BORRADOR_APROBADO','PRESENTADA','PENDIENTE_PAGO','PAGO_INFORMADO','PAGADA','COMPLETADA']::text[], t.status),0) OR (COALESCE(array_position(ARRAY['PENDIENTE','INFORMACION_PENDIENTE','PENDIENTE_REVISION','EN_CURSO','REVISION_SOLICITADA','BORRADOR_A_REVISAR','BORRADOR_APROBADO','PRESENTADA','PENDIENTE_PAGO','PAGO_INFORMADO','PAGADA','COMPLETADA']::text[], o.status),0) = COALESCE(array_position(ARRAY['PENDIENTE','INFORMACION_PENDIENTE','PENDIENTE_REVISION','EN_CURSO','REVISION_SOLICITADA','BORRADOR_A_REVISAR','BORRADOR_APROBADO','PRESENTADA','PENDIENTE_PAGO','PAGO_INFORMADO','PAGADA','COMPLETADA']::text[], t.status),0) AND o.id < t.id)))
 ), lst AS (
   SELECT ob.*, COALESCE((SELECT max(a."createdAt") FROM "ObligationAuditLog" a WHERE a."obligationId"=ob.id AND a."toStatus" IS NOT NULL), ob.cr) since,
     ob.s IN ('PRESENTADA','PENDIENTE_PAGO','PAGO_INFORMADO','PAGADA','COMPLETADA') pres,
@@ -37,6 +42,6 @@ SELECT json_build_object(
  'periodos', (SELECT json_agg(json_build_array(periodo,fam,n,p) ORDER BY periodo DESC,fam) FROM (
     SELECT periodo,fam,count(*) n,count(*) FILTER (WHERE pres) p FROM lst
     WHERE periodo >= to_char(now()-interval '4 months','YYYYMM')::int OR periodo % 100 = 0 GROUP BY 1,2) y),
- 'excluidas', (SELECT json_build_object('estudios', count(*) FILTER (WHERE u."estudioId" IS NOT NULL OR u."planKey"='estudio_client'), 'free', count(*) FILTER (WHERE u."estudioId" IS NULL AND COALESCE(u."planKey",'free')='free'))
+ 'excluidas', (SELECT json_build_object('estudios', count(*) FILTER (WHERE u."estudioId" IS NOT NULL OR u."planKey"='estudio_client'), 'free', count(*) FILTER (WHERE u."estudioId" IS NULL AND COALESCE(u."planKey",'free')='free'), 'sinSuscripcion', count(*) FILTER (WHERE u."estudioId" IS NULL AND COALESCE(u."planKey",'free') NOT IN ('free','estudio_client') AND u."subscriptionStatus" IS NULL))
     FROM "TaxObligation" t JOIN LATERAL (SELECT * FROM "User" uu WHERE uu.cuit=t."userCuit" AND uu."deletedAt" IS NULL ORDER BY uu.id LIMIT 1) u ON true WHERE t."taxId" NOT IN (20,308,9100,9101))
 ) j
