@@ -110,15 +110,20 @@ def build():
         except Exception:
             prev = {}
 
-    # Historial de vencidas / abiertas: no se puede reconstruir hacia atrás, así que se guarda una foto por semana.
+    # Historial de vencidas / abiertas: se guarda una foto por semana (la de los lunes).
+    # Corte: cuenta lo que vence hasta fin de mes; lo del mes que viene va aparte en "prox".
     snap = est.get("snapshot") or []
+    for r in snap:
+        assert len(r) >= 9, "ddjj_estado.snapshot sin la columna de 'vencen el mes que viene' (correr la consulta nueva)"
     pres = {"PRESENTADA", "PENDIENTE_PAGO", "PAGO_INFORMADO", "PAGADA", "COMPLETADA"}
     week = (now - timedelta(days=now.weekday())).strftime("%Y-%m-%d")
+    abiertas = [r for r in snap if r[2] not in pres]
     foto = {
         "semana": week,
-        "abiertas": sum(r[3] for r in snap if r[2] not in pres),
+        "abiertas": sum(r[3] for r in abiertas) - sum(r[8] for r in abiertas),
         "vencidas": sum(r[4] for r in snap),
-        "vencen7": sum(r[5] for r in snap),
+        "vencenMes": sum(r[5] for r in snap),
+        "prox": sum(r[8] for r in abiertas),
         "trabadas7": sum(r[6] for r in snap),
     }
     hist = [h for h in (prev.get("ddjj", {}).get("historial") or []) if h.get("semana") != week]
@@ -136,7 +141,7 @@ def build():
             "linksDaily": cli.get("daily") or [],
             "linksDesde": cli.get("desde"),
         },
-        "ddjj": {**est, **sem, "historial": hist},
+        "ddjj": {**est, **sem, "historial": hist, "generado": now.strftime("%Y-%m-%dT%H:%M:%S-03:00")},
         "facturacion": fac,
         "analisis": merge_analisis(prev.get("analisis")),
     }

@@ -56,3 +56,15 @@ Grupo `tipo: puntual` = envío manual o tanda (slide propia mientras dura la ven
 `conversion: false` = no se mide conversión (encuestas).
 Template `tipo: externa` = lista de no usuarios (convierte si se registra o se suscribe);
 `tipo: cuentas` = usuarios existentes (convierte si se suscribe).
+
+## Vencimientos de DDJJ: corte a fin de mes
+
+"Sin presentar", "vencidas" y "vencen este mes" cuentan solo lo que vence hasta el último día del mes en curso
+(hora argentina). Lo que ya está generado pero vence el mes que viene (el período en curso) no es trabajo del mes:
+se cuenta aparte (columna 9 de `snapshot`, "vencen en <mes>"). Una obligación que vence hoy todavía no está vencida.
+
+## DDJJ cargadas a mano
+
+Para clientes que no están en el BO, la pestaña DDJJ tiene una sección "Cargadas a mano" que guarda en la tabla
+`ddjj_manual` de Supabase (no en este repo). Se suman a la pestaña y a la slide de DDJJ del Weekly / Mensual
+(en la slide solo los totales). No entran en el avance semana a semana ni en la foto semanal del historial.
