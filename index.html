@@ -7,7 +7,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Inter:wght@300;400;500&family=Figtree:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
 :root{
   --ink:#0d0d0f;--ink2:#3a3a42;--ink3:#8a8a96;--ink4:#c4c4cc;
@@ -105,6 +105,36 @@ body{font-family:'Inter',sans-serif;background:var(--paper);color:var(--ink);min
 #wkOv .wk-bar-nav{display:flex;justify-content:space-between;align-items:center;padding:10px 24px;border-top:1px solid var(--border);background:var(--surface)}
 .wk-ed-row{display:grid;grid-template-columns:1fr 2fr auto;gap:8px;margin-bottom:8px}
 .wk-ed-row input{padding:8px 10px;border:1px solid var(--border2);border-radius:var(--rs);font-family:inherit;font-size:12px}
+
+/* Formato PPT Lannis: mismas proporciones y estilo que el deck semanal (16:9, franja celeste, Figtree + Arial) */
+.ppt-wrap{margin-bottom:22px}
+.ppt{position:relative;width:100%;aspect-ratio:16/9;background:#FAFAF8;color:#14202B;font-family:Arial,Helvetica,sans-serif;container-type:inline-size;overflow:hidden;border:1px solid var(--border);border-radius:4px;
+  --accent:#18AAF2;--purple:#14202B;--ink:#14202B;--ink2:#3A4653;--ink3:#6B7682;--ink4:#B8C2CC;--surface:#FFFFFF;--border:#E3E8EE;--border2:#D7DFE7;--s3:#E8EEF3}
+.ppt-band{position:absolute;left:0;top:0;right:0;height:10.42cqw;background:#18AAF2;display:flex;align-items:center;padding:0 5.8cqw}
+.ppt-title{font-family:'Figtree',Arial,sans-serif;font-weight:700;color:#fff;font-size:4.6cqw;white-space:nowrap;overflow:hidden;width:100%;line-height:1.15;letter-spacing:-.01em}
+.ppt-body{position:absolute;left:5.8cqw;right:5.8cqw;top:13cqw;bottom:2.6cqw;overflow:hidden}
+.ppt-fit{font-size:1.38cqw;line-height:1.45;transform-origin:top left}
+.ppt .wk-sub{color:#5B6672;margin:0 0 1em;font-size:1em}
+.ppt .wk-card{background:#fff;border:1px solid var(--border);border-top:.28cqw solid #18AAF2;border-radius:.7cqw;padding:.95em 1.05em}
+.ppt .wk-card.g{border-top-color:var(--green)}.ppt .wk-card.a{border-top-color:var(--amber)}.ppt .wk-card.r{border-top-color:var(--red)}.ppt .wk-card.p{border-top-color:#14202B}
+.ppt .wk-card .v,.ppt .wk-funnel .v{font-family:'Figtree',Arial,sans-serif;color:#14202B;letter-spacing:-.02em}
+.ppt .wk-funnel>div{background:#fff}
+.ppt .wk-row .n,.ppt .wk-tbl .n{font-family:Arial,Helvetica,sans-serif;font-variant-numeric:tabular-nums}
+.ppt .wk-tbl td{background:transparent}
+.ppt .wk-note{font-size:.78em;color:#7B8692;margin-top:1em}
+.ppt .wk-bul b{color:#14202B}
+.ppt .wk-bul span.t{color:#3A4653}
+.ppt .ppt-big{font-size:1.25em}.ppt .ppt-big .wk-bul{padding:.5em 0}
+.ppt-cover{position:relative;width:100%;aspect-ratio:16/9;background:#FAFAF8;container-type:inline-size;overflow:hidden;border:1px solid var(--border);border-radius:4px}
+.ppt-cover .pnl{position:absolute;top:0;right:0;bottom:0;width:33.33%;background:#18AAF2}
+.ppt-cover img{position:absolute;left:6.67cqw;top:5.83cqw;width:10.4cqw}
+.ppt-cover .tt{position:absolute;left:6.67cqw;top:20cqw;font-family:'Figtree',Arial,sans-serif;font-weight:700;font-size:9.2cqw;color:#14202B;letter-spacing:-.03em;line-height:1}
+.ppt-cover .st{position:absolute;left:6.8cqw;top:33cqw;font-family:Arial,Helvetica,sans-serif;font-size:2.2cqw;color:#3A4653}
+.ppt-act{display:flex;gap:8px;justify-content:flex-end;margin-top:6px}
+.ppt-act .wk-btn{font-size:11px;padding:5px 10px}
+#wkOv.ppton .wk-stage{display:flex;align-items:center;justify-content:center}
+#wkOv.ppton .ppt,#wkOv.ppton .ppt-cover{width:min(92vw,calc((100vh - 90px)*16/9));border:none}
+
 @media print{.sidebar,.tabs-bar,.main-header,.wk-controls,.wk-editor,#wkOv{display:none!important}.app{display:block!important}.tab-c{display:none!important}#tab-weekly.on,#tab-mensual.on{display:block!important}.wk-slide{break-inside:avoid;page-break-after:always;box-shadow:none}}
 @media(max-width:900px){.wk-cards,.wk-cards.c2,.wk-cards.c4,.wk-cards.c5,.wk-g2{grid-template-columns:1fr}.wk-funnel{grid-template-columns:repeat(2,1fr)!important}}
 
@@ -1859,7 +1889,7 @@ function buildWeeklySlides(w){
       if(ch)B.push(`${ch[1]>0?'Subieron':'Bajaron'} las consultas de ${ch[0]} (${ch[1]>0?'+':''}${ch[1]} contra ${pl}).`);}
     if(peakDn)B.push(`El ${peakD} concentró ${peakDn} consultas (${Math.round(peakDn/tot*100)}%)${peakH?', con pico a las '+peakH[0]+' h':''}.`);
     if(DM)B.push(DM.venc?`DDJJ de ${mesNombre(mesK).toLowerCase()}: ${DM.p} de ${DM.n} presentadas y ${DM.venc} vencida${DM.venc===1?'':'s'} sin presentar.`:`DDJJ de ${mesNombre(mesK).toLowerCase()}: ${DM.p} de ${DM.n} presentadas, ninguna vencida.`);
-    slides.push(`<div class="wk-slide"><div class="wk-eyebrow">Operaciones — Resumen</div><div class="wk-h">${wkEsc(ttl)} en 30 segundos</div><div class="wk-sub">${wkEsc(w.fl||w.week)}${prev?' · contra '+pl:''}</div>
+    slides.push(`<div class="wk-slide"><div class="wk-eyebrow">Operaciones — Resumen</div><div class="wk-h">${w.pt==='M'?'El mes':w.pt==='Q'?'La quincena':'La semana'} en 30 segundos</div><div class="wk-sub">${wkEsc(ttl)}${prev?' · contra '+pl:''}</div>
       <div class="wk-cards c${K.length}">${K.join('')}</div>
       ${B.length?`<div style="margin-top:1.3em">${B.slice(0,3).map(t=>`<div class="wk-bul" style="padding:.35em 0"><div class="bar" style="background:var(--accent)"></div><div><span class="t" style="color:var(--ink2)">${wkEsc(t)}</span></div></div>`).join('')}</div>`:''}
       <div class="wk-note">Tiempos de espera en reloj real; el objetivo es editable en el código (OBJ). ${o&&o.notif?'No incluye '+o.notif+' notificaciones reenviadas por mail.':''}</div></div>`);
@@ -2010,7 +2040,7 @@ function buildWeeklySlides(w){
         <div style="overflow-x:auto"><table class="wk-tbl"><thead><tr><th>Campaña</th><th class="n">Enviados</th><th class="n">vs ant.</th><th class="n">Apertura</th><th class="n">Clics</th><th class="n">Interés</th><th class="n">Bajas</th><th class="n">Cuentas nuevas</th><th class="n">Se suscribieron</th></tr></thead><tbody>
         ${grs.map(({g,c,p,baja,int})=>`<tr><td><b style="font-weight:600">${wkEsc(g.nombre)}</b> <span style="color:var(--ink3);font-size:.85em">${g.tipo==='continua'?'automática':'manual'}</span></td><td class="n">${miles(c.se)}</td><td class="n">${c.se||p.se?dPct(c.se,p.se):'—'}</td><td class="n">${ap(c)!=null?ap(c).toFixed(0)+'%':c.op?c.op+' abr.':'—'}</td><td class="n">${c.cl}</td><td class="n">${int||'—'}</td><td class="n" style="color:${baja?'var(--red)':'var(--ink4)'}">${baja||'—'}</td>${nc(g)?'<td class="n" colspan="2" style="color:var(--ink3)">no aplica</td>':`<td class="n">${c.rg}</td><td class="n">${c.sb}</td>`}</tr>`).join('')}
         </tbody></table></div>
-        <div style="margin-top:1.1em"><div style="font-weight:600;margin-bottom:.3em">${ana?'Qué está pasando':'Lectura rápida'}</div>${puntos.map(t=>`<div class="wk-bul" style="margin:.2em 0;padding:.3em 0"><div class="bar" style="background:var(--purple)"></div><div><span class="t" style="margin:0">${wkEsc(t)}</span></div></div>`).join('')}</div>
+        <div class="wk-split" data-title="Campañas: ${ana?'qué está pasando':'lectura rápida'}" style="margin-top:1.1em"><div class="wk-split-h" style="font-weight:600;margin-bottom:.3em">${ana?'Qué está pasando':'Lectura rápida'}</div>${puntos.map(t=>`<div class="wk-bul" style="margin:.2em 0;padding:.3em 0"><div class="bar" style="background:var(--purple)"></div><div><span class="t" style="margin:0">${wkEsc(t)}</span></div></div>`).join('')}</div>
         <div class="wk-note">Interés y bajas: personas, según el enlace en el que entraron (interés = planes, inicio u otra página de Lannis; baja = el enlace para no recibir más mails; datos desde el ${C.linksDesde?wkDmy(C.linksDesde):'13/11'}). Cuentas nuevas: personas de la lista que crearon su cuenta dentro de los ${win} días del envío; las que se suscribieron salen de esas mismas cuentas (no se suman). Cada persona cuenta para una sola campaña: la del último mail que abrió antes de convertir.</div></div>`);
     }
     // 6b. Una slide por campaña manual mientras dura su ventana de conversión
@@ -2106,26 +2136,74 @@ function deckW(k){const L=deckPeriods(k);if(!L.length)return null;const a=allWee
 function deckPrev(w){return allWeeks.filter(x=>x!==w&&x.pt===w.pt&&String(x.ws)<String(w.ws)).sort((a,b)=>String(b.ws).localeCompare(String(a.ws)))[0]||null;}
 function setDeck(k,id){DECK[k].sel=id;renderDeck(k);}
 function renderDecks(){renderDeck('S');renderDeck('M');}
-function renderDeck(k){
+function renderDeck(k){renderDeck0(k);requestAnimationFrame(()=>pptFit(document.getElementById(DECK[k].el)));}
+function renderDeck0(k){
   const D=DECK[k],el=document.getElementById(D.el);if(!el)return;
   const w=deckW(k);
   if(!w){deckSlides[k]=[];el.innerHTML=`<div class="card"><div class="card-title">Sin períodos de tipo ${D.word}</div><div class="card-sub" style="margin-top:6px">${D.none}</div></div>`;return;}
   const slides=buildWeeklySlides(w);deckSlides[k]=slides;const miss=wkMsgMissing;
   const prev=deckPrev(w),notes=wkGetNotes(w),L=deckPeriods(k);
-  el.innerHTML=`<div class="wk-controls"><select class="wk-sel" onchange="setDeck('${k}',this.value)" title="Período">${L.map(x=>`<option value="${wkEsc(x.id)}" ${x===w?'selected':''}>${wkEsc(x.fl||x.week)}</option>`).join('')}</select><button class="wk-btn pri" onclick="wkOpen('${k}',0)">▶ Presentar</button><button class="wk-btn" onclick="window.print()">Imprimir / guardar PDF</button><span style="font-size:11px;color:var(--ink3)">Presentación ${D.word} · ${slides.length} slides. Flechas ← → y Esc en modo presentación.</span></div>
+  const ppt=pptOn();
+  el.innerHTML=`<div class="wk-controls"><button class="wk-btn${ppt?' pri':''}" onclick="pptToggle('${k}')" title="Mismo diseño que el deck semanal de Lannis, listo para copiar y pegar">${ppt?'✓ ':''}Formato PPT Lannis</button>${ppt?`<button class="wk-btn" onclick="pptAll('${k}')">Descargar todas (PNG)</button>`:''}<select class="wk-sel" onchange="setDeck('${k}',this.value)" title="Período">${L.map(x=>`<option value="${wkEsc(x.id)}" ${x===w?'selected':''}>${wkEsc(x.fl||x.week)}</option>`).join('')}</select><button class="wk-btn pri" onclick="wkOpen('${k}',0)">▶ Presentar</button><button class="wk-btn" onclick="window.print()">Imprimir / guardar PDF</button><span style="font-size:11px;color:var(--ink3)">Presentación ${D.word} · ${slides.length} slides. Flechas ← → y Esc en modo presentación.</span></div>
   ${miss?'<div class="card-sub" style="margin:-6px 0 14px">Para incluir la slide de automatización (IA vs agentes), subí el CSV de mensajes de este período.</div>':''}
-  ${slides.join('')}
+  ${ppt?pptCover(w,k)+slides.map((h,i)=>pptFrame(h,k,i)).join(''):slides.join('')}
   <div class="card wk-editor"><div class="card-header"><div><div class="card-title">Resumen desde Operaciones (editable)</div><div class="card-sub">Lo que quieras destacar ${w.pt==='M'?'del mes':w.pt==='Q'?'de la quincena':'de la semana'} a mano. Se guarda en este navegador, por período, y aparece como última slide.</div></div></div>
     <div>${notes.map((n,i)=>`<div class="wk-ed-row"><input value="${wkEsc(n.t)}" placeholder="Título (ej: Confección de IIBB)" onchange="wkEdit('${k}',${i},'t',this.value)"><input value="${wkEsc(n.d)}" placeholder="Descripción" onchange="wkEdit('${k}',${i},'d',this.value)"><button class="wk-btn" onclick="wkDel('${k}',${i})">✕</button></div>`).join('')}</div>
     <div style="display:flex;gap:8px;margin-top:6px"><button class="wk-btn" onclick="wkAdd('${k}')">+ Agregar punto</button>${prev&&wkGetNotes(prev).length&&!notes.length?`<button class="wk-btn" onclick="wkCopyPrev('${k}')">Copiar del período anterior</button>`:''}</div></div>`;
 }
+// ── Formato PPT Lannis ──
+function pptOn(){try{return localStorage.getItem('wk_ppt')!=='0';}catch(e){return true;}}
+function pptToggle(k){try{localStorage.setItem('wk_ppt',pptOn()?'0':'1');}catch(e){}renderDecks();}
+function pptParts(html){const t=document.createElement('template');t.innerHTML=html.trim();const s=t.content.firstElementChild;if(!s)return{title:'',body:html};
+  const h=s.querySelector('.wk-h'),e=s.querySelector('.wk-eyebrow'),title=h?h.textContent.trim():'';if(h)h.remove();if(e)e.remove();return{title,body:s.innerHTML};}
+const pptSlug=t=>String(t||'slide').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,40);
+function pptFrame(html,k,i){
+  // Si la slide tiene una parte marcada como separable (.wk-split), en formato PPT va en una slide aparte para que no quede chica
+  const t=document.createElement('template');t.innerHTML=html.trim();const sp=t.content.querySelector('.wk-split');
+  if(sp&&k!=='ov'){const title=sp.dataset.title||'';const h=sp.querySelector('.wk-split-h');if(h)h.remove();sp.remove();
+    const second=`<div class="wk-slide"><div class="wk-h">${wkEsc(title)}</div><div class="ppt-big">${sp.innerHTML}</div></div>`;
+    return pptFrame1(t.innerHTML,k,i,'')+pptFrame1(second,k,i,'b');}
+  return pptFrame1(html,k,i,'');}
+function pptFrame1(html,k,i,suf){const p=pptParts(html);i=i+suf;
+  return`<div class="ppt-wrap"><div class="ppt" id="ppt-${k}-${i}" data-name="${String(parseInt(i)+2).padStart(2,'0')}${String(i).replace(/^\d+/,'')}-${pptSlug(p.title)}"><div class="ppt-band"><div class="ppt-title">${wkEsc(p.title)}</div></div><div class="ppt-body"><div class="ppt-fit">${p.body}</div></div></div>
+    <div class="ppt-act"><button class="wk-btn" onclick="pptCopy('ppt-${k}-${i}',this)">Copiar imagen</button><button class="wk-btn" onclick="pptDown('ppt-${k}-${i}')">Descargar PNG</button></div></div>`;}
+function pptCover(w,k){const st=w.pt==='M'?(w.fl||''):'Semana del '+wkDmy(w.ws)+' al '+wkDmy(w.we);
+  return`<div class="ppt-wrap"><div class="ppt-cover" id="ppt-${k}-c" data-name="01-operaciones"><img src="assets/lannis-logo.png" alt="Lannis"><div class="tt">Operaciones</div><div class="st">${wkEsc(st)}</div><div class="pnl"></div></div>
+    <div class="ppt-act"><button class="wk-btn" onclick="pptCopy('ppt-${k}-c',this)">Copiar imagen</button><button class="wk-btn" onclick="pptDown('ppt-${k}-c')">Descargar PNG</button></div></div>`;}
+// Achica el título y el contenido para que entren en el 16:9 sin cortarse
+function pptFit(root){(root||document).querySelectorAll('.ppt').forEach(p=>{
+  if(!p.offsetWidth)return; // pestaña oculta: se ajusta al mostrarla
+  const t=p.querySelector('.ppt-title');if(t){t.style.fontSize='';let f=parseFloat(getComputedStyle(t).fontSize);while(t.scrollWidth>t.clientWidth+1&&f>10){f-=1;t.style.fontSize=f+'px';}}
+  const b=p.querySelector('.ppt-body'),c=p.querySelector('.ppt-fit');if(!b||!c)return;
+  const H=b.clientHeight;let r=1;
+  for(let k=0;k<5;k++){c.style.width=(100/r)+'%';c.style.transform=r<1?`scale(${r})`:'';const h=c.scrollHeight;if(h*r<=H+1)break;r=Math.max(.4,Math.min(r-.01,H/h));}
+});}
+let pptRT=null;window.addEventListener('resize',()=>{clearTimeout(pptRT);pptRT=setTimeout(()=>pptFit(),150);});
+let pptLibP=null;
+function pptLib(){if(window.htmlToImage)return Promise.resolve(window.htmlToImage);
+  if(!pptLibP)pptLibP=new Promise((ok,ko)=>{const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/html-to-image@1.11.11/dist/html-to-image.js';s.onload=()=>ok(window.htmlToImage);s.onerror=()=>{pptLibP=null;ko(new Error('No se pudo cargar el generador de imágenes'));};document.head.appendChild(s);});
+  return pptLibP;}
+// PNG de 1920×1080 (el tamaño del deck de Google Slides / PowerPoint en 16:9)
+async function pptBlob(id){const n=document.getElementById(id);if(!n)throw new Error('No encontré la slide');const L=await pptLib();
+  if(document.fonts&&document.fonts.ready)await document.fonts.ready;
+  return L.toBlob(n,{pixelRatio:1920/n.offsetWidth,backgroundColor:'#FAFAF8',cacheBust:true,style:{borderRadius:'0',border:'none'}});}
+async function pptCopy(id,btn){
+  try{
+    if(!window.ClipboardItem||!navigator.clipboard||!navigator.clipboard.write)throw new Error('sin portapapeles');
+    await navigator.clipboard.write([new ClipboardItem({'image/png':pptBlob(id)})]);
+    toast('✓ Imagen copiada: pegala en la slide con Cmd+V');if(btn){const t=btn.textContent;btn.textContent='✓ Copiada';setTimeout(()=>btn.textContent=t,1800);}
+  }catch(e){toast('No se pudo copiar ('+(e.message||e)+'). Bajo el PNG en su lugar.',true);pptDown(id);}
+}
+async function pptDown(id){try{const b=await pptBlob(id),n=document.getElementById(id),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='ops-'+((n&&n.dataset.name)||'slide')+'.png';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),4000);}catch(e){toast('Error al generar la imagen: '+(e.message||e),true);}}
+async function pptAll(k){const el=document.getElementById(DECK[k].el);const ids=[...el.querySelectorAll('.ppt,.ppt-cover')].map(n=>n.id);toast('Generando '+ids.length+' imágenes…');for(const id of ids){await pptDown(id);await new Promise(r=>setTimeout(r,350));}}
 function wkEdit(k,i,f,v){const w=deckW(k);if(!w)return;const n=wkGetNotes(w);if(!n[i])return;n[i][f]=v;wkSetNotes(w,n);renderDeck(k);}
 function wkAdd(k){const w=deckW(k);if(!w)return;const n=wkGetNotes(w);n.push({t:'',d:''});wkSetNotes(w,n);renderDeck(k);}
 function wkDel(k,i){const w=deckW(k);if(!w)return;const n=wkGetNotes(w);n.splice(i,1);wkSetNotes(w,n);renderDeck(k);}
 function wkCopyPrev(k){const w=deckW(k);const prev=w&&deckPrev(w);if(!prev)return;wkSetNotes(w,wkGetNotes(prev));renderDeck(k);}
 function wkOpen(k,i){wkSlides=deckSlides[k]||[];if(!wkSlides.length)return;wkIdx=i;document.getElementById('wkOv').classList.add('on');wkShow();}
 function wkClose(){document.getElementById('wkOv').classList.remove('on');}
-function wkShow(){wkIdx=Math.max(0,Math.min(wkSlides.length-1,wkIdx));document.getElementById('wkStage').innerHTML=wkSlides[wkIdx];document.getElementById('wkCount').textContent=(wkIdx+1)+' / '+wkSlides.length;}
+function wkShow(){wkIdx=Math.max(0,Math.min(wkSlides.length-1,wkIdx));const ov=document.getElementById('wkOv'),on=pptOn();ov.classList.toggle('ppton',on);
+  document.getElementById('wkStage').innerHTML=on?pptFrame(wkSlides[wkIdx],'ov',wkIdx).replace(/<div class="ppt-act">[\s\S]*?<\/div><\/div>$/,'</div>'):wkSlides[wkIdx];if(on)requestAnimationFrame(()=>pptFit(ov));document.getElementById('wkCount').textContent=(wkIdx+1)+' / '+wkSlides.length;}
 function wkStep(d){wkIdx+=d;wkShow();}
 document.addEventListener('keydown',e=>{const ov=document.getElementById('wkOv');if(!ov||!ov.classList.contains('on'))return;if(e.key==='ArrowRight'||e.key===' ')wkStep(1);else if(e.key==='ArrowLeft')wkStep(-1);else if(e.key==='Escape')wkClose();});
 
@@ -2954,6 +3032,7 @@ function showTab(t,el){
   document.getElementById('tab-'+t).classList.add('on');
   document.querySelectorAll('.nav-item,.tab-btn').forEach(e=>e.classList.remove('on'));
   document.querySelectorAll('[onclick*="showTab(\''+t+'\'"]').forEach(e=>e.classList.add('on'));
+  if(t==='weekly'||t==='mensual')requestAnimationFrame(()=>pptFit(document.getElementById('tab-'+t)));
 }
 
 // ── File handlers ──
