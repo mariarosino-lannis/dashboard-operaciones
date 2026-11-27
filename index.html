@@ -1546,7 +1546,7 @@ function campRanges(w){
   return{cur:[mon,isoD(b)],prev:[isoD(pa),isoD(pb)],key:mon,tipo:'semanal'};
 }
 // Clics por enlace (tabla EmailClick del BO, existe desde el 13/11). El destino viene agrupado: dominio + ruta, sin datos personales.
-const LINK_LBL={BAJA:'Darse de baja','lannis.app/planes':'Planes','lannis.app':'Inicio (lannis.app)','lannis.app/dashboard':'Entrar a la app','lannis.app/onboarding/clave-fiscal':'Conectar la clave fiscal',OTRO:'Otro enlace'};
+const LINK_LBL={BAJA:'Darse de baja','lannis.app/planes':'Planes','lannis.app':'Inicio (lannis.app)','lannis.app/dashboard':'Entrar a la app','lannis.app/contadores':'Página de contadores','lannis.app/onboarding/clave-fiscal':'Conectar la clave fiscal',OTRO:'Otro enlace'};
 const linkLbl=d=>LINK_LBL[d]||d.replace(/^lannis\.app/,'lannis.app');
 // Por destino: {dest:{p:personas,n:clics}} para los templates del grupo (opcional: rango de fechas)
 function campLinks(templates,a,b){

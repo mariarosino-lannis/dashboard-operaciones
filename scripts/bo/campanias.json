@@ -3,44 +3,141 @@
   "ventanaConversionDias": 14,
   "grupos": [
     {
+      "nombre": "Partners",
+      "tipo": "puntual",
+      "templates": [
+        {
+          "template": "partners-lannis",
+          "segmento": "Lista externa: contadores y estudios (partners)",
+          "corto": "Contadores (lista externa)",
+          "tipo": "externa"
+        }
+      ]
+    },
+    {
       "nombre": "Lannis en pesos",
       "tipo": "puntual",
       "templates": [
-        {"template": "nuevo-pag-lannis-en-pesos-y-arranca-gratis", "segmento": "Lista externa: Monotributistas · con categoría", "corto": "Mono con categoría", "tipo": "externa"},
-        {"template": "nuevo-pag-lannis-en-pesos-y-arranca-gratis-sin-categoria", "segmento": "Lista externa: Monotributistas · sin categoría", "corto": "Mono sin categoría", "tipo": "externa"},
-        {"template": "nuevo-lannis-en-pesos-y-tu-primer-mes-a-30000", "segmento": "Lista externa: Responsables Inscriptos", "corto": "RI (lista externa)", "tipo": "externa"},
-        {"template": "nuevo-ponete-en-regla-con-arca-pagando-en-pesos-el-primer-mes-va-por-nuestra-cuenta", "segmento": "Lista externa: Régimen a confirmar", "corto": "Régimen a confirmar", "tipo": "externa"}
+        {
+          "template": "nuevo-pag-lannis-en-pesos-y-arranca-gratis",
+          "segmento": "Lista externa: Monotributistas · con categoría",
+          "corto": "Mono con categoría",
+          "tipo": "externa"
+        },
+        {
+          "template": "nuevo-pag-lannis-en-pesos-y-arranca-gratis-sin-categoria",
+          "segmento": "Lista externa: Monotributistas · sin categoría",
+          "corto": "Mono sin categoría",
+          "tipo": "externa"
+        },
+        {
+          "template": "nuevo-lannis-en-pesos-y-tu-primer-mes-a-30000",
+          "segmento": "Lista externa: Responsables Inscriptos",
+          "corto": "RI (lista externa)",
+          "tipo": "externa"
+        },
+        {
+          "template": "nuevo-ponete-en-regla-con-arca-pagando-en-pesos-el-primer-mes-va-por-nuestra-cuenta",
+          "segmento": "Lista externa: Régimen a confirmar",
+          "corto": "Régimen a confirmar",
+          "tipo": "externa"
+        }
       ]
     },
     {
       "nombre": "Black Friday",
       "tipo": "puntual",
       "templates": [
-        {"template": "black-friday-50-off-monotributistas-con-categoria", "segmento": "Lista externa: Monotributistas · con categoría", "corto": "Mono con categoría", "tipo": "externa"},
-        {"template": "black-friday-50-off-monotributistas-1", "segmento": "Lista externa: Monotributistas · sin categoría", "corto": "Mono sin categoría", "tipo": "externa"},
-        {"template": "black-friday-50-off-ri", "segmento": "Lista externa: Responsables Inscriptos", "corto": "RI (lista externa)", "tipo": "externa"},
-        {"template": "black-friday-50-off-sin-regimen", "segmento": "Lista externa: Régimen a confirmar", "corto": "Régimen a confirmar", "tipo": "externa"},
-        {"template": "black-friday-cuentas-monotributo", "segmento": "Black Friday · cuentas monotributo", "corto": "Cuentas monotributo", "tipo": "cuentas"},
-        {"template": "black-friday-cuentas-sin-regimen", "segmento": "Black Friday · cuentas sin dato", "corto": "Cuentas sin dato", "tipo": "cuentas"}
+        {
+          "template": "black-friday-50-off-monotributistas-con-categoria",
+          "segmento": "Lista externa: Monotributistas · con categoría",
+          "corto": "Mono con categoría",
+          "tipo": "externa"
+        },
+        {
+          "template": "black-friday-50-off-monotributistas-1",
+          "segmento": "Lista externa: Monotributistas · sin categoría",
+          "corto": "Mono sin categoría",
+          "tipo": "externa"
+        },
+        {
+          "template": "black-friday-50-off-ri",
+          "segmento": "Lista externa: Responsables Inscriptos",
+          "corto": "RI (lista externa)",
+          "tipo": "externa"
+        },
+        {
+          "template": "black-friday-50-off-sin-regimen",
+          "segmento": "Lista externa: Régimen a confirmar",
+          "corto": "Régimen a confirmar",
+          "tipo": "externa"
+        },
+        {
+          "template": "black-friday-cuentas-monotributo",
+          "segmento": "Black Friday · cuentas monotributo",
+          "corto": "Cuentas monotributo",
+          "tipo": "cuentas"
+        },
+        {
+          "template": "black-friday-cuentas-sin-regimen",
+          "segmento": "Black Friday · cuentas sin dato",
+          "corto": "Cuentas sin dato",
+          "tipo": "cuentas"
+        }
       ]
     },
     {
       "nombre": "Activación de leads",
       "tipo": "continua",
       "templates": [
-        {"template": "activacion-sin-clave", "segmento": "Lead que no conectó la clave, día 3", "corto": "No conectó la clave (día 3)", "tipo": "cuentas"},
-        {"template": "activacion-clave-sin-uso", "segmento": "Lead que conectó y no emitió, día 7", "corto": "Conectó y no emitió (día 7)", "tipo": "cuentas"},
-        {"template": "activacion-uso-sin-pagar", "segmento": "Lead que usa sin pagar", "corto": "Usa sin pagar", "tipo": "cuentas"}
+        {
+          "template": "activacion-sin-clave",
+          "segmento": "Lead que no conectó la clave, día 3",
+          "corto": "No conectó la clave (día 3)",
+          "tipo": "cuentas"
+        },
+        {
+          "template": "activacion-clave-sin-uso",
+          "segmento": "Lead que conectó y no emitió, día 7",
+          "corto": "Conectó y no emitió (día 7)",
+          "tipo": "cuentas"
+        },
+        {
+          "template": "activacion-uso-sin-pagar",
+          "segmento": "Lead que usa sin pagar",
+          "corto": "Usa sin pagar",
+          "tipo": "cuentas"
+        }
       ]
     },
     {
       "nombre": "Nurturing de leads",
       "tipo": "continua",
       "templates": [
-        {"template": "lead-que-podes-hacer-servicios", "segmento": "Lead que da servicios", "corto": "Da servicios", "tipo": "cuentas"},
-        {"template": "lead-que-podes-hacer-productos", "segmento": "Lead que vende productos", "corto": "Vende productos", "tipo": "cuentas"},
-        {"template": "lead-planes-monotributo", "segmento": "Lead monotributista sin plan", "corto": "Planes monotributo", "tipo": "cuentas"},
-        {"template": "lead-planes-responsable-inscripto", "segmento": "Lead responsable inscripto sin plan", "corto": "Planes RI", "tipo": "cuentas"}
+        {
+          "template": "lead-que-podes-hacer-servicios",
+          "segmento": "Lead que da servicios",
+          "corto": "Da servicios",
+          "tipo": "cuentas"
+        },
+        {
+          "template": "lead-que-podes-hacer-productos",
+          "segmento": "Lead que vende productos",
+          "corto": "Vende productos",
+          "tipo": "cuentas"
+        },
+        {
+          "template": "lead-planes-monotributo",
+          "segmento": "Lead monotributista sin plan",
+          "corto": "Planes monotributo",
+          "tipo": "cuentas"
+        },
+        {
+          "template": "lead-planes-responsable-inscripto",
+          "segmento": "Lead responsable inscripto sin plan",
+          "corto": "Planes RI",
+          "tipo": "cuentas"
+        }
       ]
     },
     {
@@ -48,8 +145,18 @@
       "tipo": "continua",
       "conversion": false,
       "templates": [
-        {"template": "nps-registro", "segmento": "Registrado hace una semana sin plan", "corto": "Registrados sin plan", "tipo": "cuentas"},
-        {"template": "nps-suscriptor", "segmento": "Suscriptor (una semana / dos meses)", "corto": "Suscriptores", "tipo": "cuentas"}
+        {
+          "template": "nps-registro",
+          "segmento": "Registrado hace una semana sin plan",
+          "corto": "Registrados sin plan",
+          "tipo": "cuentas"
+        },
+        {
+          "template": "nps-suscriptor",
+          "segmento": "Suscriptor (una semana / dos meses)",
+          "corto": "Suscriptores",
+          "tipo": "cuentas"
+        }
       ]
     }
   ]
