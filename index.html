@@ -90,6 +90,9 @@ body{font-family:'Inter',sans-serif;background:var(--paper);color:var(--ink);min
 .wk-bul span.t{color:var(--ink3);font-size:.95em}
 .wk-bul .bar{width:.4em;align-self:stretch;border-radius:99px;flex-shrink:0}
 .wk-g2{display:grid;grid-template-columns:1fr 1fr;gap:2em}
+.cal-row{display:grid;grid-template-columns:3.4em minmax(0,1fr) auto;gap:.2em .7em;align-items:baseline;padding:.32em 0;border-bottom:1px solid var(--border);font-size:.92em}.cal-row .d{color:var(--ink3);font-variant-numeric:tabular-nums}.cal-row .n{display:flex;gap:.25em;align-items:center;justify-content:flex-end;flex-wrap:wrap}
+.cal-nb{font-size:.7em;font-weight:700;letter-spacing:.03em;padding:.1em .45em;border-radius:4px;background:color-mix(in srgb,var(--c) 18%,transparent);color:var(--ink)}.cal-st{font-size:.78em;font-weight:600;margin-left:.3em;white-space:nowrap}
+
 .wk-cards.c4{grid-template-columns:repeat(4,1fr)}.wk-cards.c5{grid-template-columns:repeat(5,1fr)}.wk-cards.c5 .v,.wk-cards.c4 .v{font-size:2.4em}.wk-cards.c2{grid-template-columns:repeat(2,1fr)}.wk-cards.c1{grid-template-columns:1fr}
 .wk-stack{display:flex;height:1.15em;border-radius:99px;overflow:hidden;background:var(--s3)}.wk-stack>i{display:block;height:100%}
 .wk-leg{display:flex;flex-wrap:wrap;gap:.4em 1.2em;font-size:.85em;color:var(--ink2);margin-top:.55em}.wk-leg span::before{content:"";display:inline-block;width:.7em;height:.7em;border-radius:2px;margin-right:.4em;background:var(--c)}
@@ -1853,6 +1856,15 @@ const mesNombre=k=>MONTHS[+k.substring(5)-1]+(k.substring(0,4)!==String(new Date
 const wkStack=parts=>`<div class="wk-stack">${parts.filter(p=>p[1]>0).map(([l,n,c,tot])=>`<i style="width:${(n/tot*100).toFixed(1)}%;background:${c}" title="${wkEsc(l)}: ${n}"></i>`).join('')}</div>
   <div class="wk-leg">${parts.filter(p=>p[1]>0).map(([l,n,c])=>`<span style="--c:${c}">${wkEsc(l)}</span>`).join('')}</div>`;
 
+
+// Calendario de contenidos (artifact del equipo): qué salió y qué viene. items: [fecha, hora, tipo, estado, redes, formato, campaña, título, segmento]
+const CAL_NET={instagram:['IG','#845CF2'],linkedin:['IN','#18AAF2'],x:['X','#82898C'],tiktok:['TT','#E0457B'],youtube:['YT','#B49DF2'],blog:['BLOG','#9ECC14'],mail:['MAIL','#87D0F5'],otra:['OTRA','#B7C1C4'],difusion:['DIF','#9ECC14']};
+const CAL_ST={idea:['Idea','var(--ink3)'],produccion:['En producción','var(--amber)'],revision:['En revisión','var(--amber)'],programado:['Programado','var(--accent)'],publicado:['Publicado','var(--green)']};
+// Lo programado cuya fecha y hora ya pasaron cuenta como publicado (igual que en el calendario)
+function calSt(r){if(r[3]!=='programado')return r[3];const t=r[1]||'23:59';return new Date(r[0]+'T'+t+':00-03:00').getTime()<=Date.now()?'publicado':'programado';}
+const calNets=r=>(r[2]==='difusion'?['difusion']:r[4]).map(n=>{const x=CAL_NET[n]||CAL_NET.otra;return`<span class="cal-nb" style="--c:${x[1]}">${x[0]}</span>`;}).join('');
+function calRows(L,max,showSt){const v=L.slice(0,max);return v.map(r=>{const st=calSt(r),S=CAL_ST[st]||CAL_ST.idea;
+  return`<div class="cal-row"><div class="d">${wkDmy(r[0])}</div><div class="t">${r[2]==='hito'?'<b>Fecha clave:</b> ':''}${wkEsc(r[7])}${r[2]==='difusion'?' <span style="color:var(--ink3)">· difusión'+(r[8]?' a '+wkEsc(r[8]):'')+'</span>':r[5]?' <span style="color:var(--ink3)">· '+wkEsc(r[5])+'</span>':''}</div><div class="n">${r[2]==='hito'?'':calNets(r)}${showSt?`<span class="cal-st" style="color:${S[1]}">${S[0]}</span>`:''}</div></div>`;}).join('')+(L.length>max?`<div class="wk-note" style="margin:.3em 0 0">y ${L.length-max} más en el calendario.</div>`:'');}
 function buildWeeklySlides(w){
   const prev=deckPrev(w);
   const word=w.pt==='M'?'mes':w.pt==='Q'?'quincena':'semana';
@@ -2073,6 +2085,35 @@ function buildWeeklySlides(w){
     });
   }
 
+
+  // 6c. Contenidos: qué salió en el período y qué viene (calendario de contenidos)
+  if(boData&&boData.contenidos&&(boData.contenidos.items||[]).length){
+    const CI=boData.contenidos.items,M=w.pt==='M';
+    const a=String(w.ws).substring(0,10),b=String(w.we).substring(0,10);
+    const nx=M?(()=>{const d=new Date(b+'T12:00:00');const f=new Date(d.getFullYear(),d.getMonth()+1,1),l=new Date(d.getFullYear(),d.getMonth()+2,0);const iso=x=>x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0');return[iso(f),iso(l)];})()
+      :(()=>{const d=new Date(b+'T12:00:00');d.setDate(d.getDate()+1);const e=new Date(d);e.setDate(e.getDate()+6);const iso=x=>x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0');return[iso(d),iso(e)];})();
+    const inP=CI.filter(r=>r[0]>=a&&r[0]<=b&&r[2]!=='hito');
+    const pub=inP.filter(r=>calSt(r)==='publicado'),hoy=hoyIso();
+    const late=inP.filter(r=>['idea','produccion','revision'].includes(calSt(r))&&r[0]<hoy);
+    const prog=inP.filter(r=>calSt(r)==='programado');
+    const next=CI.filter(r=>r[0]>=nx[0]&&r[0]<=nx[1]);const nxP=next.filter(r=>r[2]!=='hito');
+    const ready=nxP.filter(r=>calSt(r)==='programado'||calSt(r)==='publicado').length;
+    const byNet={};pub.forEach(r=>(r[2]==='difusion'?['difusion']:r[4]).forEach(n=>{byNet[n]=(byNet[n]||0)+1;}));
+    const netTxt=Object.entries(byNet).sort((x,y)=>y[1]-x[1]).map(([n,c])=>(CAL_NET[n]||CAL_NET.otra)[0]+' '+c).join(' · ');
+    const nxLbl=M?mesNombre(nx[0].substring(0,7)).toLowerCase():'la semana del '+wkDmy(nx[0]);
+    if(inP.length||next.length)slides.push(`<div class="wk-slide"><div class="wk-eyebrow">Operaciones — Contenidos</div><div class="wk-h">Contenidos: qué salió y qué viene</div><div class="wk-sub">Redes, blog, mails y difusiones ${dlp} (${wkDmy(a)} al ${wkDmy(b)}) y lo planificado para ${nxLbl}. Fuente: calendario de contenidos, al ${boFecha(boData.contenidos.generado)}.</div>
+      <div class="wk-cards c3">
+        <div class="wk-card g"><div class="l">Publicadas</div><div class="v">${pub.length}</div><div class="s">${netTxt||'—'}</div></div>
+        <div class="wk-card ${late.length?'r':'g'}"><div class="l">Quedaron sin salir</div><div class="v">${late.length}</div><div class="s">${late.length?'pasó la fecha y siguen en idea, producción o revisión':'nada atrasado'}${prog.length?' · '+prog.length+' programadas todavía':''}</div></div>
+        <div class="wk-card ${nxP.length&&ready<nxP.length?'a':'p'}"><div class="l">Planificadas para ${M?mesNombre(nx[0].substring(0,7)).toLowerCase():'la semana que viene'}</div><div class="v">${nxP.length}</div><div class="s">${ready} listas (programadas) · ${nxP.length-ready} en idea, producción o revisión</div></div>
+      </div>
+      <div class="wk-g2" style="margin-top:1.3em">
+        <div><div style="font-weight:600;margin-bottom:.4em">Qué salió</div>${pub.length?calRows(pub,M?8:6,false):'<div class="wk-note" style="margin:0">No se publicó nada en el período.</div>'}
+          ${late.length?`<div style="font-weight:600;margin:.9em 0 .4em;color:var(--red)">Quedaron sin salir</div>${calRows(late,3,true)}`:''}</div>
+        <div><div style="font-weight:600;margin-bottom:.4em">Qué viene · ${wkEsc(nxLbl)}</div>${next.length?calRows(next,M?8:6,true):'<div class="wk-note" style="margin:0">Todavía no hay nada cargado en el calendario.</div>'}</div>
+      </div>
+      <div class="wk-note">“Publicadas” incluye lo programado cuya fecha ya pasó. ${boData.contenidos.wishlist?boData.contenidos.wishlist+' ideas sin fecha en la wishlist.':''}</div></div>`);
+  }
   // 7. Mensual: servicios del mes y DDJJ en detalle
   if(w.pt==='M'&&boData&&boData.servicios){
     const SV=boData.servicios,mk=monthKeyOf(w);

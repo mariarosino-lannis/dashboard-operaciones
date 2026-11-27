@@ -88,6 +88,47 @@ def merge_analisis(prev):
     return hist
 
 
+CAL_NETS = ["instagram", "linkedin", "x", "tiktok", "youtube", "blog", "mail", "otra"]
+CAL_STATUS = {"idea", "produccion", "revision", "programado", "publicado"}
+
+
+def contenidos(prev):
+    """Calendario de contenidos (artifact "Calendario de contenidos Lannis", colección posts).
+    La actualización de los lunes lo baja con ArtifactData (out_dir scripts/bo/out/contenidos) y acá se queda solo con
+    lo que va en las presentaciones: fecha, hora, tipo, estado, redes, formato, campaña, título y segmento de las difusiones.
+    Nunca owners, notas, links ni quién lo cargó. Si no se bajó el calendario, se mantiene lo anterior."""
+    files = sorted((OUT / "contenidos" / "posts").glob("*.json"))
+    if not files:
+        return (prev or {}).get("contenidos")
+    now = datetime.now(ART)
+    desde = (now - timedelta(days=200)).strftime("%Y-%m-%d")
+    items, wish = [], 0
+    for f in files:
+        d = json.loads(f.read_text(encoding="utf-8"))
+        d = d.get("data", d) if isinstance(d, dict) else {}
+        kind = d.get("kind") if d.get("kind") in ("hito", "difusion") else "post"
+        date = d.get("date") if isinstance(d.get("date"), str) and re.match(r"^\d{4}-\d{2}-\d{2}$", d.get("date") or "") else None
+        if not date:
+            if kind != "hito":
+                wish += 1
+            continue
+        if date < desde:
+            continue
+        nets = [n for n in (d.get("networks") or [d.get("network")]) if n in CAL_NETS] or ["otra"]
+        tm = d.get("time") if isinstance(d.get("time"), str) and re.match(r"^\d{2}:\d{2}$", d.get("time") or "") else ""
+        st = d.get("status") if d.get("status") in CAL_STATUS else "idea"
+        title = str(d.get("title") or "(sin título)")[:140]
+        seg = str(d.get("segment") or "")[:160] if kind == "difusion" else ""
+        if any(rx.search(title) for rx in PII):
+            title = "(título con datos personales, revisar en el calendario)"
+        if any(rx.search(seg) for rx in PII):
+            seg = ""
+        items.append([date, tm, kind, st, sorted(set(nets), key=CAL_NETS.index), str(d.get("format") or "")[:30],
+                      str(d.get("campaign") or "")[:60], title, seg])
+    items.sort(key=lambda r: (r[0], r[1] or "99:99", r[7]))
+    return {"generado": now.strftime("%Y-%m-%dT%H:%M:%S-03:00"), "items": items, "wishlist": wish}
+
+
 def build():
     cfg = config()
     camp, est, sem, fac, cli, srv = (load(q) for q in QUERIES)
@@ -149,6 +190,7 @@ def build():
         "facturacion": fac,
         "servicios": srv,
         "analisis": merge_analisis(prev.get("analisis")),
+        "contenidos": contenidos(prev),
     }
     DATA.parent.mkdir(parents=True, exist_ok=True)
     DATA.write_text(json.dumps(out, ensure_ascii=False, separators=(",", ":")) + "\n", encoding="utf-8")

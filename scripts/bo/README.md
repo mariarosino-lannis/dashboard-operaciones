@@ -82,3 +82,12 @@ se cuenta aparte (columna 9 de `snapshot`, "vencen en <mes>"). Una obligación q
 Para clientes que no están en el BO, la pestaña DDJJ tiene una sección "Cargadas a mano" que guarda en la tabla
 `ddjj_manual` de Supabase (no en este repo). Se suman a la pestaña y a la slide de DDJJ del Weekly / Mensual
 (en la slide solo los totales). No entran en el avance semana a semana ni en la foto semanal del historial.
+
+## Calendario de contenidos
+
+La actualización de los lunes baja la colección `posts` del artifact "Calendario de contenidos Lannis"
+(https://claude.ai/artifact/N2FfHKxAJvsB2jWVmdU1VS) con ArtifactData (`out_dir` = `scripts/bo/out/contenidos`).
+`build.py` guarda en `data/bo.json` → `contenidos` solo fecha, hora, tipo, estado, redes, formato, campaña, título y
+segmento de las difusiones (nunca owners, notas, links ni quién lo cargó), desde hace ~6 meses en adelante, y cuántas
+ideas hay sin fecha. Va en la slide "Contenidos: qué salió y qué viene" del Weekly y el Mensual.
+Ojo: los títulos de lo planificado quedan legibles en este repo público (decisión tomada el 27/11/2026).
