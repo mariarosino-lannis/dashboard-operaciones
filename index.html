@@ -483,8 +483,14 @@ body{font-family:'Inter',sans-serif;background:var(--paper);color:var(--ink);min
         <div class="card"><div class="card-header"><div><div class="card-title">Distribución de frecuencia</div></div></div><div class="ch" style="height:200px"><canvas id="cCliFreq"></canvas></div></div>
         <div class="card"><div class="card-header"><div><div class="card-title">Lifecycle de clientes que consultan</div><div class="card-sub">Requiere CSV de contactos</div></div></div><div class="ch" style="height:200px"><canvas id="cLifecycle"></canvas></div></div>
       </div>
-      <div class="card"><div class="card-header"><div><div class="card-title">Top 20 contactos más activos</div><div class="card-sub">Con nombre real si los contactos están cargados</div></div></div>
-        <table class="tbl"><thead><tr><th>#</th><th>Cliente</th><th class="r">Consultas</th><th>Lifecycle</th><th>Suscripción</th><th class="r">Mono</th><th class="r">Deuda</th></tr></thead><tbody id="cliBody"></tbody></table>
+      <div class="card"><div class="card-header" style="flex-wrap:wrap;gap:10px"><div><div class="card-title" id="cliRkTitle">Ranking de clientes</div><div class="card-sub" id="cliRkSub">Solo WhatsApp, sin el equipo interno ni contactos institucionales. Con nombre real si los contactos están cargados.</div></div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap" id="cliRkBtns">
+            <div class="comp-chip on" data-k="conv" onclick="setCliRank('conv')">Más conversaciones</div>
+            <div class="comp-chip" data-k="in" onclick="setCliRank('in')">Más mensajes nos mandan</div>
+            <div class="comp-chip" data-k="tot" onclick="setCliRank('tot')">Más intercambio</div>
+          </div></div>
+        <div id="cliRkNote"></div>
+        <table class="tbl"><thead><tr><th>#</th><th>Cliente</th><th class="r">Conversaciones</th><th class="r">Nos mandó</th><th class="r">Le mandamos</th><th class="r">Intercambio</th><th class="r">Msj por conv.</th><th>Tema principal</th><th>Lifecycle</th><th>Suscripción</th><th class="r">Deuda</th></tr></thead><tbody id="cliBody"></tbody></table>
       </div>
     </div>
 
@@ -1061,8 +1067,9 @@ function computeWeek(rows,hols,actAgents,msgRows){
     sdCat[r.catN].total++;if(r.sameDay)sdCat[r.catN].sd++;sdCat[r.catN].msgs.push(r.totalMsgs);
     if(r.tta!=null)ttaVals.push(r.tta);
     if(r.contactId&&r.contactId!=='NaN'&&!EXCLUDE_CONTACTS.has(r.contactId)){
-      if(!contactMap[r.contactId])contactMap[r.contactId]={count:0,cats:{},last:'',hasWA:false};
+      if(!contactMap[r.contactId])contactMap[r.contactId]={count:0,cats:{},last:'',hasWA:false,inM:0,outM:0};
       contactMap[r.contactId].count++;
+      contactMap[r.contactId].inM+=r.inM;contactMap[r.contactId].outM+=r.outM;
       contactMap[r.contactId].cats[r.catN]=(contactMap[r.contactId].cats[r.catN]||0)+1;
       if(r.f>contactMap[r.contactId].last)contactMap[r.contactId].last=r.f;
       if(/whatsapp/i.test(r.channelId)||r.channelId==='416252')contactMap[r.contactId].hasWA=true;
@@ -1076,11 +1083,14 @@ function computeWeek(rows,hols,actAgents,msgRows){
   });
   const ttaMed=ttaVals.length?[...ttaVals].sort((a,b)=>a-b)[Math.floor(ttaVals.length/2)]:0;
   const ttaAvgV=avg(ttaVals);
-  const topContacts=Object.entries(contactMap)
-    .filter(([,i])=>i.hasWA)
-    .sort((a,b)=>b[1].count-a[1].count)
-    .slice(0,30)
-    .map(([id,i])=>({id,count:i.count,topCat:Object.entries(i.cats).sort((a,b)=>b[1]-a[1])[0]?.[0]||'—',last:i.last}));
+  // Ranking de clientes: se guardan los 30 primeros por conversaciones, por mensajes que nos mandaron y por intercambio total
+  // (mensajes del cliente + nuestros). Ordenado por conversaciones para que los períodos viejos se lean igual.
+  const waC=Object.entries(contactMap).filter(([,i])=>i.hasWA);
+  const topIds=new Set();
+  [i=>i.count,i=>i.inM,i=>i.inM+i.outM].forEach(fn=>{[...waC].sort((a,b)=>fn(b[1])-fn(a[1])||b[1].count-a[1].count).slice(0,30).forEach(([id])=>topIds.add(id));});
+  const topContacts=waC.filter(([id])=>topIds.has(id))
+    .sort((a,b)=>b[1].count-a[1].count||(b[1].inM+b[1].outM)-(a[1].inM+a[1].outM))
+    .map(([id,i])=>({id,count:i.count,inM:i.inM,outM:i.outM,topCat:Object.entries(i.cats).sort((a,b)=>b[1]-a[1])[0]?.[0]||'—',last:i.last}));
   const freq={'1':0,'2-5':0,'6-10':0,'10+':0};
   Object.values(contactMap).forEach(c=>{if(c.count===1)freq['1']++;else if(c.count<=5)freq['2-5']++;else if(c.count<=10)freq['6-10']++;else freq['10+']++;});
 
@@ -2437,21 +2447,45 @@ function renderClientes(w){
 
   mkChart('cCliFreq','doughnut',{labels:['1 consulta','2-5','6-10','10+'],datasets:[{data:[freq['1']||0,freq['2-5']||0,freq['6-10']||0,freq['10+']||0],backgroundColor:['#6366f1','#10b981','#f59e0b','#ef4444'],borderWidth:4,borderColor:'#fff'}]},{cutout:'60%'});
 
+  renderCliRank(topC);
+}
+// Ranking de clientes: por conversaciones, por mensajes que nos mandan o por intercambio total (mensajes de ellos + nuestros)
+let cliRank='conv';
+function setCliRank(k){cliRank=k;const w=getW();if(w)renderClientes(w);}
+function renderCliRank(topC){
+  const hasM=topC.some(c=>c.inM!=null);
+  if(!hasM&&cliRank!=='conv')cliRank='conv';
+  document.querySelectorAll('#cliRkBtns .comp-chip').forEach(b=>{b.classList.toggle('on',b.dataset.k===cliRank);b.style.opacity=(!hasM&&b.dataset.k!=='conv')?'.4':'';b.style.pointerEvents=(!hasM&&b.dataset.k!=='conv')?'none':'';});
+  const T={conv:['Clientes que más conversaciones abren','Cantidad de conversaciones en el período. A igual cantidad, primero el que tuvo más mensajes.'],
+    in:['Clientes que más mensajes nos mandan','Mensajes que escribió el cliente, sumando todas sus conversaciones del período.'],
+    tot:['Clientes con más intercambio','Mensajes del cliente + mensajes nuestros (equipo, IA y flujos automáticos) en todas sus conversaciones del período.']};
+  document.getElementById('cliRkTitle').textContent=T[cliRank][0];
+  document.getElementById('cliRkSub').textContent=T[cliRank][1]+' Solo WhatsApp, sin el equipo interno ni contactos institucionales.';
+  document.getElementById('cliRkNote').innerHTML=hasM?'':'<div style="font-size:11px;color:var(--amber);background:var(--amberbg);border-radius:8px;padding:8px 12px;margin-bottom:10px">Este período se cargó antes de que se guardaran los mensajes por cliente. Para ver los rankings por mensajes, volvé a cargar el CSV de conversaciones de este período.</div>';
+  const tot=c=>(c.inM||0)+(c.outM||0);
+  const key={conv:c=>c.count,in:c=>c.inM||0,tot:tot}[cliRank];
+  const rows=[...topC].sort((a,b)=>key(b)-key(a)||b.count-a.count||tot(b)-tot(a)).slice(0,20);
   const subCol={'active':'var(--green)','canceled':'var(--red)','past_due':'var(--amber)','trialing':'var(--accent)'};
-  document.getElementById('cliBody').innerHTML=topC.slice(0,20).map((c,i)=>{
+  const bold=k=>cliRank===k?'font-weight:700;color:var(--ink)':'';
+  document.getElementById('cliBody').innerHTML=rows.map((c,i)=>{
     let info={};
     try{info=contactsDB[String(parseInt(c.id))]||contactsDB[String(c.id)]||contactsDB[c.id]||{};}catch(e){}
-    const name=info.name||'—';const lc=info.lifecycle||'—';const sub=info.sub||'—';const cat=info.cat||'—';const debt=info.debt;
+    const name=info.name||'—';const lc=info.lifecycle||'—';const sub=info.sub||'—';const debt=info.debt;
+    const m=c.inM!=null;
     return`<tr>
       <td style="color:var(--ink3);font-weight:500">#${i+1}</td>
-      <td><div style="font-weight:500">${name}</div><div style="font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--ink3)">${c.id}</div></td>
-      <td class="r" style="font-weight:600">${c.count}</td>
-      <td><span class="badge-neu">${lc}</span></td>
-      <td><span style="font-size:11px;font-weight:500;color:${subCol[sub]||'var(--ink3)'}">${sub}</span></td>
-      <td class="r">${cat}</td>
+      <td><div style="font-weight:500">${wkEsc(name)}</div><div style="font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--ink3)">${wkEsc(c.id)}</div></td>
+      <td class="r" style="${bold('conv')}">${c.count}</td>
+      <td class="r" style="${bold('in')}">${m?c.inM.toLocaleString('es'):'—'}</td>
+      <td class="r">${m?c.outM.toLocaleString('es'):'—'}</td>
+      <td class="r" style="${bold('tot')}">${m?tot(c).toLocaleString('es'):'—'}</td>
+      <td class="r">${m&&c.count?(tot(c)/c.count).toFixed(1).replace('.',','):'—'}</td>
+      <td style="font-size:11px">${wkEsc(c.topCat||'—')}</td>
+      <td><span class="badge-neu">${wkEsc(lc)}</span></td>
+      <td><span style="font-size:11px;font-weight:500;color:${subCol[sub]||'var(--ink3)'}">${wkEsc(sub)}</span></td>
       <td class="r">${debt===true?'<span class="badge-fail">Deuda</span>':debt===false?'<span class="badge-ok">OK</span>':'—'}</td>
     </tr>`;
-  }).join('')||'<tr><td colspan="7" class="empty">Sin datos</td></tr>';
+  }).join('')||'<tr><td colspan="11" class="empty">Sin datos</td></tr>';
 }
 
 // ── Bot & AI ──
@@ -2895,7 +2929,7 @@ function renderGlosario(){
         {term:'Contactos únicos',formula:'COUNT DISTINCT(Contact ID externos y no excluidos)',desc:'Total de contactos diferentes que abrieron al menos una conversación en el período.'},
         {term:'Recurrentes (+1)',formula:'COUNT(contactos con 2 o más consultas)',desc:'Clientes que consultaron más de una vez. Alta recurrencia puede indicar problemas no resueltos o alta dependencia del soporte.'},
         {term:'Alta frecuencia (+10)',formula:'COUNT(contactos con 10+ consultas)',desc:'Clientes con más de 10 consultas en el período. Son los que más consumen capacidad del equipo.'},
-        {term:'Top 20 contactos',formula:'Filtrado por hasWA = true (canal 416252), excluye EXCLUDE_CONTACTS, ORDER BY count DESC',desc:'Solo contactos de WhatsApp Business. Se excluyen contactos institucionales, emails corporativos y el equipo interno. Muestra nombre (si está en el CSV de contactos), lifecycle, suscripción, categoría de monotributo y estado de deuda.'},
+        {term:'Ranking de clientes',formula:'Filtrado por hasWA = true (canal 416252), excluye EXCLUDE_CONTACTS y el equipo interno. Top 20 según la vista elegida',desc:'Tres vistas: Más conversaciones (COUNT de conversaciones del contacto), Más mensajes nos mandan (SUM de Number of Incoming Messages) y Más intercambio (SUM de Incoming + Outgoing Messages: lo que escribió el cliente más lo que le mandamos, sea equipo, IA o flujo). Msj por conv. = intercambio / conversaciones. Tema principal = la categoría más repetida en sus conversaciones. Muestra nombre (si está en el CSV de contactos), lifecycle, suscripción y deuda. Las vistas por mensajes están para los períodos cargados desde el 27/11/2026; para los anteriores hay que volver a cargar el CSV de conversaciones.'},
         {term:'Lifecycle',formula:'Campo Lifecycle del CSV de contactos',desc:'Estado del cliente en el embudo: New Lead → Customer → Customer-RI / SAS → Churned User. Se calcula cruzando el Contact ID con el CSV de contactos.'},
         {term:'Distribución de frecuencia',formula:'GROUP BY: 1 consulta / 2-5 / 6-10 / 10+',desc:'Cómo se distribuyen los contactos por cantidad de consultas. Permite ver si hay muchos clientes ocasionales o pocos que consultan mucho.'},
       ]
